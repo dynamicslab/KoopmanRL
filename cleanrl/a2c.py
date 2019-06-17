@@ -95,7 +95,7 @@ writer.add_text('hyperparameters', "|param|value|\n|-|-|\n%s" % (
         '\n'.join([f"|{key}|{value}|" for key, value in vars(args).items()])))
 if args.prod_mode:
     import wandb
-    wandb.init(project="MicrortsRL", tensorboard=True, config=vars(args))
+    wandb.init(project="cleanRL", tensorboard=True, config=vars(args), name=experiment_name)
     writer = SummaryWriter(f"/tmp/{experiment_name}")
 global_step = 0
 while global_step < args.total_timesteps:
