@@ -20,6 +20,70 @@ import time
 import random
 import os
 
+# taken from https://github.com/openai/baselines/blob/master/baselines/common/vec_env/vec_normalize.py
+class RunningMeanStd(object):
+    def __init__(self, epsilon=1e-4, shape=()):
+        self.mean = np.zeros(shape, 'float64')
+        self.var = np.ones(shape, 'float64')
+        self.count = epsilon
+
+    def update(self, x):
+        batch_mean = np.mean(x, axis=0)
+        batch_var = np.var(x, axis=0)
+        batch_count = x.shape[0]
+        self.update_from_moments(batch_mean, batch_var, batch_count)
+
+    def update_from_moments(self, batch_mean, batch_var, batch_count):
+        self.mean, self.var, self.count = update_mean_var_count_from_moments(
+            self.mean, self.var, self.count, batch_mean, batch_var, batch_count)
+
+def update_mean_var_count_from_moments(mean, var, count, batch_mean, batch_var, batch_count):
+    delta = batch_mean - mean
+    tot_count = count + batch_count
+
+    new_mean = mean + delta * batch_count / tot_count
+    m_a = var * count
+    m_b = batch_var * batch_count
+    M2 = m_a + m_b + np.square(delta) * count * batch_count / tot_count
+    new_var = M2 / tot_count
+    new_count = tot_count
+
+    return new_mean, new_var, new_count
+class NormalizedEnv(gym.core.Wrapper):
+    def __init__(self, env, ob=True, ret=True, clipob=10., cliprew=10., gamma=0.99, epsilon=1e-8):
+        super(NormalizedEnv, self).__init__(env)
+        self.ob_rms = RunningMeanStd(shape=self.observation_space.shape) if ob else None
+        self.ret_rms = RunningMeanStd(shape=(1,)) if ret else None
+        self.clipob = clipob
+        self.cliprew = cliprew
+        self.ret = np.zeros(())
+        self.gamma = gamma
+        self.epsilon = epsilon
+
+    def step(self, action):
+        obs, rews, news, infos = self.env.step(action)
+        infos['real_reward'] = rews
+        self.ret = self.ret * self.gamma + rews
+        obs = self._obfilt(obs)
+        if self.ret_rms:
+            self.ret_rms.update(np.array([self.ret]))
+            rews = np.clip(rews / np.sqrt(self.ret_rms.var + self.epsilon), -self.cliprew, self.cliprew)
+        self.ret = float(news)
+        return obs, rews, news, infos
+
+    def _obfilt(self, obs):
+        if self.ob_rms:
+            self.ob_rms.update(obs)
+            obs = np.clip((obs - self.ob_rms.mean) / np.sqrt(self.ob_rms.var + self.epsilon), -self.clipob, self.clipob)
+            return obs
+        else:
+            return obs
+
+    def reset(self):
+        self.ret = np.zeros(())
+        obs = self.env.reset()
+        return self._obfilt(obs)
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='DDPG agent')
     # Common arguments
@@ -49,6 +113,14 @@ if __name__ == "__main__":
                        help="the entity (team) of wandb's project")
     
     # Algorithm specific arguments
+    parser.add_argument('--norm-obs', action='store_true', default=False,
+                        help="Toggles observation normalization")
+    parser.add_argument('--norm-returns', action='store_true', default=False,
+                        help="Toggles returns normalization")
+    parser.add_argument('--obs-clip', type=float, default=10.0,
+                        help="Value for reward clipping, as per the paper")
+    parser.add_argument('--rew-clip', type=float, default=10.0,
+                        help="Value for observation clipping, as per the paper")
     parser.add_argument('--buffer-size', type=int, default=10000,
                         help='the replay memory buffer size')
     parser.add_argument('--gamma', type=float, default=0.99,
@@ -89,6 +161,9 @@ if args.prod_mode:
 # TRY NOT TO MODIFY: seeding
 device = torch.device('cuda' if torch.cuda.is_available() and args.cuda else 'cpu')
 env = gym.make(args.gym_id)
+assert isinstance(env, TimeLimit), f"please set TimeLimit for the env associated with {args.gym_id}"
+args.episode_length = env._max_episode_steps
+env = NormalizedEnv(env.env, ob=args.norm_obs, ret=args.norm_returns, clipob=args.obs_clip, cliprew=args.rew_clip, gamma=args.gamma)
 random.seed(args.seed)
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
@@ -100,13 +175,7 @@ input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space, dev
 output_shape = preprocess_ac_space(env.action_space)
 # respect the default timelimit
 assert isinstance(env.action_space, Box), "only continuous action space is supported"
-assert isinstance(env, TimeLimit) or int(args.episode_length), "the gym env does not have a built in TimeLimit, please specify by using --episode-length"
-if isinstance(env, TimeLimit):
-    if int(args.episode_length):
-        env._max_episode_steps = int(args.episode_length)
-    args.episode_length = env._max_episode_steps
-else:
-    env = TimeLimit(env, int(args.episode_length))
+env = TimeLimit(env, args.episode_length)
 if args.capture_video:
     env = Monitor(env, f'videos/{experiment_name}')
 
@@ -225,6 +294,7 @@ while global_step < args.total_timesteps:
     next_obs = np.array(env.reset())
     actions = np.empty((args.episode_length,), dtype=object)
     rewards, dones = np.zeros((2, args.episode_length))
+    real_rewards = np.zeros((args.episode_length))
     obs = np.empty((args.episode_length,) + env.observation_space.shape)
     
     # TRY NOT TO MODIFY: prepare the execution of the game.
@@ -238,10 +308,12 @@ while global_step < args.total_timesteps:
             actions[step] = env.action_space.sample()
         else:
             action = actor.forward(obs[step:step+1])
-            actions[step] = action.tolist()[0] + action_noise()
+            actions[step] = action.tolist()[0]
 
         # TRY NOT TO MODIFY: execute the game and log data.
-        next_obs, rewards[step], dones[step], _ = env.step(actions[step])
+        clipped_action = np.clip(actions[step]+action_noise(), env.action_space.low, env.action_space.high)
+        next_obs, rewards[step], dones[step], info = env.step(clipped_action)
+        real_rewards[step] = info['real_reward']
         rb.put((obs[step], actions[step], rewards[step], next_obs, dones[step]))
         next_obs = np.array(next_obs)
 
@@ -279,8 +351,8 @@ while global_step < args.total_timesteps:
             break
 
     # TRY NOT TO MODIFY: record rewards for plotting purposes
-    print(f"global_step={global_step}, episode_reward={rewards.sum()}")
-    writer.add_scalar("charts/episode_reward", rewards.sum(), global_step)
+    print(f"global_step={global_step}, episode_reward={real_rewards.sum()}")
+    writer.add_scalar("charts/episode_reward", real_rewards.sum(), global_step)
     writer.add_scalar("charts/sigma", action_noise.sigma, global_step)
 env.close()
 writer.close()
