@@ -36,7 +36,9 @@ def parse_args():
         help="whether to capture videos of the agent performances (check out `videos` folder)")
 
     # Algorithm specific arguments
-    parser.add_argument("--env-id", type=str, default="Hopper-v4",
+    # parser.add_argument("--env-id", type=str, default="Hopper-v4",
+    #     help="the id of the environment")
+    parser.add_argument("--env-id", type=str, default="Hopper-v3",
         help="the id of the environment")
     parser.add_argument("--total-timesteps", type=int, default=1000000,
         help="total timesteps of the experiments")
