@@ -14,6 +14,7 @@ import torch.optim as optim
 from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
 
+from custom_envs import *
 
 def parse_args():
     # fmt: off
