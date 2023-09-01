@@ -102,6 +102,32 @@ class SoftQNetwork(nn.Module):
         x = self.fc3(x)
         return x
 
+class KoopmanQNetwork(nn.Module):
+    def __init__(self, koopman_tensor):
+        super().__init__()
+
+        self.koopman_tensor = koopman_tensor
+        self.phi_state_dim = self.koopman_tensor.Phi_X.shape[0]
+
+        self.linear = nn.Linear(self.phi_state_dim, 1, bias=False)
+
+    def forward(self, state, action):
+        batch_size = state.shape[0]
+        kronecker_products = torch.zeros((batch_size, self.koopman_tensor.psi_dim * self.koopman_tensor.phi_dim))
+
+        for i in range(batch_size):
+            x = state[i].view(state.shape[1], 1)
+            u = action[i].view(action.shape[1], 1)
+
+            phi_x = self.koopman_tensor.phi(x)
+            psi_u = self.koopman_tensor.psi(u)
+
+            kronecker_products[i] = torch.kron(psi_u[:, 0], phi_x[:, 0])
+
+        output = self.linear(expected_phi_x_primes)
+
+        return output
+
 
 LOG_STD_MAX = 2
 LOG_STD_MIN = -5

@@ -1,6 +1,6 @@
 """
 Make sure you are in the root directory, then you can run:
-python -m custom_envs.test_env --env_name=LinearSystem-v0
+python -m custom_envs.test_env --env-id=LinearSystem-v0
 """
 
 import argparse
@@ -12,16 +12,16 @@ from custom_envs import *
 from matplotlib.animation import FuncAnimation
 
 parser = argparse.ArgumentParser(description='Test Custom Environment')
-parser.add_argument('--env_name', default="LinearSystem-v0",
+parser.add_argument('--env-id', default="LinearSystem-v0",
                     help='Gym environment (default: LinearSystem-v0)')
 args = parser.parse_args()
 
-if args.env_name == "DoubleWell-v0":
+if args.env_id == "DoubleWell-v0":
     is_3d_env = False
 else: is_3d_env = True
 
 # Create the environment
-env = gym.make(args.env_name)
+env = gym.make(args.env_id)
 
 # Set up the figure and axis
 fig = plt.figure()
@@ -40,7 +40,7 @@ ax.set_xlabel("X")
 ax.set_ylabel("Y")
 if is_3d_env:
     ax.set_zlabel("Z")
-ax.set_title(f"{args.env_name} System Trajectory")
+ax.set_title(f"{args.env_id} System Trajectory")
 
 def init():
     line.set_data([], [])
@@ -48,7 +48,7 @@ def init():
         line.set_3d_properties([])
     return line,
 
-state, _ = env.reset()
+state = env.reset()
 states = [state]
 def animate(i):
     next_state, _, _, _ = env.step(np.array([0]))
