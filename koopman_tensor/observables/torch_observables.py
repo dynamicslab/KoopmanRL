@@ -261,6 +261,6 @@ def allMonomialPowers(d, p):
     c = torch.zeros([d, n]) # matrix containing all powers for the monomials
     for i in range(1, n):
         x = nextMonomialPowers(x)
-        c[:, i] = torch.Tensor(x)
+        c[:, i] = torch.tensor(x, dtype=torch.float64)
     c = torch.flipud(c)
     return c

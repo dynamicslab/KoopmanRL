@@ -1,6 +1,9 @@
 """ Imports """
 
+import numpy as np
 import torch
+
+from enum import Enum
 
 """ Helper functions """
 
@@ -57,10 +60,12 @@ def RRR(X, Y, rank=8):
 def ridgeRegression(X, y, lamb=0.05):
     return torch.linalg.inv(X.T @ X + (lamb * torch.eye(X.shape[1]))) @ X.T @ y
 
-def reshape_fortran(x, shape):
-    if len(x.shape) > 0:
-        x = x.permute(*reversed(range(len(x.shape))))
-    return x.reshape(*reversed(shape)).permute(*reversed(range(len(shape))))
+""" Regressor enum """
+
+class Regressor(str, Enum):
+    OLS = 'ols'
+    RRR = 'rrr'
+    SINDy = 'sindy'
 
 """ Koopman Tensor """
 
@@ -72,7 +77,7 @@ class KoopmanTensor:
         U,
         phi,
         psi,
-        regressor='ols',
+        regressor=Regressor.OLS,
         p_inv=True,
         rank=8,
         is_generator=False,
@@ -132,9 +137,9 @@ class KoopmanTensor:
         self.u_dim = self.U.shape[0]
         self.phi_dim = self.Phi_X.shape[0]
         self.psi_dim = self.Psi_U.shape[0]
-        self.x_column_dim = [self.x_dim, 1]
-        self.u_column_dim = [self.u_dim, 1]
-        self.phi_column_dim = [self.phi_dim, 1]
+        self.x_column_dim = (self.x_dim, 1)
+        self.u_column_dim = (self.u_dim, 1)
+        self.phi_column_dim = (self.phi_dim, 1)
 
         # Update regression matrices if dealing with Koopman generator
         if is_generator:
@@ -184,30 +189,34 @@ class KoopmanTensor:
 
         # Solve for M and B
         lowercase_regressor = regressor.lower()
-        if lowercase_regressor == 'rrr':
+        if lowercase_regressor == Regressor.RRR:
             self.M = rrr(self.kron_matrix.T, self.regression_Y.T, rank).T
             self.B = rrr(self.Phi_X.T, self.X.T, rank)
-        elif lowercase_regressor == 'sindy':
+        elif lowercase_regressor == Regressor.SINDy:
             self.M = SINDy(self.kron_matrix.T, self.regression_Y.T).T
             self.B = SINDy(self.Phi_X.T, self.X.T)
-        elif lowercase_regressor == 'ols':
+        elif lowercase_regressor == Regressor.OLS:
             self.M = ols(self.kron_matrix.T, self.regression_Y.T, p_inv).T
             self.B = ols(self.Phi_X.T, self.X.T, p_inv)
         else:
             raise Exception("Did not pick a supported regression algorithm.")
 
         # reshape M into tensor K
-        self.K = torch.empty([
+        self.K = np.empty([
             self.phi_dim,
             self.phi_dim,
             self.psi_dim
         ])
+        self.M = self.M.numpy()
         for i in range(self.phi_dim):
-            # self.K[i] = self.M[i].reshape(
-            #     [self.phi_dim, self.psi_dim],
-            #     order='F'
-            # )
-            self.K[i] = reshape_fortran(self.M[i], (self.phi_dim, self.psi_dim))
+            self.K[i] = self.M[i].reshape(
+                (self.phi_dim, self.psi_dim),
+                order='F'
+            )
+
+        # Cast to tensors
+        self.M = torch.tensor(self.M, dtype=torch.float64)
+        self.K = torch.tensor(self.K, dtype=torch.float64)
 
     def K_(self, u):
         """
