@@ -15,6 +15,7 @@ from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
 
 from custom_envs import *
+from koopman_tensor.utils import load_tensor
 
 def parse_args():
     # fmt: off
@@ -102,14 +103,15 @@ class SoftQNetwork(nn.Module):
         x = self.fc3(x)
         return x
 
-class KoopmanQNetwork(nn.Module):
+class SoftKoopmanQNetwork(nn.Module):
     def __init__(self, koopman_tensor):
         super().__init__()
 
         self.koopman_tensor = koopman_tensor
         self.phi_state_dim = self.koopman_tensor.Phi_X.shape[0]
+        self.psi_state_dim = self.koopman_tensor.Psi_U.shape[0]
 
-        self.linear = nn.Linear(self.phi_state_dim, 1, bias=False)
+        self.linear = nn.Linear(self.psi_state_dim * self.phi_state_dim, 1, bias=False)
 
     def forward(self, state, action):
         batch_size = state.shape[0]
@@ -119,12 +121,12 @@ class KoopmanQNetwork(nn.Module):
             x = state[i].view(state.shape[1], 1)
             u = action[i].view(action.shape[1], 1)
 
-            phi_x = self.koopman_tensor.phi(x)
-            psi_u = self.koopman_tensor.psi(u)
+            phi_x = torch.tensor(self.koopman_tensor.phi(x.detach().numpy()))
+            psi_u = torch.tensor(self.koopman_tensor.psi(u.detach().numpy()))
 
             kronecker_products[i] = torch.kron(psi_u[:, 0], phi_x[:, 0])
 
-        output = self.linear(expected_phi_x_primes)
+        output = self.linear(kronecker_products)
 
         return output
 
@@ -209,10 +211,18 @@ if __name__ == "__main__":
     max_action = float(envs.single_action_space.high[0])
 
     actor = Actor(envs).to(device)
-    qf1 = SoftQNetwork(envs).to(device)
-    qf2 = SoftQNetwork(envs).to(device)
-    qf1_target = SoftQNetwork(envs).to(device)
-    qf2_target = SoftQNetwork(envs).to(device)
+
+    # qf1 = SoftQNetwork(envs).to(device)
+    # qf2 = SoftQNetwork(envs).to(device)
+    # qf1_target = SoftQNetwork(envs).to(device)
+    # qf2_target = SoftQNetwork(envs).to(device)
+
+    koopman_tensor = load_tensor(args.env_id, "path_based_tensor")
+    qf1 = SoftKoopmanQNetwork(koopman_tensor).to(device)
+    qf2 = SoftKoopmanQNetwork(koopman_tensor).to(device)
+    qf1_target = SoftKoopmanQNetwork(koopman_tensor).to(device)
+    qf2_target = SoftKoopmanQNetwork(koopman_tensor).to(device)
+
     qf1_target.load_state_dict(qf1.state_dict())
     qf2_target.load_state_dict(qf2.state_dict())
     q_optimizer = optim.Adam(list(qf1.parameters()) + list(qf2.parameters()), lr=args.q_lr)

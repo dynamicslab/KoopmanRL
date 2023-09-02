@@ -13,6 +13,7 @@ from koopman_tensor.numpy_tensor import KoopmanTensor, Regressor
 from koopman_tensor.observables import numpy_observables as observables
 # from koopman_tensor.torch_tensor import KoopmanTensor as TorchKoopmanTensor, Regressor as TorchRegressor
 # from koopman_tensor.observables import torch_observables
+from koopman_tensor.utils import save_tensor
 from matplotlib.animation import FuncAnimation
 
 """ Allow environment specification """
@@ -159,5 +160,4 @@ print(f"Average single step estimation error norm per average state norm: {avg_s
 """ Save Koopman tensor """
 
 if args.save_model:
-    with open(f'./koopman_tensor/saved_models/{args.env_id}/path_based_tensor.pickle', 'wb') as handle:
-        pickle.dump(path_based_tensor, handle)
+    save_tensor(path_based_tensor, args.env_id, "path_based_tensor")
