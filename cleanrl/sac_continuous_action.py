@@ -8,6 +8,7 @@ from distutils.util import strtobool
 import gym
 import numpy as np
 import torch
+torch.set_default_dtype(torch.float64)
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
@@ -40,7 +41,9 @@ def parse_args():
     # Algorithm specific arguments
     # parser.add_argument("--env-id", type=str, default="Hopper-v4",
     #     help="the id of the environment")
-    parser.add_argument("--env-id", type=str, default="Hopper-v3",
+    # parser.add_argument("--env-id", type=str, default="Hopper-v3",
+    #     help="the id of the environment")
+    parser.add_argument("--env-id", type=str, default="LinearSystem-v0",
         help="the id of the environment")
     parser.add_argument("--total-timesteps", type=int, default=1000000,
         help="total timesteps of the experiments")
@@ -92,15 +95,18 @@ def make_env(env_id, seed, idx, capture_video, run_name):
 class SoftQNetwork(nn.Module):
     def __init__(self, env):
         super().__init__()
+
         self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod() + np.prod(env.single_action_space.shape), 256)
         self.fc2 = nn.Linear(256, 256)
         self.fc3 = nn.Linear(256, 1)
 
     def forward(self, x, a):
         x = torch.cat([x, a], 1)
+
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
+
         return x
 
 class SoftKoopmanQNetwork(nn.Module):
@@ -111,22 +117,32 @@ class SoftKoopmanQNetwork(nn.Module):
         self.phi_state_dim = self.koopman_tensor.Phi_X.shape[0]
         self.psi_state_dim = self.koopman_tensor.Psi_U.shape[0]
 
-        self.linear = nn.Linear(self.psi_state_dim * self.phi_state_dim, 1, bias=False)
+        # self.linear = nn.Linear(self.psi_state_dim * self.phi_state_dim, 1, bias=False)
+        self.linear = nn.Linear(self.phi_state_dim, 1, bias=False)
 
     def forward(self, state, action):
-        batch_size = state.shape[0]
-        kronecker_products = torch.zeros((batch_size, self.koopman_tensor.psi_dim * self.koopman_tensor.phi_dim))
+        # batch_size = state.shape[0]
 
-        for i in range(batch_size):
-            x = state[i].view(state.shape[1], 1)
-            u = action[i].view(action.shape[1], 1)
+        """ Linear in the Kronecker product of dictionary spaces """
 
-            phi_x = torch.tensor(self.koopman_tensor.phi(x.detach().numpy()))
-            psi_u = torch.tensor(self.koopman_tensor.psi(u.detach().numpy()))
+        # kronecker_products = torch.zeros((batch_size, self.koopman_tensor.psi_dim * self.koopman_tensor.phi_dim))
 
-            kronecker_products[i] = torch.kron(psi_u[:, 0], phi_x[:, 0])
+        # for i in range(batch_size):
+        #     x = state[i].view(state.shape[1], 1)
+        #     u = action[i].view(action.shape[1], 1)
 
-        output = self.linear(kronecker_products)
+        #     phi_x = self.koopman_tensor.phi(x)
+        #     psi_u = self.koopman_tensor.psi(u)
+
+        #     kronecker_products[i] = torch.kron(psi_u[:, 0], phi_x[:, 0])
+
+        # output = self.linear(kronecker_products)
+
+        """ Linear in the expected phi(x')s """
+
+        expected_phi_x_primes = self.koopman_tensor.phi_f(state.T, action.T).T
+
+        output = self.linear(expected_phi_x_primes)
 
         return output
 
@@ -138,16 +154,24 @@ LOG_STD_MIN = -5
 class Actor(nn.Module):
     def __init__(self, env):
         super().__init__()
+
         self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod(), 256)
         self.fc2 = nn.Linear(256, 256)
         self.fc_mean = nn.Linear(256, np.prod(env.single_action_space.shape))
         self.fc_logstd = nn.Linear(256, np.prod(env.single_action_space.shape))
+
         # action rescaling
+        # self.register_buffer(
+        #     "action_scale", torch.tensor((env.action_space.high - env.action_space.low) / 2.0, dtype=torch.float32)
+        # )
+        # self.register_buffer(
+        #     "action_bias", torch.tensor((env.action_space.high + env.action_space.low) / 2.0, dtype=torch.float32)
+        # )
         self.register_buffer(
-            "action_scale", torch.tensor((env.action_space.high - env.action_space.low) / 2.0, dtype=torch.float32)
+            "action_scale", torch.tensor((env.action_space.high - env.action_space.low) / 2.0, dtype=torch.float64)
         )
         self.register_buffer(
-            "action_bias", torch.tensor((env.action_space.high + env.action_space.low) / 2.0, dtype=torch.float32)
+            "action_bias", torch.tensor((env.action_space.high + env.action_space.low) / 2.0, dtype=torch.float64)
         )
 
     def forward(self, x):
@@ -237,7 +261,8 @@ if __name__ == "__main__":
     else:
         alpha = args.alpha
 
-    envs.single_observation_space.dtype = np.float32
+    # envs.single_observation_space.dtype = np.float32
+    envs.single_observation_space.dtype = np.float64
     rb = ReplayBuffer(
         args.buffer_size,
         envs.single_observation_space,

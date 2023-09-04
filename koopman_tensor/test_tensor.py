@@ -4,15 +4,15 @@ import argparse
 import gym
 import matplotlib.pyplot as plt
 import numpy as np
-import pickle
 import torch
+torch.set_default_dtype(torch.float64)
 
 from custom_envs import *
 from distutils.util import strtobool
-from koopman_tensor.numpy_tensor import KoopmanTensor, Regressor
-from koopman_tensor.observables import numpy_observables as observables
-# from koopman_tensor.torch_tensor import KoopmanTensor as TorchKoopmanTensor, Regressor as TorchRegressor
-# from koopman_tensor.observables import torch_observables
+# from koopman_tensor.numpy_tensor import KoopmanTensor, Regressor
+# from koopman_tensor.observables import numpy_observables as observables
+from koopman_tensor.torch_tensor import KoopmanTensor, Regressor
+from koopman_tensor.observables import torch_observables as observables
 from koopman_tensor.utils import save_tensor
 from matplotlib.animation import FuncAnimation
 
@@ -51,21 +51,21 @@ torch.random.manual_seed(args.seed)
 """ Collect data """
 
 # Path-based data collection
-X = np.zeros((args.num_paths, args.num_steps_per_path, env.state_dim))
-Y = np.zeros_like(X)
-U = np.zeros((args.num_paths, args.num_steps_per_path, env.action_dim))
+X = torch.zeros((args.num_paths, args.num_steps_per_path, env.state_dim))
+Y = torch.zeros_like(X)
+U = torch.zeros((args.num_paths, args.num_steps_per_path, env.action_dim))
 
 for path_num in range(args.num_paths):
     state = env.reset()
     for step_num in range(args.num_steps_per_path):
-        X[path_num, step_num] = state
+        X[path_num, step_num] = torch.tensor(state)
 
         # action = np.array([0])
         action = env.action_space.sample()
-        U[path_num, step_num] = action
+        U[path_num, step_num] = torch.tensor(action)
 
         state, _, _, _ = env.step(action)
-        Y[path_num, step_num] = state
+        Y[path_num, step_num] = torch.tensor(state)
 
 """ Make sure trajectories look ok """
 

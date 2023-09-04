@@ -40,7 +40,7 @@ class DoubleWell(gym.Env):
             low=self.state_minimums,
             high=self.state_maximums,
             shape=(self.state_dim,),
-            dtype=np.float32
+            dtype=np.float64
         )
 
         # We have a continuous action space. In this case, there is only 1 dimension per action
@@ -48,7 +48,7 @@ class DoubleWell(gym.Env):
             low=np.ones(self.action_dim) * self.action_range[0],
             high=np.ones(self.action_dim) * self.action_range[1],
             shape=(self.action_dim,),
-            dtype=np.float32
+            dtype=np.float64
         )
 
         # History of states traversed during the current episode

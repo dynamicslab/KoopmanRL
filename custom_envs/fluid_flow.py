@@ -47,7 +47,7 @@ class FluidFlow(gym.Env):
             low=self.state_minimums,
             high=self.state_maximums,
             shape=(self.state_dim,),
-            dtype=np.float32
+            dtype=np.float64
         )
 
         # We have a continuous action space. In this case, there is only 1 dimension per action
@@ -57,7 +57,7 @@ class FluidFlow(gym.Env):
             low=self.action_minimums,
             high=self.action_maximums,
             shape=(self.action_dim,),
-            dtype=np.float32
+            dtype=np.float64
         )
 
         # History of states traversed during the current episode
