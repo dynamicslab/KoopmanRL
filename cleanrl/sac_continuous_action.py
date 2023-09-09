@@ -24,19 +24,19 @@ def parse_args():
     parser.add_argument("--exp-name", type=str, default=os.path.basename(__file__).rstrip(".py"),
         help="the name of this experiment")
     parser.add_argument("--seed", type=int, default=1,
-        help="seed of the experiment")
+        help="seed of the experiment (default: 1)")
     parser.add_argument("--torch-deterministic", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="if toggled, `torch.backends.cudnn.deterministic=False`")
+        help="if toggled, `torch.backends.cudnn.deterministic=False` (default: True)")
     parser.add_argument("--cuda", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="if toggled, cuda will be enabled by default")
+        help="if toggled, cuda will be enabled by default (default: True)")
     parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="if toggled, this experiment will be tracked with Weights and Biases")
+        help="if toggled, this experiment will be tracked with Weights and Biases (default: False)")
     parser.add_argument("--wandb-project-name", type=str, default="cleanRL",
-        help="the wandb's project name")
+        help="the wandb's project name (default: \"cleanRL\")")
     parser.add_argument("--wandb-entity", type=str, default=None,
-        help="the entity (team) of wandb's project")
+        help="the entity (team) of wandb's project (default: None)")
     parser.add_argument("--capture-video", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="whether to capture videos of the agent performances (check out `videos` folder)")
+        help="whether to capture videos of the agent performances (check out `videos` folder; default: False)")
 
     # Algorithm specific arguments
     # parser.add_argument("--env-id", type=str, default="Hopper-v4",
@@ -44,33 +44,35 @@ def parse_args():
     # parser.add_argument("--env-id", type=str, default="Hopper-v3",
     #     help="the id of the environment")
     parser.add_argument("--env-id", type=str, default="LinearSystem-v0",
-        help="the id of the environment")
+        help="the id of the environment (default: LinearSystem-v0)")
     parser.add_argument("--total-timesteps", type=int, default=1000000,
-        help="total timesteps of the experiments")
+        help="total timesteps of the experiments (default: 1000000)")
     parser.add_argument("--buffer-size", type=int, default=int(1e6),
-        help="the replay memory buffer size")
+        help="the replay memory buffer size (default: 1000000)")
     parser.add_argument("--gamma", type=float, default=0.99,
-        help="the discount factor gamma")
+        help="the discount factor gamma (default: 0.99)")
     parser.add_argument("--tau", type=float, default=0.005,
         help="target smoothing coefficient (default: 0.005)")
     parser.add_argument("--batch-size", type=int, default=256,
-        help="the batch size of sample from the reply memory")
+        help="the batch size of sample from the reply memory (default: 256)")
     parser.add_argument("--learning-starts", type=int, default=5e3,
-        help="timestep to start learning")
+        help="timestep to start learning (default: 5000)")
     parser.add_argument("--policy-lr", type=float, default=3e-4,
-        help="the learning rate of the policy network optimizer")
+        help="the learning rate of the policy network optimizer (default: 0.0003)")
     parser.add_argument("--q-lr", type=float, default=1e-3,
-        help="the learning rate of the Q network network optimizer")
+        help="the learning rate of the Q network network optimizer (default: 0.001)")
     parser.add_argument("--policy-frequency", type=int, default=2,
-        help="the frequency of training policy (delayed)")
+        help="the frequency of training policy (delayed; default: 2)")
     parser.add_argument("--target-network-frequency", type=int, default=1, # Denis Yarats' implementation delays this by 2.
-        help="the frequency of updates for the target nerworks")
+        help="the frequency of updates for the target nerworks (default: 1)")
     parser.add_argument("--noise-clip", type=float, default=0.5,
-        help="noise clip parameter of the Target Policy Smoothing Regularization")
+        help="noise clip parameter of the Target Policy Smoothing Regularization (default: 0.5)")
     parser.add_argument("--alpha", type=float, default=0.2,
-            help="Entropy regularization coefficient.")
+        help="Entropy regularization coefficient (default: 0.2)")
     parser.add_argument("--autotune", type=lambda x:bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="automatic tuning of the entropy coefficient")
+        help="automatic tuning of the entropy coefficient (default: True)")
+    parser.add_argument("--koopman", type=lambda x:bool(strtobool(x)), default=False, nargs="?", const=True,
+        help="use Koopman Q function (default: False)")
     args = parser.parse_args()
     # fmt: on
     return args
@@ -121,9 +123,9 @@ class SoftKoopmanQNetwork(nn.Module):
         self.linear = nn.Linear(self.phi_state_dim, 1, bias=False)
 
     def forward(self, state, action):
-        # batch_size = state.shape[0]
-
         """ Linear in the Kronecker product of dictionary spaces """
+
+        # batch_size = state.shape[0]
 
         # kronecker_products = torch.zeros((batch_size, self.koopman_tensor.psi_dim * self.koopman_tensor.phi_dim))
 
@@ -236,16 +238,17 @@ if __name__ == "__main__":
 
     actor = Actor(envs).to(device)
 
-    # qf1 = SoftQNetwork(envs).to(device)
-    # qf2 = SoftQNetwork(envs).to(device)
-    # qf1_target = SoftQNetwork(envs).to(device)
-    # qf2_target = SoftQNetwork(envs).to(device)
-
-    koopman_tensor = load_tensor(args.env_id, "path_based_tensor")
-    qf1 = SoftKoopmanQNetwork(koopman_tensor).to(device)
-    qf2 = SoftKoopmanQNetwork(koopman_tensor).to(device)
-    qf1_target = SoftKoopmanQNetwork(koopman_tensor).to(device)
-    qf2_target = SoftKoopmanQNetwork(koopman_tensor).to(device)
+    if args.koopman:
+        koopman_tensor = load_tensor(args.env_id, "path_based_tensor")
+        qf1 = SoftKoopmanQNetwork(koopman_tensor).to(device)
+        qf2 = SoftKoopmanQNetwork(koopman_tensor).to(device)
+        qf1_target = SoftKoopmanQNetwork(koopman_tensor).to(device)
+        qf2_target = SoftKoopmanQNetwork(koopman_tensor).to(device)
+    else:
+        qf1 = SoftQNetwork(envs).to(device)
+        qf2 = SoftQNetwork(envs).to(device)
+        qf1_target = SoftQNetwork(envs).to(device)
+        qf2_target = SoftQNetwork(envs).to(device)
 
     qf1_target.load_state_dict(qf1.state_dict())
     qf2_target.load_state_dict(qf2.state_dict())

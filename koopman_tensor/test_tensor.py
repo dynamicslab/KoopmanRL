@@ -9,8 +9,6 @@ torch.set_default_dtype(torch.float64)
 
 from custom_envs import *
 from distutils.util import strtobool
-# from koopman_tensor.numpy_tensor import KoopmanTensor, Regressor
-# from koopman_tensor.observables import numpy_observables as observables
 from koopman_tensor.torch_tensor import KoopmanTensor, Regressor
 from koopman_tensor.observables import torch_observables as observables
 from koopman_tensor.utils import save_tensor
@@ -133,6 +131,24 @@ U = U.reshape(total_num_datapoints, env.action_dim).T
 
 state_order = 2
 action_order = 2
+
+"""
+Linear System is best with
+state_order = 2
+action_order = 2
+
+Lorenz does best with
+state_order = 3
+action_order = 1
+
+Fluid Flow is best with
+state_order = 4
+action_order = 2
+
+Double Well state estimation will never really
+be good so we might just want to include more
+information in the state dictionary for value function
+"""
 
 path_based_tensor = KoopmanTensor(
     X,
