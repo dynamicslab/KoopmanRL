@@ -282,7 +282,6 @@ if __name__ == "__main__":
         else:
             actions, log_probs, _ = actor.get_action(torch.Tensor(obs).to(device))
             actions = actions.detach().cpu().numpy()
-            log_probs = log_probs.detach().cpu().numpy()
 
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards, dones, infos = envs.step(actions)
@@ -300,7 +299,7 @@ if __name__ == "__main__":
         for idx, d in enumerate(dones):
             if d:
                 real_next_obs[idx] = infos[idx]["terminal_observation"]
-        rb.add(obs, real_next_obs, actions, log_probs, rewards, dones, infos)
+        rb.add(obs, real_next_obs, actions, rewards, dones, infos)
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
@@ -310,11 +309,12 @@ if __name__ == "__main__":
             # Sample from replay buffer
             data = rb.sample(args.batch_size)
 
-            # E_s~D [ 1/2 ( V_psi( s_t ) - E_a_t~pi_phi [ Q_theta( s_t, a_t ) - log pi_phi( a_t | s_t ) ] )^2 ]
+            # E_s_t~D [ 1/2 ( V_psi( s_t ) - E_a_t~pi_phi [ Q_theta( s_t, a_t ) - log pi_phi( a_t | s_t ) ] )^2 ]
             vf_values = vf(data.observations).view(-1)
             with torch.no_grad():
-                q_values = torch.min(qf1(data.observations, data.actions), qf2(data.observations, data.actions)).view(-1)
-            vf_loss = F.mse_loss(vf_values, q_values - alpha * data.log_probs.view(-1))
+                state_actions, state_log_pis, _ = actor.get_action(data.observations)
+                q_values = torch.min(qf1(data.observations, state_actions), qf2(data.observations, state_actions)).view(-1)
+            vf_loss = F.mse_loss(vf_values, q_values - alpha * state_log_pis.view(-1))
 
             v_optimizer.zero_grad()
             vf_loss.backward()
@@ -322,15 +322,9 @@ if __name__ == "__main__":
 
             # E_( s_t, a_t )~D [ 1/2 ( Q_theta( s_t, a_t ) - Q_target( s_t, a_t ) )^2 ]
             with torch.no_grad():
-                # next_state_actions, next_state_log_pi, _ = actor.get_action(data.next_observations)
-                # qf1_next_target = qf1_target(data.next_observations, next_state_actions)
-                # qf2_next_target = qf2_target(data.next_observations, next_state_actions)
-                # min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
-                # next_q_value = data.rewards.flatten() + (1 - data.dones.flatten()) * args.gamma * min_qf_next_target.view(-1)
-
                 if args.koopman:
-                    expected_x_primes = koopman_tensor.f(data.observations.T, data.actions.T).T
-                    vf_next_target = (1 - data.dones.flatten()) * args.gamma * vf_target(expected_x_primes).view(-1)
+                    expected_phi_x_primes = koopman_tensor.phi_f(data.observations.T, data.actions.T).T
+                    vf_next_target = (1 - data.dones.flatten()) * args.gamma * vf_target.linear(expected_phi_x_primes).view(-1)
                 else:
                     vf_next_target = (1 - data.dones.flatten()) * args.gamma * vf_target(data.next_observations).view(-1)
                 q_target_values = data.rewards.flatten() + vf_next_target

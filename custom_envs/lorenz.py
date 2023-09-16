@@ -25,6 +25,7 @@ class Lorenz(gym.Env):
         self.state_range = [-25.0, 25.0]
         # self.state_range = [-5.0, 5.0]
 
+        # self.action_range = [-100.0, 100.0]
         # self.action_range = [-75.0, 75.0]
         self.action_range = [-10.0, 10.0]
 
