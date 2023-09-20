@@ -76,7 +76,7 @@ def parse_args():
     parser.add_argument("--alpha-lr", type=float, default=1e-3,
         help="the learning rate of the alpha network optimizer (default: 0.001)")
     parser.add_argument("--koopman", type=lambda x:bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="use Koopman Q function (default: False)")
+        help="use Koopman V function (default: False)")
     args = parser.parse_args()
     # fmt: on
     return args

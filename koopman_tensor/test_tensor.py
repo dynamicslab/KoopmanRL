@@ -23,10 +23,16 @@ parser.add_argument('--num-paths', type=int, default=100,
                     help='Number of paths for the dataset (default: 100)')
 parser.add_argument('--num-steps-per-path', type=int, default=300,
                     help='Number of steps per path for the dataset (default: 300)')
+parser.add_argument('--state-order', type=int, default=2,
+                    help='Order of monomials to use for state dictionary (default: 2)')
+parser.add_argument('--action-order', type=int, default=2,
+                    help='Order of monomials to use for action dictionary (default: 2)')
 parser.add_argument('--seed', type=int, default=123,
                     help='Seed for some level of reproducibility (default: 123)')
 parser.add_argument('--save-model', type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
                     help='Whether to store the Koopman tensor model in a pickle file (default: False)')
+parser.add_argument('--animate', type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
+                   help='Whether to show the animated dynamics over time (default: False)')
 args = parser.parse_args()
 
 """ Create the environment """
@@ -67,57 +73,58 @@ for path_num in range(args.num_paths):
 
 """ Make sure trajectories look ok """
 
-# Create a figure and 3D axis
-fig = plt.figure()
-if is_3d_env:
-    ax = fig.add_subplot(111, projection='3d')
-else:
-    ax = fig.add_subplot(111)
-
-# Set limits for each axis
-ax.set_xlim(X[0:, :, 0].min(), X[0:, :, 0].max())
-ax.set_ylim(X[0:, :, 1].min(), X[0:, :, 1].max())
-if is_3d_env:
-    ax.set_zlim(X[0:, :, 2].min(), X[0:, :, 2].max())
-
-# Initialize an empty line for the animation
-if is_3d_env:
-    line, = ax.plot([], [], [], lw=2)
-else:
-    line, = ax.plot([], [], lw=2)
-
-# Function to initialize the plot
-def init():
-    line.set_data([], [])
+if args.animate:
+    # Create a figure and 3D axis
+    fig = plt.figure()
     if is_3d_env:
-        line.set_3d_properties([])
-    return line,
+        ax = fig.add_subplot(111, projection='3d')
+    else:
+        ax = fig.add_subplot(111)
 
-# Set the number of frames
-num_frames = X.shape[1]
-
-# Function to update the plot for each frame of the animation
-def animate(i):
-    x = X[0, :i, 0]
-    y = X[0, :i, 1]
+    # Set limits for each axis
+    ax.set_xlim(X[0:, :, 0].min(), X[0:, :, 0].max())
+    ax.set_ylim(X[0:, :, 1].min(), X[0:, :, 1].max())
     if is_3d_env:
-        z = X[0, :i, 2]
-    line.set_data(x, y)
+        ax.set_zlim(X[0:, :, 2].min(), X[0:, :, 2].max())
+
+    # Initialize an empty line for the animation
     if is_3d_env:
-        line.set_3d_properties(z)
+        line, = ax.plot([], [], [], lw=2)
+    else:
+        line, = ax.plot([], [], lw=2)
 
-    # Stop the animation when it's done
-    if i == num_frames - 1:
-        ani.event_source.stop()
-        plt.close(fig)
+    # Function to initialize the plot
+    def init():
+        line.set_data([], [])
+        if is_3d_env:
+            line.set_3d_properties([])
+        return line,
 
-    return line,
+    # Set the number of frames
+    num_frames = X.shape[1]
 
-# Create the animation
-ani = FuncAnimation(fig, animate, init_func=init, frames=num_frames, interval=50, blit=True, repeat=False)
+    # Function to update the plot for each frame of the animation
+    def animate(i):
+        x = X[0, :i, 0]
+        y = X[0, :i, 1]
+        if is_3d_env:
+            z = X[0, :i, 2]
+        line.set_data(x, y)
+        if is_3d_env:
+            line.set_3d_properties(z)
 
-plt.tight_layout()
-plt.show()
+        # Stop the animation when it's done
+        if i == num_frames - 1:
+            ani.event_source.stop()
+            plt.close(fig)
+
+        return line,
+
+    # Create the animation
+    ani = FuncAnimation(fig, animate, init_func=init, frames=num_frames, interval=50, blit=True, repeat=False)
+
+    plt.tight_layout()
+    plt.show()
 
 """ Reshape data so that we have matrices of data instead of tensor """
 
@@ -128,9 +135,6 @@ Y = Y.reshape(total_num_datapoints, env.state_dim).T
 U = U.reshape(total_num_datapoints, env.action_dim).T
 
 """ Construct Koopman tensor """
-
-state_order = 2
-action_order = 2
 
 """
 Linear System is best with
@@ -154,8 +158,8 @@ path_based_tensor = KoopmanTensor(
     X,
     Y,
     U,
-    phi=observables.monomials(state_order),
-    psi=observables.monomials(action_order),
+    phi=observables.monomials(args.state_order),
+    psi=observables.monomials(args.action_order),
     regressor=Regressor.OLS
 )
 
@@ -168,10 +172,18 @@ sample_u = U[:, sample_indices[0]:sample_indices[1]]
 true_x_prime = Y[:, sample_indices[0]:sample_indices[1]]
 estimated_x_prime = path_based_tensor.f(sample_x, sample_u)
 
-single_step_estimation_error_norms = np.linalg.norm(true_x_prime - estimated_x_prime, axis=0)
-avg_single_step_estimation_error_norm = single_step_estimation_error_norms.mean()
-avg_single_step_estimation_error_norm_per_avg_state_norm = avg_single_step_estimation_error_norm / np.linalg.norm(X.mean(axis=1))
-print(f"Average single step estimation error norm per average state norm: {avg_single_step_estimation_error_norm_per_avg_state_norm}")
+single_step_state_estimation_error_norms = np.linalg.norm(true_x_prime - estimated_x_prime, axis=0)
+avg_single_step_state_estimation_error_norm = single_step_state_estimation_error_norms.mean()
+avg_single_step_state_estimation_error_norm_per_avg_state_norm = avg_single_step_state_estimation_error_norm / np.linalg.norm(X.mean(axis=1))
+print(f"Average single step state estimation error norm per average state norm: {avg_single_step_state_estimation_error_norm_per_avg_state_norm}")
+
+true_phi_x_prime = path_based_tensor.Phi_Y[:, sample_indices[0]:sample_indices[1]]
+estimated_phi_x_prime = path_based_tensor.phi_f(sample_x, sample_u)
+
+single_step_phi_estimation_error_norms = np.linalg.norm(true_phi_x_prime - estimated_phi_x_prime, axis=0)
+avg_single_step_phi_estimation_error_norm = single_step_phi_estimation_error_norms.mean()
+avg_single_step_phi_estimation_error_norm_per_avg_state_norm = avg_single_step_phi_estimation_error_norm / np.linalg.norm(path_based_tensor.Phi_X.mean(axis=1))
+print(f"Average single step phi estimation error norm per average phi norm: {avg_single_step_phi_estimation_error_norm_per_avg_state_norm}")
 
 """ Save Koopman tensor """
 

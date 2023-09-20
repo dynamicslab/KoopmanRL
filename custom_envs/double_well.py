@@ -22,7 +22,8 @@ class DoubleWell(gym.Env):
 
         self.state_range = [-2.0, 2.0]
 
-        self.action_range = [-10.0, 10.0]
+        self.action_range = [-25.0, 25.0]
+        # self.action_range = [-75.0, 75.0]
 
         self.dt = dt
         self.max_episode_steps = max_episode_steps
