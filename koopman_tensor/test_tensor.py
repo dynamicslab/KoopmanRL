@@ -33,6 +33,8 @@ parser.add_argument('--save-model', type=lambda x: bool(strtobool(x)), default=F
                     help='Whether to store the Koopman tensor model in a pickle file (default: False)')
 parser.add_argument('--animate', type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
                    help='Whether to show the animated dynamics over time (default: False)')
+parser.add_argument('--regressor', type=str, default='ols', choices=['ols', 'sindy', 'rrr', 'ridge'], nargs="?", const=True,
+                    help='Which regressor to use to build the Koopman tensor (default: \'ols\')')
 args = parser.parse_args()
 
 """ Create the environment """
@@ -160,7 +162,7 @@ path_based_tensor = KoopmanTensor(
     U,
     phi=observables.monomials(args.state_order),
     psi=observables.monomials(args.action_order),
-    regressor=Regressor.OLS
+    regressor=Regressor(args.regressor)
 )
 
 """ Predict sample points """

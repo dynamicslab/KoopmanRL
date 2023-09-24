@@ -22,29 +22,30 @@ def checkConditionNumber(X, name, threshold=200):
         # raise ValueError(f"Condition number of {name} is too large ({cond_num} > {threshold})")
         pass
 
-# (Theta=Psi_X_T, dXdt=dPsi_X_T, lamb=0.05, n=d)
 def SINDy(Theta, dXdt, lamb=0.05):
     d = dXdt.shape[1]
-    Xi = torch.linalg.lstsq(Theta, dXdt, rcond=None)[0] # Initial guess: Least-squares
-    
-    for _ in range(10): #which parameter should we be tuning here for RRR comp
+    Xi = torch.linalg.lstsq(Theta, dXdt, rcond=None).solution # Initial guess: Least-squares
+
+    for _ in range(10):
         smallinds = torch.abs(Xi) < lamb # Find small coefficients
-        Xi[smallinds] = 0             # and threshold
-        for ind in range(d):          # n is state dimension
+        Xi[smallinds] = 0                # and threshold
+        for ind in range(d):             # n is state dimension
             biginds = smallinds[:, ind] == 0
             # Regress dynamics onto remaining terms to find sparse Xi
-            Xi[biginds, ind] = torch.lstsq(Theta[:, biginds], dXdt[:, ind], rcond=None)[0]
+            Xi[biginds, ind] = torch.linalg.lstsq(
+                Theta[:, biginds],
+                dXdt[:, ind].unsqueeze(0).T,
+                rcond=None
+            ).solution[:, 0]
 
     L = Xi
     return L
 
-def ols(X, Y, pinv=True):
-    if pinv:
-        return torch.linalg.pinv(X.T @ X) @ X.T @ Y
-    return torch.linalg.inv(X.T @ X) @ X.T @ Y
+def ols(X, Y):
+    return torch.linalg.lstsq(X, Y, rcond=None).solution
 
-def OLS(X, Y, pinv=True):
-    return ols(X, Y, pinv)
+def OLS(X, Y):
+    return ols(X, Y)
 
 def rrr(X, Y, rank=8):
     B_ols = ols(X, Y) # if infeasible use GD (numpy CG)
@@ -65,8 +66,9 @@ def ridgeRegression(X, y, lamb=0.05):
 
 class Regressor(str, Enum):
     OLS = 'ols'
-    RRR = 'rrr'
     SINDy = 'sindy'
+    RRR = 'rrr'
+    RIDGE = 'ridge'
 
 """ Koopman Tensor """
 
@@ -79,7 +81,6 @@ class KoopmanTensor:
         phi,
         psi,
         regressor=Regressor.OLS,
-        p_inv=True,
         rank=8,
         is_generator=False,
         dt=0.01
@@ -189,16 +190,18 @@ class KoopmanTensor:
             )
 
         # Solve for M and B
-        lowercase_regressor = regressor.lower()
-        if lowercase_regressor == Regressor.RRR:
+        if regressor == Regressor.RRR:
             self.M = rrr(self.kron_matrix.T, self.regression_Y.T, rank).T
             self.B = rrr(self.Phi_X.T, self.X.T, rank)
-        elif lowercase_regressor == Regressor.SINDy:
+        elif regressor == Regressor.SINDy:
             self.M = SINDy(self.kron_matrix.T, self.regression_Y.T).T
             self.B = SINDy(self.Phi_X.T, self.X.T)
-        elif lowercase_regressor == Regressor.OLS:
-            self.M = ols(self.kron_matrix.T, self.regression_Y.T, p_inv).T
-            self.B = ols(self.Phi_X.T, self.X.T, p_inv)
+        elif regressor == Regressor.OLS:
+            self.M = ols(self.kron_matrix.T, self.regression_Y.T).T
+            self.B = ols(self.Phi_X.T, self.X.T)
+        elif regressor == Regressor.RIDGE:
+            self.M = ridgeRegression(self.kron_matrix.T, self.regression_Y.T).T
+            self.B = ridgeRegression(self.Phi_X.T, self.X.T)
         else:
             raise Exception("Did not pick a supported regression algorithm.")
 

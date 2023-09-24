@@ -247,6 +247,7 @@ if __name__ == "__main__":
         vf_target = SoftVNetwork(envs).to(device)
     vf_target.load_state_dict(vf.state_dict())
     v_optimizer = optim.Adam(list(vf.parameters()), lr=args.v_lr)
+    # v_optimizer = optim.Adam(list(vf.parameters()), lr=args.v_lr, weight_decay=1e-5)
 
     qf1 = SoftQNetwork(envs).to(device)
     qf2 = SoftQNetwork(envs).to(device)
@@ -315,6 +316,7 @@ if __name__ == "__main__":
                 state_actions, state_log_pis, _ = actor.get_action(data.observations)
                 q_values = torch.min(qf1(data.observations, state_actions), qf2(data.observations, state_actions)).view(-1)
             vf_loss = F.mse_loss(vf_values, q_values - alpha * state_log_pis.view(-1))
+            # vf_loss = F.l1_loss(vf_values, q_values - alpha * state_log_pis.view(-1))
 
             v_optimizer.zero_grad()
             vf_loss.backward()
