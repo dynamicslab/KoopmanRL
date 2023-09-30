@@ -1,6 +1,7 @@
 import gym
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import numpy as np
+import torch
 
 from gym import spaces
 from gym.envs.registration import register
@@ -98,6 +99,15 @@ class Lorenz(gym.Env):
 
     def reward_fn(self, state, action):
         return -self.cost_fn(state, action)
+    
+    def vectorized_cost_fn(self, states, actions):
+        _states = (states - self.reference_point).T
+        mat = torch.diag(_states.T @ self.Q @ _states).unsqueeze(-1) + torch.pow(actions.T, 2) * self.R
+
+        return mat.T
+    
+    def vectorized_reward_fn(self, states, actions):
+        return -self.vectorized_cost_fn(states, actions)
 
     def continuous_f(self, action=None):
         """
