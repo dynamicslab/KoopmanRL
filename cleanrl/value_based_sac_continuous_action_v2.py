@@ -142,7 +142,10 @@ class SoftKoopmanVNetwork(nn.Module):
     def forward(self, state):
         """ Linear in the phi(x)s """
 
-        phi_xs = self.koopman_tensor.phi(state.T).T
+        if self.phi_state_dim in state.shape:
+            phi_xs = state
+        else:
+            phi_xs = self.koopman_tensor.phi(state.T).T
 
         output = self.linear(phi_xs)
 
@@ -200,12 +203,6 @@ class Actor(nn.Module):
         mean = torch.tanh(mean) * self.action_scale + self.action_bias
         return action, log_prob, mean
 
-    def log_prob(self, u, x):
-        mean, log_std = self(x)
-        std = log_std.exp()
-        normal = torch.distributions.Normal(mean, std)
-        return normal.log_prob(u)
-
 
 if __name__ == "__main__":
     args = parse_args()
@@ -253,7 +250,6 @@ if __name__ == "__main__":
         vf_target = SoftVNetwork(envs).to(device)
     vf_target.load_state_dict(vf.state_dict())
     v_optimizer = optim.Adam(list(vf.parameters()), lr=args.v_lr)
-    # v_optimizer = optim.Adam(list(vf.parameters()), lr=args.v_lr, weight_decay=1e-5)
 
     qf1 = SoftQNetwork(envs).to(device)
     qf2 = SoftQNetwork(envs).to(device)
@@ -317,16 +313,22 @@ if __name__ == "__main__":
             data = rb.sample(args.batch_size)
 
             # E_s_t~D [ 1/2 ( V_psi( s_t ) - E_a_t~pi_phi [ Q_theta( s_t, a_t ) - log pi_phi( a_t | s_t ) ] )^2 ]
+            # vf_values = vf(data.observations).view(-1)
+            # with torch.no_grad():
+            #     state_actions, state_log_pis, _ = actor.get_action(data.observations)
+            #     q_values = torch.min(qf1(data.observations, state_actions), qf2(data.observations, state_actions)).view(-1)
+            # vf_loss = F.mse_loss(vf_values, q_values - alpha * state_log_pis.view(-1))
+
             vf_values = vf(data.observations).view(-1)
             with torch.no_grad():
-                # state_actions, state_log_pis, _ = actor.get_action(data.observations)
-                state_log_pis = actor.log_prob(data.actions, data.observations)
+                state_actions, state_log_pis, _ = actor.get_action(data.observations)
                 # q_values = torch.min(qf1(data.observations, state_actions), qf2(data.observations, state_actions)).view(-1)
-                expected_phi_x_primes = koopman_tensor.phi_f(data.observations.T, data.actions.T).T
-                true_vf_values = state_log_pis.exp() * (data.rewards.flatten() + vf.linear(expected_phi_x_primes).view(-1))
-            # vf_loss = F.mse_loss(vf_values, q_values - alpha * state_log_pis.view(-1))
-            # vf_loss = F.l1_loss(vf_values, q_values - alpha * state_log_pis.view(-1))
-            vf_loss = F.mse_loss(vf_values, true_vf_values)
+                rewards = torch.zeros((args.batch_size))
+                for i, (x, u) in enumerate(zip(data.observations, state_actions)):
+                    rewards[i] = envs.envs[0].reward_fn(x, u)
+                expected_phi_x_primes = koopman_tensor.phi_f(data.observations.T, state_actions.T).T
+                vf_target_values = rewards - (alpha * state_log_pis.view(-1)) + args.gamma * vf(expected_phi_x_primes).view(-1)
+            vf_loss = F.mse_loss(vf_values, vf_target_values)
 
             v_optimizer.zero_grad()
             vf_loss.backward()
@@ -336,7 +338,7 @@ if __name__ == "__main__":
             # with torch.no_grad():
             #     if args.koopman:
             #         expected_phi_x_primes = koopman_tensor.phi_f(data.observations.T, data.actions.T).T
-            #         vf_next_target = (1 - data.dones.flatten()) * args.gamma * vf_target.linear(expected_phi_x_primes).view(-1)
+            #         vf_next_target = (1 - data.dones.flatten()) * args.gamma * vf_target(expected_phi_x_primes).view(-1)
             #     else:
             #         vf_next_target = (1 - data.dones.flatten()) * args.gamma * vf_target(data.next_observations).view(-1)
             #     q_target_values = data.rewards.flatten() + vf_next_target
@@ -356,15 +358,15 @@ if __name__ == "__main__":
                 for _ in range(
                     args.policy_frequency
                 ):  # compensate for the delay by doing 'actor_update_interval' instead of 1
-                    # pi, log_pi, _ = actor.get_action(data.observations)
-                    # qf1_pi = qf1(data.observations, pi)
-                    # qf2_pi = qf2(data.observations, pi)
-                    # min_qf_pi = torch.min(qf1_pi, qf2_pi).view(-1)
-                    log_pi = actor.log_prob(data.actions, data.observations)
-                    expected_phi_x_primes = koopman_tensor.phi_f(data.observations.T, data.actions.T).T
-                    qf_pi = log_pi.exp() * (data.rewards.flatten() + vf.linear(expected_phi_x_primes).view(-1))
-                    # actor_loss = ((alpha * log_pi) - min_qf_pi).mean()
-                    actor_loss = ((alpha * log_pi) - qf_pi).mean()
+                    pi, log_pi, _ = actor.get_action(data.observations)
+                    with torch.no_grad():
+                        rewards = torch.zeros((args.batch_size))
+                        for i, (x, u) in enumerate(zip(data.observations, pi)):
+                            rewards[i] = envs.envs[0].reward_fn(x, u)
+                        expected_phi_x_primes = koopman_tensor.phi_f(data.observations.T, pi.T).T
+                    vf_pi = rewards - (alpha * state_log_pis.view(-1)) + args.gamma * vf(expected_phi_x_primes).view(-1)
+                    # vf_pi = vf(data.observations)
+                    actor_loss = ((alpha * log_pi) - vf_pi).mean()
 
                     actor_optimizer.zero_grad()
                     actor_loss.backward()
