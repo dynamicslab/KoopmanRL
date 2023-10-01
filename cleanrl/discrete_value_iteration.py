@@ -11,6 +11,7 @@ from custom_envs import *
 from distutils.util import strtobool
 from koopman_tensor.torch_tensor import KoopmanTensor
 from koopman_tensor.utils import load_tensor
+from torch.utils.tensorboard import SummaryWriter
 
 delta = torch.finfo(torch.float64).eps # 2.220446049250313e-16
 
@@ -114,7 +115,7 @@ class DiscreteKoopmanValueIterationPolicy:
         """
 
         # Compute phi(x) for each x
-        phi_xs = self.dynamics_model.phi(xs)
+        phi_xs = self.dynamics_model.phi(xs.T)
 
         # Compute phi(x') for all ( phi(x), action ) pairs and compute V(x')s
         K_us = self.dynamics_model.K_(self.all_actions) # (all_actions.shape[1], phi_dim, phi_dim)
@@ -122,13 +123,11 @@ class DiscreteKoopmanValueIterationPolicy:
         V_x_prime_batch = torch.zeros([self.all_actions.shape[1], xs.shape[1]])
         for action_index in range(K_us.shape[0]):
             phi_x_prime_hat_batch = K_us[action_index] @ phi_xs # (dim_phi, batch_size)
-            # x_primes_hat = self.dynamics_model.B.T @ phi_x_primes_hat # (X.shape[0], batch_size)
             phi_x_prime_batch[action_index] = phi_x_prime_hat_batch
-            # phi_x_prime_batch[action_index] = self.dynamics_model.phi(x_primes_hat) # (dim_phi, batch_size)
             V_x_prime_batch[action_index] = self.V_phi_x(phi_x_prime_batch[action_index]) # (1, batch_size)
 
         # Get costs indexed by the action and the state
-        costs = torch.Tensor(self.cost(xs, self.all_actions)) # (all_actions.shape[1], batch_size)
+        costs = torch.Tensor(self.cost(xs, self.all_actions.T)) # (all_actions.shape[1], batch_size)
 
         # Compute policy distribution
         inner_pi_us_values = -(costs + self.discount_factor*V_x_prime_batch) # (all_actions.shape[1], xs.shape[1])
@@ -159,7 +158,7 @@ class DiscreteKoopmanValueIterationPolicy:
             Value function output.
         """
 
-        return self.value_function_weights.T @ torch.Tensor(phi_x)
+        return self.value_function_weights.T @ phi_x
 
     def V_x(self, x):
         """
@@ -283,7 +282,7 @@ class DiscreteKoopmanValueIterationPolicy:
         if sample_size is None:
             sample_size = self.dynamics_model.u_column_dim
 
-        pis_response = (self.pis(x)[:, 0]).data.numpy()
+        pis_response = self.pis(x)[:, 0]
 
         if is_greedy:
             selected_indices = torch.ones(sample_size, dtype=torch.int8) * torch.argmax(pis_response)
@@ -433,7 +432,7 @@ class DiscreteKoopmanValueIterationPolicy:
                 if self.use_ols:
                     # OLS as in Lewis
                     self.value_function_weights = torch.linalg.lstsq(
-                        torch.Tensor(phi_x_batch.T),
+                        phi_x_batch.T,
                         expectation_term_1.T
                     ).solution
                 else:
@@ -496,6 +495,8 @@ def parse_args():
     # Algorithm specific arguments
     parser.add_argument("--env-id", type=str, default="LinearSystem-v0",
         help="the id of the environment (default: LinearSystem-v0)")
+    parser.add_argument("--total-timesteps", type=int, default=100_000,
+        help="total timesteps of the experiments (default: 100_000)")
     parser.add_argument("--gamma", type=float, default=0.99,
         help="the discount factor gamma (default: 0.99)")
     parser.add_argument("--batch-size", type=int, default=2**14,
@@ -506,8 +507,8 @@ def parse_args():
         help="entropy regularization coefficient (default: 1.0)")
     parser.add_argument("--num-actions", type=int, default=101,
         help="number of actions that the policy can pick from (default: 101)")
-    parser.add_argument("--num-training-epochs", type=int, default=2_000,
-        help="number of epochs that the model should be trained over (default: 2_000)")
+    parser.add_argument("--num-training-epochs", type=int, default=150,
+        help="number of epochs that the model should be trained over (default: 150)")
     parser.add_argument("--batch-scale", type=int, default=1,
         help="increase batch size by this multiple for computing bellman error (default: 1)")
     args = parser.parse_args()
@@ -531,6 +532,15 @@ def make_env(env_id, seed, idx, capture_video, run_name):
 if __name__ == "__main__":
     args = parse_args()
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
+
+    writer = SummaryWriter(f"runs/{run_name}")
+    writer.add_text(
+        "hyperparameters",
+        "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
+    )
+
+    device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
+
     envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, False, run_name)])
 
     koopman_tensor = load_tensor(args.env_id, "path_based_tensor")
@@ -540,12 +550,14 @@ if __name__ == "__main__":
     except:
         dt = None
 
+    # Construct set of all possible actions
     all_actions = torch.from_numpy(np.linspace(
         start=envs.single_action_space.low,
         stop=envs.single_action_space.high,
         num=args.num_actions
     )).T
 
+    # Construct value iteration policy
     value_iteration_policy = DiscreteKoopmanValueIterationPolicy(
         env_id=args.env_id,
         gamma=args.gamma,
@@ -560,9 +572,43 @@ if __name__ == "__main__":
         seed=args.seed
     )
 
+    # Use Koopman tensor training data to train policy
     value_iteration_policy.train(
         args.num_training_epochs,
         args.batch_size,
         args.batch_scale,
         how_often_to_chkpt=10
     )
+
+    envs.single_observation_space.dtype = np.float64
+    start_time = time.time()
+
+    # TRY NOT TO MODIFY: start the game
+    obs = envs.reset()
+    for global_step in range(args.total_timesteps):
+        # ALGO LOGIC: put action logic here
+        actions = value_iteration_policy.get_action(torch.Tensor(obs).to(device))
+        actions = actions.detach().cpu().numpy()
+
+        # TRY NOT TO MODIFY: execute the game and log data.
+        next_obs, rewards, dones, infos = envs.step(actions)
+
+        # TRY NOT TO MODIFY: record rewards for plotting purposes
+        for info in infos:
+            if "episode" in info.keys():
+                print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
+                writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
+                writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
+                break
+
+        # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
+        obs = next_obs
+
+        # Write data
+        if global_step % 100 == 0:
+            sps = int(global_step / (time.time() - start_time))
+            print("Steps per second (SPS):", sps)
+            writer.add_scalar("charts/SPS", sps, global_step)
+
+    envs.close()
+    writer.close()

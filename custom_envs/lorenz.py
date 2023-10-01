@@ -42,6 +42,21 @@ class Lorenz(gym.Env):
         self.y_e = np.sqrt( self.beta * ( self.rho - 1 ) )
         self.z_e = self.rho - 1
 
+        # For LQR
+        x_bar = self.x_e
+        y_bar = self.y_e
+        z_bar = self.z_e
+        self.continuous_A = np.array([
+            [-self.sigma, self.sigma, 0],
+            [self.rho - z_bar, -1, 0],
+            [y_bar, x_bar, -self.beta]
+        ])
+        self.continuous_B = np.array([
+            [1],
+            [0],
+            [0]
+        ])
+
         # Define cost/reward values
         self.Q = np.eye(self.state_dim)
         self.R = np.eye(self.action_dim) * 0.001

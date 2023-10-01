@@ -29,6 +29,16 @@ class DoubleWell(gym.Env):
         self.dt = dt
         self.max_episode_steps = max_episode_steps
 
+        # For LQR
+        self.continuous_A = np.array([
+            [-8, 0],
+            [0, -2]
+        ])
+        self.continuous_B = np.array([
+            [1],
+            [1]
+        ])
+
         # Define cost/reward
         self.Q = np.eye(self.state_dim)
         self.R = np.eye(self.action_dim)

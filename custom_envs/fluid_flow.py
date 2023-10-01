@@ -35,6 +35,21 @@ class FluidFlow(gym.Env):
         self.dt = dt
         self.max_episode_steps = max_episode_steps
 
+        # For LQR
+        x_bar = 0
+        y_bar = 0
+        z_bar = 0
+        self.continuous_A = np.array([
+            [self.mu + self.A * z_bar, -self.omega, self.A * x_bar],
+            [self.omega, self.mu + self.A * z_bar, self.A * y_bar],
+            [2 * self.lamb * x_bar, 2 * self.lamb * y_bar, -self.lamb]
+        ])
+        self.continuous_B = np.array([
+            [0],
+            [1],
+            [0]
+        ])
+
         # Define cost/reward values
         self.Q = np.eye(self.state_dim)
         self.R = np.eye(self.action_dim)
