@@ -160,8 +160,7 @@ class LQRPolicy:
         """
 
         if is_entropy_regularized:
-            action = np.random.normal(-self.C @ (x - self.reference_point), self.sigma_t)
-            return action
+            return np.random.normal(loc=-self.C @ (x - self.reference_point), scale=self.sigma_t)
         else:
             return -self.C @ (x - self.reference_point)
 
@@ -222,6 +221,7 @@ if __name__ == "__main__":
         dt = None
 
     # Construct LQR policy
+    is_continuous = False if args.env_id in ('LinearSystem-v0') else True
     try:
         lqr_policy = LQRPolicy(
             A=envs.envs[0].continuous_A,
@@ -232,7 +232,7 @@ if __name__ == "__main__":
             gamma=args.gamma,
             alpha=args.alpha,
             dt=dt,
-            is_continuous=False,
+            is_continuous=is_continuous,
             seed=args.seed
         )
     except:
@@ -245,7 +245,7 @@ if __name__ == "__main__":
             gamma=args.gamma,
             alpha=args.alpha,
             dt=dt,
-            is_continuous=False,
+            is_continuous=is_continuous,
             seed=args.seed
         )
 
