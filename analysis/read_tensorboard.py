@@ -3,11 +3,10 @@ plt.style.use('ggplot')
 
 import os
 
-from collections import defaultdict
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
 def tabulate_events(dpath):
-    summary_iterators = [EventAccumulator(os.path.join(dpath, dname)).Reload() for dname in os.listdir(dpath)]
+    summary_iterators = [EventAccumulator(os.path.join(dpath, dname)).Reload() for dname in sorted(os.listdir(dpath))]
 
     data = {
         'LinearSystem-v0': {},
@@ -22,6 +21,8 @@ def tabulate_events(dpath):
                 continue
 
             folder_name = summary_iterator.path.split('\\')[-1]
+            # if 'quadratic' in folder_name:
+            #     continue
             hyperparams = str(summary_iterator.Tensors('hyperparameters/text_summary')[0]).split('|')
             env_id = hyperparams[hyperparams.index('env_id')+1]
 
@@ -36,18 +37,32 @@ def tabulate_events(dpath):
     return data
 
 if __name__ == '__main__':
-    path = "./sac-q-vs-sac-v-vs-sakc-v"
+    path = "./final_tensorboard_runs"
     data = tabulate_events(path)
     scalar_name = 'charts/episodic_return'
-    env_ids = ("LinearSystem-v0", "FluidFlow-v0", "Lorenz-v0", "DoubleWell-v0")
+    env_ids = ('LinearSystem-v0', 'FluidFlow-v0', 'Lorenz-v0', 'DoubleWell-v0')
+    # env_ids = ('DoubleWell-v0',)
+    # fig = plt.figure()
+    fig = plt.figure(figsize=(8,4.5))
+    colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
     for env_id in env_ids:
+        ax = fig.add_subplot(111)
         plot_data = list(data[env_id].values())
         for i in range(len(plot_data)):
-            plt.plot(plot_data[i]['charts/episodic_return']['steps'], plot_data[i]['charts/episodic_return']['data'])
-        plt.title(f"SAC (Q) vs SAC (V) vs SAKC (V): {env_id}")
-        plt.xlabel("Steps In Environment")
-        plt.ylabel("Episodic Return")
-        plt.legend(['SAC (Q)', 'SAC (V)', 'SAKC (V)'])
-        plt.tight_layout()
+            ax.plot(
+                plot_data[i]['charts/episodic_return']['steps'],
+                plot_data[i]['charts/episodic_return']['data'],
+                color=colors[i]
+            )
+            # ax.plot(
+            #     plot_data[i]['charts/episodic_return']['steps'][4:],
+            #     plot_data[i]['charts/episodic_return']['data'][4:],
+            #     color=colors[i]
+            # )
+        ax.set_title(env_id)
+        ax.set_xlabel("Steps In Environment")
+        ax.set_ylabel("Episodic Return")
+        ax.legend(['Value Iteration', 'LQR', 'SAC (Q)', 'SAC (V)', 'SAKC (V)'])
+        # ax.legend(['Value Iteration', 'SAC (Q)', 'SAC (V)', 'SAKC (V)'])
         plt.savefig(f'./analysis/{env_id}.png')
-        plt.clf()
+        fig.clf()
