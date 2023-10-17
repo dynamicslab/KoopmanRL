@@ -56,10 +56,24 @@ torch.random.manual_seed(args.seed)
 
 """ Collect data """
 
+state_dim = env.observation_space.shape
+if len(state_dim) == 0:
+    state_dim = 1
+else:
+    state_dim = state_dim[0]
+action_dim = env.action_space.shape
+if len(action_dim) == 0:
+    action_dim = 1
+else:
+    action_dim = action_dim[0]
+
+print(f"\nState dimension: {state_dim}")
+print(f"Action dimension: {action_dim}\n")
+
 # Path-based data collection
-X = torch.zeros((args.num_paths, args.num_steps_per_path, env.state_dim))
+X = torch.zeros((args.num_paths, args.num_steps_per_path, state_dim))
 Y = torch.zeros_like(X)
-U = torch.zeros((args.num_paths, args.num_steps_per_path, env.action_dim))
+U = torch.zeros((args.num_paths, args.num_steps_per_path, action_dim))
 
 for path_num in range(args.num_paths):
     state = env.reset()
@@ -132,9 +146,9 @@ if args.animate:
 
 total_num_datapoints = args.num_paths * args.num_steps_per_path
 
-X = X.reshape(total_num_datapoints, env.state_dim).T
-Y = Y.reshape(total_num_datapoints, env.state_dim).T
-U = U.reshape(total_num_datapoints, env.action_dim).T
+X = X.reshape(total_num_datapoints, state_dim).T
+Y = Y.reshape(total_num_datapoints, state_dim).T
+U = U.reshape(total_num_datapoints, action_dim).T
 
 """ Construct Koopman tensor """
 

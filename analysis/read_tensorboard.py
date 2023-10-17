@@ -2,11 +2,27 @@ import matplotlib.pyplot as plt
 plt.style.use('ggplot')
 
 import os
+import pandas as pd
 
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
 def tabulate_events(dpath):
     summary_iterators = [EventAccumulator(os.path.join(dpath, dname)).Reload() for dname in sorted(os.listdir(dpath))]
+
+    for summary_iterator in summary_iterators:
+        folder_name = summary_iterator.path.split('\\')[-1]
+        hyperparams = str(summary_iterator.Tensors('hyperparameters/text_summary')[0]).split('|')
+        env_id = hyperparams[hyperparams.index('env_id')+1]
+
+        scalar_name = 'charts/episodic_return'
+
+        steps = [e.step for e in summary_iterator.Scalars(scalar_name)]
+        data = [e.value for e in summary_iterator.Scalars(scalar_name)]
+
+        df = pd.DataFrame()
+        df['steps'] = steps
+        df['data'] = data
+        df.to_csv(f'./analysis/{folder_name}_episodic_returns_data.csv')
 
     data = {
         'LinearSystem-v0': {},
