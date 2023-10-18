@@ -10,10 +10,13 @@ from gym import logger, register, spaces
 from gym.utils import seeding
 import numpy as np
 
+# max_episode_steps = 500
+max_episode_steps = 200
+
 register(
     id='CartPoleControlEnv-v0',
     entry_point='custom_envs.cartpole_control_env:CartPoleControlEnv',
-    max_episode_steps=500
+    max_episode_steps=max_episode_steps
 )
 
 class CartPoleControlEnv(gym.Env):
@@ -105,6 +108,8 @@ class CartPoleControlEnv(gym.Env):
         return [seed]
 
     def step(self, action):
+        action = [action[0]]
+        # print(action)
         err_msg = "%r (%s) invalid" % (action, type(action))
         assert self.action_space.contains(action), err_msg
 
