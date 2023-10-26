@@ -1,4 +1,5 @@
 from custom_envs.cartpole_control_env import CartPoleControlEnv
+from custom_envs.continuous_cartpole import ContinuousCartPole
 from custom_envs.linear_system import LinearSystem
 from custom_envs.fluid_flow import FluidFlow
 from custom_envs.lorenz import Lorenz
