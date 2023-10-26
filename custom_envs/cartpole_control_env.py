@@ -72,6 +72,9 @@ class CartPoleControlEnv(gym.Env):
     }
 
     def __init__(self):
+        # Configuration with hardcoded values
+        self.state_dim = 4
+        self.action_dim = 1
         self.gravity = 9.8
         self.masscart = 1.0
         self.masspole = 0.1
@@ -88,35 +91,64 @@ class CartPoleControlEnv(gym.Env):
 
         # Angle limit set to 2 * theta_threshold_radians so failing observation
         # is still within bounds.
+        # high = np.array([self.x_threshold * 2,
+        #                  np.finfo(np.float32).max,
+        #                  self.theta_threshold_radians * 2,
+        #                  np.finfo(np.float32).max],
+        #                 dtype=np.float32)
         high = np.array([self.x_threshold * 2,
                          np.finfo(np.float32).max,
                          self.theta_threshold_radians * 2,
                          np.finfo(np.float32).max],
-                        dtype=np.float32)
+                        dtype=np.float64)
 
-        self.action_space = spaces.Box(-np.inf, np.inf, shape=(1,), dtype=np.float32)
-        self.observation_space = spaces.Box(-high, high, dtype=np.float32)
+        # self.action_space = spaces.Box(-np.inf, np.inf, shape=(1,), dtype=np.float32)
+        # self.observation_space = spaces.Box(-high, high, dtype=np.float32)
+        # self.action_space = spaces.Box(-np.inf, np.inf, shape=(1,), dtype=np.float64)
+        self.action_space = spaces.Box(-1000, 1000, shape=(1,), dtype=np.float64)
+        self.observation_space = spaces.Box(-high, high, dtype=np.float64)
 
+        # Define cost/reward values
+        self.Q = np.array([[10, 0,  0, 0],
+                           [ 0, 1,  0, 0],
+                           [ 0, 0, 10, 0],
+                           [ 0, 0,  0, 1]])
+        self.R = np.array([[0.1]])
+
+        self.reference_point = np.zeros(self.state_dim)
+
+        # Seed and rendering information
         self.seed()
         self.viewer = None
         self.state = None
 
+        # Set steps beyond done
         self.steps_beyond_done = None
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
+    
+    def cost_fn(self, state, action):
+        _state = state - self.reference_point
+
+        cost = _state @ self.Q @ _state.T + action @ self.R @ action.T
+
+        return cost
+
+    def reward_fn(self, state, action):
+        return -self.cost_fn(state, action)
 
     def step(self, action):
-        action = [action[0]]
-        # print(action)
         err_msg = "%r (%s) invalid" % (action, type(action))
         assert self.action_space.contains(action), err_msg
 
         x, x_dot, theta, theta_dot = self.state
         force = action[0]
-        costheta = math.cos(theta)
-        sintheta = math.sin(theta)
+        # costheta = math.cos(theta)
+        # sintheta = math.sin(theta)
+        costheta = np.cos(theta)
+        sintheta = np.sin(theta)
 
         # For the interested reader:
         # https://coneural.org/florian/papers/05_cart_pole.pdf
@@ -135,25 +167,18 @@ class CartPoleControlEnv(gym.Env):
             theta_dot = theta_dot + self.tau * thetaacc
             theta = theta + self.tau * theta_dot
 
-        self.state = (x, x_dot, theta, theta_dot)
-        
-        Q = np.array([[10, 0, 0, 0],
-                     [0, 1, 0, 0],
-                     [0, 0, 10, 0],
-                     [0, 0, 0, 1]])
-        R = np.array([[0.1]])
-        state = np.array(self.state)
-        cost =  ( state @ Q @ state ) + ( action @ R @ action )
+        self.state = np.array([x, x_dot, theta, theta_dot])
+        reward = self.reward_fn(self.state, action)
 
-        return np.array(self.state), cost, False, {}
+        return self.state, reward, False, {}
 
     def reset(self, state=None):
         if state is None:
             self.state = self.np_random.uniform(low=-0.05, high=0.05, size=(4,))
         else:
-            self.state = state
+            self.state = np.array(state)
         self.steps_beyond_done = None
-        return np.array(self.state)
+        return self.state
 
     def render(self, mode='human'):
         screen_width = 600

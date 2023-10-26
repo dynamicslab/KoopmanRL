@@ -163,8 +163,10 @@ class Actor(nn.Module):
         self.fc_logstd = nn.Linear(256, np.prod(env.single_action_space.shape))
 
         # action rescaling
-        high_action = np.clip(env.action_space.high, a_min=-1000000, a_max=1000000)
-        low_action = np.clip(env.action_space.low, a_min=-1000000, a_max=1000000)
+        high_action = env.action_space.high
+        low_action = env.action_space.low
+        # high_action = np.clip(env.action_space.high, a_min=-1000, a_max=1000)
+        # low_action = np.clip(env.action_space.low, a_min=-1000, a_max=1000)
         # dtype = torch.float32
         dtype = torch.float64
         action_scale = torch.tensor((high_action - low_action) / 2.0, dtype=dtype)
