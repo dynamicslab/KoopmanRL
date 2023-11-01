@@ -6,7 +6,6 @@ permalink: https://perma.cc/C9ZM-652R
 Continuous version by Ian Danforth
 """
 
-import math
 import gym
 from gym import logger, register, spaces
 from gym.utils import seeding
@@ -43,7 +42,7 @@ class ContinuousCartPole(gym.Env):
         self.max_action = 1.0
 
         # Angle at which to fail the episode
-        self.theta_threshold_radians = 12 * 2 * math.pi / 360
+        self.theta_threshold_radians = 12 * 2 * np.pi / 360
         self.x_threshold = 2.4
 
         # Angle limit set to 2 * theta_threshold_radians so failing observation
@@ -56,9 +55,9 @@ class ContinuousCartPole(gym.Env):
         # ], dtype=np.float32)
         high = np.array([
             self.x_threshold * 2,
-            np.finfo(np.float32).max,
+            np.finfo(np.float64).max,
             self.theta_threshold_radians * 2,
-            np.finfo(np.float32).max
+            np.finfo(np.float64).max
         ], dtype=np.float64)
 
         # self.observation_space = spaces.Box(-high, high, dtype=np.float32)
@@ -84,6 +83,7 @@ class ContinuousCartPole(gym.Env):
         self.R = np.array([[0.1]])
 
         self.reference_point = np.zeros(self.state_dim)
+        # self.reference_point = np.zeros([0, 0, np.pi/2, 0])
 
         # Misc
         self.seed()
@@ -151,10 +151,10 @@ Any further steps are undefined behavior.
             reward = 0.0
 
         # Replace regular +1 reward with negative LQR cost function
-        # reward = self.reward_fn(
-        #     np.array(self.state),
-        #     np.array([action])
-        # )
+        reward = self.reward_fn(
+            np.array(self.state),
+            np.array([action])
+        )
 
         return self.state, reward, done, {}
 

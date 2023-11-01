@@ -4,7 +4,7 @@ Copied from http://incompleteideas.net/sutton/book/code/pole.c
 permalink: https://perma.cc/C9ZM-652R
 """
 
-import math
+# import math
 import gym
 from gym import logger, register, spaces
 from gym.utils import seeding
@@ -75,6 +75,7 @@ class CartPoleControlEnv(gym.Env):
         # Configuration with hardcoded values
         self.state_dim = 4
         self.action_dim = 1
+
         self.gravity = 9.8
         self.masscart = 1.0
         self.masspole = 0.1
@@ -86,26 +87,29 @@ class CartPoleControlEnv(gym.Env):
         self.kinematics_integrator = 'euler'
 
         # Angle at which to fail the episode
-        self.theta_threshold_radians = 12 * 2 * math.pi / 360
+        self.theta_threshold_radians = 12 * 2 * np.pi / 360
         self.x_threshold = 2.4
 
         # Angle limit set to 2 * theta_threshold_radians so failing observation
         # is still within bounds.
-        # high = np.array([self.x_threshold * 2,
-        #                  np.finfo(np.float32).max,
-        #                  self.theta_threshold_radians * 2,
-        #                  np.finfo(np.float32).max],
-        #                 dtype=np.float32)
-        high = np.array([self.x_threshold * 2,
-                         np.finfo(np.float32).max,
-                         self.theta_threshold_radians * 2,
-                         np.finfo(np.float32).max],
-                        dtype=np.float64)
+        # high = np.array([
+        #     self.x_threshold * 2,
+        #     np.finfo(np.float32).max,
+        #     self.theta_threshold_radians * 2,
+        #     np.finfo(np.float32).max
+        #     ], dtype=np.float32
+        # )
+        high = np.array([
+            self.x_threshold * 2,
+            np.finfo(np.float64).max,
+            self.theta_threshold_radians * 2,
+            np.finfo(np.float64).max
+        ], dtype=np.float64)
 
         # self.action_space = spaces.Box(-np.inf, np.inf, shape=(1,), dtype=np.float32)
         # self.observation_space = spaces.Box(-high, high, dtype=np.float32)
         # self.action_space = spaces.Box(-np.inf, np.inf, shape=(1,), dtype=np.float64)
-        self.action_space = spaces.Box(-1000, 1000, shape=(1,), dtype=np.float64)
+        self.action_space = spaces.Box(-1, 1, shape=(1,), dtype=np.float64)
         self.observation_space = spaces.Box(-high, high, dtype=np.float64)
 
         # Define cost/reward values

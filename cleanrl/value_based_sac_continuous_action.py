@@ -245,6 +245,7 @@ if __name__ == "__main__":
         vf_target = SoftVNetwork(envs).to(device)
     vf_target.load_state_dict(vf.state_dict())
     v_optimizer = optim.Adam(list(vf.parameters()), lr=args.v_lr)
+    # v_optimizer = optim.Adam(list(vf.parameters()), lr=args.v_lr, weight_decay=1e5)
     # v_optimizer = optim.Adam(list(vf.parameters()), lr=args.v_lr, weight_decay=1e-5)
 
     qf1 = SoftQNetwork(envs).to(device)
@@ -315,6 +316,12 @@ if __name__ == "__main__":
                 q_values = torch.min(qf1(data.observations, state_actions), qf2(data.observations, state_actions)).view(-1)
             vf_loss = F.mse_loss(vf_values, q_values - alpha * state_log_pis.view(-1))
             # vf_loss = F.l1_loss(vf_values, q_values - alpha * state_log_pis.view(-1))
+            # Calculate L1 regularization term
+            # with torch.no_grad():
+            #     l1_regularization = torch.tensor(0., requires_grad=True)
+            #     for param in vf.parameters():
+            #         l1_regularization += torch.norm(param, p=1)
+            # total_vf_loss = vf_loss + l1_regularization
 
             v_optimizer.zero_grad()
             vf_loss.backward()
@@ -387,3 +394,10 @@ if __name__ == "__main__":
 
     envs.close()
     writer.close()
+
+    # Get optimal value function weights from Koopman model
+    if args.koopman:
+        value_function_weights = list(vf.parameters())
+        target_value_function_weights = list(vf_target.parameters())
+        print(f"Value function weights: {value_function_weights}")
+        print(f"Target value function weights: {target_value_function_weights}")
