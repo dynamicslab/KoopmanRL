@@ -83,7 +83,6 @@ class ContinuousCartPole(gym.Env):
         self.R = np.array([[0.1]])
 
         self.reference_point = np.zeros(self.state_dim)
-        # self.reference_point = np.zeros([0, 0, np.pi/2, 0])
 
         # Misc
         self.seed()
