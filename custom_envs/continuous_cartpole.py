@@ -10,6 +10,7 @@ import gym
 from gym import logger, register, spaces
 from gym.utils import seeding
 import numpy as np
+import torch
 
 # max_episode_steps = 500
 max_episode_steps = 200
@@ -98,6 +99,12 @@ class ContinuousCartPole(gym.Env):
 
         return cost
 
+    def vectorized_cost_fn(self, states, actions):
+        _states = (states - self.reference_point).T
+        mat = torch.diag(_states.T @ self.Q @ _states).unsqueeze(-1) + torch.pow(actions.T, 2) * self.R
+
+        return mat.T
+
     def reward_fn(self, state, action):
         return -self.cost_fn(state, action)
 
@@ -126,28 +133,30 @@ class ContinuousCartPole(gym.Env):
 
         force = self.force_mag * action
         self.state = self.stepPhysics(force)
+        self.step_count += 1
         x, x_dot, theta, theta_dot = self.state
         done = x < -self.x_threshold \
             or x > self.x_threshold \
             or theta < -self.theta_threshold_radians \
-            or theta > self.theta_threshold_radians
+            or theta > self.theta_threshold_radians \
+            or self.step_count >= max_episode_steps
         done = bool(done)
 
-        if not done:
-            reward = 1.0
-        elif self.steps_beyond_done is None:
-            # Pole just fell!
-            self.steps_beyond_done = 0
-            reward = 1.0
-        else:
-            if self.steps_beyond_done == 0:
-                logger.warn("""
-You are calling 'step()' even though this environment has already returned
-done = True. You should always call 'reset()' once you receive 'done = True'
-Any further steps are undefined behavior.
-                """)
-            self.steps_beyond_done += 1
-            reward = 0.0
+#         if not done:
+#             reward = 1.0
+#         elif self.steps_beyond_done is None:
+#             # Pole just fell!
+#             self.steps_beyond_done = 0
+#             reward = 1.0
+#         else:
+#             if self.steps_beyond_done == 0:
+#                 logger.warn("""
+# You are calling 'step()' even though this environment has already returned
+# done = True. You should always call 'reset()' once you receive 'done = True'
+# Any further steps are undefined behavior.
+#                 """)
+#             self.steps_beyond_done += 1
+#             reward = 0.0
 
         # Replace regular +1 reward with negative LQR cost function
         reward = self.reward_fn(
@@ -160,6 +169,7 @@ Any further steps are undefined behavior.
     def reset(self):
         self.state = self.np_random.uniform(low=-0.05, high=0.05, size=(4,))
         self.steps_beyond_done = None
+        self.step_count = 0
         return self.state
 
     def render(self, mode='human'):
@@ -167,7 +177,7 @@ Any further steps are undefined behavior.
         screen_height = 400
 
         world_width = self.x_threshold * 2
-        scale = screen_width /world_width
+        scale = screen_width / world_width
         carty = 100  # TOP OF CART
         polewidth = 10.0
         polelen = scale * 1.0

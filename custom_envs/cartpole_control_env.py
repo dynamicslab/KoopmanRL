@@ -9,6 +9,7 @@ import gym
 from gym import logger, register, spaces
 from gym.utils import seeding
 import numpy as np
+import torch
 
 # max_episode_steps = 500
 max_episode_steps = 200
@@ -140,6 +141,12 @@ class CartPoleControlEnv(gym.Env):
 
         return cost
 
+    def vectorized_cost_fn(self, states, actions):
+        _states = (states - self.reference_point).T
+        mat = torch.diag(_states.T @ self.Q @ _states).unsqueeze(-1) + torch.pow(actions.T, 2) * self.R
+
+        return mat.T
+
     def reward_fn(self, state, action):
         return -self.cost_fn(state, action)
 
@@ -174,7 +181,11 @@ class CartPoleControlEnv(gym.Env):
         self.state = np.array([x, x_dot, theta, theta_dot])
         reward = self.reward_fn(self.state, action)
 
-        return self.state, reward, False, {}
+        self.step_count += 1
+
+        done = self.step_count >= max_episode_steps
+
+        return self.state, reward, done, {}
 
     def reset(self, state=None):
         if state is None:
@@ -182,6 +193,7 @@ class CartPoleControlEnv(gym.Env):
         else:
             self.state = np.array(state)
         self.steps_beyond_done = None
+        self.step_count = 0
         return self.state
 
     def render(self, mode='human'):

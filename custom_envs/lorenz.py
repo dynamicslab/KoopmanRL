@@ -31,7 +31,6 @@ class Lorenz(gym.Env):
         # self.action_range = [-500.0, 500.0]
 
         self.dt = dt
-        self.max_episode_steps = max_episode_steps
 
         # Dynamics
         self.sigma = 10

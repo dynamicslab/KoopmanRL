@@ -198,8 +198,8 @@ class DiscreteKoopmanValueIterationPolicy:
             batch_size,
             replace=False
         ))
-        x_batch = self.dynamics_model.X[:, x_batch_indices] # (X.shape[0], batch_size)
-        phi_x_batch = self.dynamics_model.Phi_X[:, x_batch_indices] # (dim_phi, batch_size)
+        x_batch = self.dynamics_model.X[:, x_batch_indices.long()] # (X.shape[0], batch_size)
+        phi_x_batch = self.dynamics_model.Phi_X[:, x_batch_indices.long()] # (dim_phi, batch_size)
 
         # Compute V(x) for all phi(x)s
         V_xs = self.V_phi_x(phi_x_batch) # (1, batch_size)
@@ -294,8 +294,8 @@ class DiscreteKoopmanValueIterationPolicy:
             ))
 
         return (
-            self.all_actions[0][selected_indices],
-            torch.log(pis_response[selected_indices])
+            self.all_actions[0][selected_indices.long()],
+            torch.log(pis_response[selected_indices.long()])
         )
 
     def get_action(self, x, sample_size=None, is_greedy=False):
@@ -388,8 +388,8 @@ class DiscreteKoopmanValueIterationPolicy:
                     batch_size,
                     replace=False
                 ))
-                x_batch = self.dynamics_model.X[:, x_batch_indices] # (X.shape[0], batch_size)
-                phi_x_batch = self.dynamics_model.Phi_X[:, x_batch_indices] # (dim_phi, batch_size)
+                x_batch = self.dynamics_model.X[:, x_batch_indices.long()] # (X.shape[0], batch_size)
+                phi_x_batch = self.dynamics_model.Phi_X[:, x_batch_indices.long()] # (dim_phi, batch_size)
 
                 # Compute costs indexed by the action and the state
                 costs = torch.Tensor(self.cost(x_batch.T, self.all_actions.T)) # (all_actions.shape[1], batch_size)
