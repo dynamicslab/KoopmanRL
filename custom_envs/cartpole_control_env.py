@@ -77,15 +77,20 @@ class CartPoleControlEnv(gym.Env):
         self.state_dim = 4
         self.action_dim = 1
 
+        self.four_thirds = 4.0/3.0
+
         self.gravity = 9.8
         self.masscart = 1.0
         self.masspole = 0.1
         self.total_mass = (self.masspole + self.masscart)
         self.length = 0.5  # actually half the pole's length
         self.polemass_length = (self.masspole * self.length)
-        self.force_mag = 10.0
+        # self.force_mag = 10.0
+        self.force_mag = 1.0
         self.tau = 0.02  # seconds between state updates
         self.kinematics_integrator = 'euler'
+        self.min_action = -10.0
+        self.max_action = 10.0
 
         # Angle at which to fail the episode
         self.theta_threshold_radians = 12 * 2 * np.pi / 360
@@ -110,8 +115,31 @@ class CartPoleControlEnv(gym.Env):
         # self.action_space = spaces.Box(-np.inf, np.inf, shape=(1,), dtype=np.float32)
         # self.observation_space = spaces.Box(-high, high, dtype=np.float32)
         # self.action_space = spaces.Box(-np.inf, np.inf, shape=(1,), dtype=np.float64)
-        self.action_space = spaces.Box(-1, 1, shape=(1,), dtype=np.float64)
-        self.observation_space = spaces.Box(-high, high, dtype=np.float64)
+        self.action_space = spaces.Box(
+            low=self.min_action,
+            high=self.max_action,
+            shape=(1,),
+            dtype=np.float64
+        )
+        self.observation_space = spaces.Box(
+            low=-high,
+            high=high,
+            dtype=np.float64
+        )
+
+        # LQR state and action matrices
+        self.continuous_A = np.array([
+            [0, 1, 0, 0],
+            [0, 0, -self.gravity * self.masspole / (self.total_mass * (-self.masspole / self.total_mass + self.four_thirds)), 0],
+            [0, 0, 0, 1],
+            [0, 0, self.gravity / (self.length * (-self.masspole / (self.masscart + self.masscart) + self.four_thirds)), 0]
+        ])
+        self.continuous_B = np.array([
+            [0],
+            [(self.masspole / (-self.masspole / self.total_mass + self.four_thirds) + 1) / self.total_mass],
+            [0],
+            [-1 / (self.length * (-self.masspole / self.total_mass + self.four_thirds))]
+        ])
 
         # Define cost/reward values
         self.Q = np.array([[10, 0,  0, 0],
@@ -151,8 +179,8 @@ class CartPoleControlEnv(gym.Env):
         return -self.cost_fn(state, action)
 
     def step(self, action):
-        err_msg = "%r (%s) invalid" % (action, type(action))
-        assert self.action_space.contains(action), err_msg
+        # err_msg = "%r (%s) invalid" % (action, type(action))
+        # assert self.action_space.contains(action), err_msg
 
         x, x_dot, theta, theta_dot = self.state
         force = action[0]
@@ -163,8 +191,8 @@ class CartPoleControlEnv(gym.Env):
 
         # For the interested reader:
         # https://coneural.org/florian/papers/05_cart_pole.pdf
-        temp = (force + self.polemass_length * theta_dot ** 2 * sintheta) / self.total_mass
-        thetaacc = (self.gravity * sintheta - costheta * temp) / (self.length * (4.0 / 3.0 - self.masspole * costheta ** 2 / self.total_mass))
+        temp = (force + self.polemass_length * theta_dot**2 * sintheta) / self.total_mass
+        thetaacc = (self.gravity * sintheta - costheta * temp) / (self.length * (self.four_thirds - self.masspole * costheta**2 / self.total_mass))
         xacc = temp - self.polemass_length * thetaacc * costheta / self.total_mass
 
         if self.kinematics_integrator == 'euler':

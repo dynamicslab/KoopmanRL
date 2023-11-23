@@ -31,19 +31,22 @@ class ContinuousCartPole(gym.Env):
         self.state_dim = 4
         self.action_dim = 1
 
+        self.four_thirds = 4.0/3.0
+
         self.gravity = 9.8
         self.masscart = 1.0
         self.masspole = 0.1
         self.total_mass = (self.masspole + self.masscart)
         self.length = 0.5  # actually half the pole's length
         self.polemass_length = (self.masspole * self.length)
-        self.force_mag = 30.0
+        # self.force_mag = 30.0
+        self.force_mag = 1.0
         self.tau = 0.02  # seconds between state updates
-        self.min_action = -1.0
-        self.max_action = 1.0
+        self.min_action = -30.0
+        self.max_action = 30.0
 
         # Angle at which to fail the episode
-        self.theta_threshold_radians = 12 * 2 * np.pi / 360
+        self.theta_threshold_radians = 12 * 2 * np.pi / 360 # np.pi / 15
         self.x_threshold = 2.4
 
         # Angle limit set to 2 * theta_threshold_radians so failing observation
@@ -68,13 +71,31 @@ class ContinuousCartPole(gym.Env):
         #     shape=(1,),
         #     dtype=np.float32
         # )
-        self.observation_space = spaces.Box(-high, high, dtype=np.float64)
+        self.observation_space = spaces.Box(
+            low=-high,
+            high=high,
+            dtype=np.float64
+        )
         self.action_space = spaces.Box(
             low=self.min_action,
             high=self.max_action,
             shape=(1,),
             dtype=np.float64
         )
+
+        # LQR state and action matrices
+        self.continuous_A = np.array([
+            [0, 1, 0, 0],
+            [0, 0, -self.gravity * self.masspole / (self.total_mass * (-self.masspole / self.total_mass + self.four_thirds)), 0],
+            [0, 0, 0, 1],
+            [0, 0, self.gravity / (self.length * (-self.masspole / (self.masscart + self.masscart) + self.four_thirds)), 0]
+        ])
+        self.continuous_B = np.array([
+            [0],
+            [(self.masspole / (-self.masspole / self.total_mass + self.four_thirds) + 1) / self.total_mass],
+            [0],
+            [-1 / (self.length * (-self.masspole / self.total_mass + self.four_thirds))]
+        ])
 
         # Define cost/reward values
         self.Q = np.array([[10, 0,  0, 0],
@@ -118,7 +139,7 @@ class ContinuousCartPole(gym.Env):
         sintheta = np.sin(theta)
         temp = (force + self.polemass_length * theta_dot * theta_dot * sintheta) / self.total_mass
         thetaacc = (self.gravity * sintheta - costheta * temp) / \
-            (self.length * (4.0/3.0 - self.masspole * costheta * costheta / self.total_mass))
+            (self.length * (self.four_thirds - self.masspole * costheta * costheta / self.total_mass))
         xacc = temp - self.polemass_length * thetaacc * costheta / self.total_mass
         x = x + self.tau * x_dot
         x_dot = x_dot + self.tau * xacc
@@ -134,13 +155,14 @@ class ContinuousCartPole(gym.Env):
         force = self.force_mag * action
         self.state = self.stepPhysics(force)
         self.step_count += 1
-        x, x_dot, theta, theta_dot = self.state
-        done = x < -self.x_threshold \
-            or x > self.x_threshold \
-            or theta < -self.theta_threshold_radians \
-            or theta > self.theta_threshold_radians \
-            or self.step_count >= max_episode_steps
-        done = bool(done)
+        # x, x_dot, theta, theta_dot = self.state
+        # done = x < -self.x_threshold \
+        #     or x > self.x_threshold \
+        #     or theta < -self.theta_threshold_radians \
+        #     or theta > self.theta_threshold_radians \
+        #     or self.step_count >= max_episode_steps
+        # done = bool(done)
+        done = self.step_count >= max_episode_steps
 
 #         if not done:
 #             reward = 1.0

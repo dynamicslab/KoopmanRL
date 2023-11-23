@@ -221,7 +221,8 @@ if __name__ == "__main__":
         dt = None
 
     # Construct LQR policy
-    is_continuous = False if args.env_id in ('LinearSystem-v0') else True
+    discrete_systems = ('LinearSystem-v0')
+    is_continuous = False if args.env_id in discrete_systems else True
     try:
         lqr_policy = LQRPolicy(
             A=envs.envs[0].continuous_A,
