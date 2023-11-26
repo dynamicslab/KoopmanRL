@@ -2,6 +2,7 @@
 import argparse
 import os
 import random
+import sys
 import time
 from distutils.util import strtobool
 
@@ -39,10 +40,6 @@ def parse_args():
         help="whether to capture videos of the agent performances (check out `videos` folder; default: False)")
 
     # Algorithm specific arguments
-    # parser.add_argument("--env-id", type=str, default="Hopper-v4",
-    #     help="the id of the environment")
-    # parser.add_argument("--env-id", type=str, default="Hopper-v3",
-    #     help="the id of the environment")
     parser.add_argument("--env-id", type=str, default="LinearSystem-v0",
         help="the id of the environment (default: LinearSystem-v0)")
     parser.add_argument("--total-timesteps", type=int, default=1000000,
@@ -77,6 +74,8 @@ def parse_args():
         help="the learning rate of the alpha network optimizer (default: 0.001)")
     parser.add_argument("--koopman", type=lambda x:bool(strtobool(x)), default=False, nargs="?", const=True,
         help="use Koopman V function (default: False)")
+    parser.add_argument("--num-actions", type=int, default=101,
+        help="number of actions that the policy can pick from (default: 101)")
     args = parser.parse_args()
     # fmt: on
     return args
@@ -95,6 +94,34 @@ def make_env(env_id, seed, idx, capture_video, run_name):
         return env
 
     return thunk
+
+
+from cleanrl.discrete_value_iteration import DiscreteKoopmanValueIterationPolicy
+
+def load_koopman_value_iteration_policy(
+    env_id: str,
+    tensor,
+    all_actions,
+    cost,
+    seed,
+    gamma=0.99,
+    alpha=1.0,
+    initial_value_function_weights=None,
+    args=None,
+):
+    return DiscreteKoopmanValueIterationPolicy(
+        env_id=env_id,
+        gamma=gamma,
+        alpha=alpha,
+        dynamics_model=tensor,
+        all_actions=all_actions,
+        cost=cost,
+        save_data_path=f"../saved_models/{env_id}",
+        seed=seed,
+        load_model=True,
+        initial_value_function_weights=initial_value_function_weights,
+        args=args
+    )
 
 
 # ALGO LOGIC: initialize agent here:
@@ -247,10 +274,102 @@ if __name__ == "__main__":
     #     vf_target = SoftKoopmanVNetwork(koopman_tensor).to(device)
     # else:
     #     vf_target = SoftVNetwork(envs).to(device)
-    koopman_tensor = load_tensor(args.env_id, "path_based_tensor")
     # value_function_weights = [0,0,0,0,0,0,0,0,0,0,0,0, -2.02490, -0.92989, -0.48686]
-    value_function_weights = [0,0,0,0,0,0,0,0,0,0,0,0,0,0.0,0]
-    vf_target = SoftKoopmanVNetwork(koopman_tensor, value_function_weights).to(device)
+    # value_function_weights = [0,0,0,0,0,0,0,0,0,0,0,0,0,0.0,0]
+    # value_function_weights = [
+    #     -0.25, # 1
+    #     -0.02, # x
+    #     -0.01, # y
+    #     -0.41, # z
+    #     -0.21, # x*x
+    #      0.02, # x*y
+    #     -0.04, # x*z
+    #     -0.22, # y*y
+    #     -0.04, # y*z
+    #     -0.81, # z*z
+    # ]
+    # value_function_weights = np.array([
+    #     -0.25, # 1
+    #     -0.02, # x
+    #     -0.01, # y
+    #     -0.41, # z
+    #     -0.21, # x*x
+    #      0.02, # x*y
+    #     -0.04, # x*z
+    #     -0.22, # y*y
+    #     -0.04, # y*z
+    #     -0.81, # z*z
+    # ])
+    # value_function_weights = np.array([
+    #     -0.25, # 1
+    #     -0.02, # x
+    #     -0.01, # y
+    #     -0.41, # z
+    #     -0.21, # x*x
+    #      0.02, # x*y
+    #     -0.04, # x*z
+    #     -0.22, # y*y
+    #     -0.04, # y*z
+    #     -0.81, # z*z
+    # ])
+    # value_function_weights /= value_function_weights.sum()*-1
+    # print(value_function_weights)
+    value_function_weights = [
+        -0.12562814, # 1
+        -0.01005025, # x
+        -0.00502513, # y
+        -0.20603015, # z
+        -0.10552764, # x*x
+         0.01005025, # x*y
+        -0.0201005,  # x*z
+        -0.11055276, # y*y
+        -0.0201005,  # y*z
+        -0.40703518, # z*z
+    ]
+    # value_function_weights = [
+    #     -0.12562814, # 1
+    #     0,           # x
+    #     0,           # y
+    #     -0.20603015, # z
+    #     -0.10552764, # x*x
+    #     0,           # x*y
+    #     0,           # x*z
+    #     -0.11055276, # y*y
+    #     0,           # y*z
+    #     -0.40703518, # z*z
+    # ]
+    # value_function_weights = [
+    #     0.0, # 1
+    #     0.0, # x
+    #     0.0, # y
+    #     0.0, # z
+    #     0.0, # x*x
+    #     0.0, # x*y
+    #     0.0, # x*z
+    #     0.0, # y*y
+    #     0.0, # y*z
+    #     0.0, # z*z
+    # ]
+    # Construct set of all possible actions
+    all_actions = torch.from_numpy(np.linspace(
+        start=envs.single_action_space.low,
+        stop=envs.single_action_space.high,
+        num=args.num_actions
+    )).T
+
+    koopman_tensor = load_tensor(args.env_id, "path_based_tensor")
+    koopman_value_iteration_policy = load_koopman_value_iteration_policy(
+        env_id=args.env_id,
+        tensor=koopman_tensor,
+        all_actions=all_actions,
+        cost=envs.envs[0].cost_fn,
+        seed=args.seed,
+        gamma=args.gamma,
+        alpha=args.alpha,
+        initial_value_function_weights=torch.tensor(value_function_weights).reshape(-1,1),
+        args=args
+    )
+    # vf_target = SoftKoopmanVNetwork(koopman_tensor, value_function_weights).to(device)
 
     qf1 = SoftQNetwork(envs).to(device)
     qf2 = SoftQNetwork(envs).to(device)
@@ -285,6 +404,8 @@ if __name__ == "__main__":
             actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
         else:
             actions, log_probs, _ = actor.get_action(torch.Tensor(obs).to(device))
+            print(koopman_value_iteration_policy.get_action(torch.Tensor(obs).to(device)))
+            # print(koopman_value_iteration_policy.get_action_and_log_prob(torch.Tensor(obs).to(device)))
             actions = actions.detach().cpu().numpy()
 
         # TRY NOT TO MODIFY: execute the game and log data.
@@ -327,7 +448,8 @@ if __name__ == "__main__":
                     vf_next_target = (1 - data.dones.flatten()) * args.gamma * vf_target.linear(expected_phi_x_primes).view(-1)
                 else:
                     vf_next_target = (1 - data.dones.flatten()) * args.gamma * vf_target(data.next_observations).view(-1)
-                q_target_values = data.rewards.flatten() + vf_next_target
+                # q_target_values = data.rewards.flatten() + vf_next_target
+                q_target_values = vf_next_target
 
             qf1_a_values = qf1(data.observations, data.actions).view(-1)
             qf2_a_values = qf2(data.observations, data.actions).view(-1)

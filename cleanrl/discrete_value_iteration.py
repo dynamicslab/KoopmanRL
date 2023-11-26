@@ -29,7 +29,9 @@ class DiscreteKoopmanValueIterationPolicy:
         learning_rate=0.003,
         dt=None,
         seed=123,
-        load_model=False
+        load_model=False,
+        initial_value_function_weights=None,
+        args=None,
     ):
         """
         Initialize DiscreteKoopmanValueIterationPolicy.
@@ -61,6 +63,10 @@ class DiscreteKoopmanValueIterationPolicy:
             Random seed for reproducibility, by default 123.
         load_model : bool, optional
             Boolean indicating whether or not to load a saved model, by default False.
+        initial_value_function_weights : float[], optional
+            Array of float coefficients for the value function features. None by default.
+        args : ..., optional
+            Object of arguments to use for the system set up.
 
         Returns
         -------
@@ -69,7 +75,7 @@ class DiscreteKoopmanValueIterationPolicy:
         """
 
         self.seed = seed
-        random.seed(args.seed)
+        random.seed(seed)
         np.random.seed(seed)
         torch.manual_seed(seed)
         torch.backends.cudnn.deterministic = args.torch_deterministic
@@ -88,13 +94,24 @@ class DiscreteKoopmanValueIterationPolicy:
 
         self.discount_factor = self.gamma**self.dt
 
+        self.has_initial_value_function_weights = initial_value_function_weights is not None
+
         if load_model:
-            self.value_function_weights = torch.load(f"{self.save_data_path}/policy.pt")
+            if self.has_initial_value_function_weights:
+                self.value_function_weights = torch.tensor(initial_value_function_weights)
+            else:
+                self.value_function_weights = torch.load(f"{self.save_data_path}/policy.pt")
         else:
             if self.use_ols:
-                self.value_function_weights = torch.zeros((self.dynamics_model.phi_dim, 1))
+                if self.has_initial_value_function_weights:
+                    self.value_function_weights = torch.tensor(initial_value_function_weights)
+                else:
+                    self.value_function_weights = torch.zeros((self.dynamics_model.phi_dim, 1))
             else:
-                self.value_function_weights = torch.zeros((self.dynamics_model.phi_dim, 1), requires_grad=True)
+                if self.has_initial_value_function_weights:
+                    self.value_function_weights = torch.zeros(initial_value_function_weights, requires_grad=True)
+                else:
+                    self.value_function_weights = torch.zeros((self.dynamics_model.phi_dim, 1), requires_grad=True)
 
         if not self.use_ols:
             self.value_function_optimizer = torch.optim.Adam([self.value_function_weights], lr=self.learning_rate)
@@ -115,7 +132,7 @@ class DiscreteKoopmanValueIterationPolicy:
         """
 
         # Compute phi(x) for each x
-        phi_xs = self.dynamics_model.phi(xs.T)
+        phi_xs = self.dynamics_model.phi(xs.T) # (dim_phi, batch_size)
 
         # Compute phi(x') for all ( phi(x), action ) pairs and compute V(x')s
         K_us = self.dynamics_model.K_(self.all_actions) # (all_actions.shape[1], phi_dim, phi_dim)
@@ -125,6 +142,7 @@ class DiscreteKoopmanValueIterationPolicy:
             phi_x_prime_hat_batch = K_us[action_index] @ phi_xs # (dim_phi, batch_size)
             phi_x_prime_batch[action_index] = phi_x_prime_hat_batch
             V_x_prime_batch[action_index] = self.V_phi_x(phi_x_prime_batch[action_index]) # (1, batch_size)
+            #! Something is wrong here with value_function_continuous_action
 
         # Get costs indexed by the action and the state
         costs = torch.Tensor(self.cost(xs, self.all_actions.T)) # (all_actions.shape[1], batch_size)

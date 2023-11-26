@@ -245,8 +245,8 @@ if __name__ == "__main__":
         vf_target = SoftVNetwork(envs).to(device)
     vf_target.load_state_dict(vf.state_dict())
     v_optimizer = optim.Adam(list(vf.parameters()), lr=args.v_lr)
-    # v_optimizer = optim.Adam(list(vf.parameters()), lr=args.v_lr, weight_decay=1e5)
     # v_optimizer = optim.Adam(list(vf.parameters()), lr=args.v_lr, weight_decay=1e-5)
+    # v_optimizer = optim.Adam(list(vf.parameters()), lr=args.v_lr, weight_decay=1e3)
 
     qf1 = SoftQNetwork(envs).to(device)
     qf2 = SoftQNetwork(envs).to(device)
