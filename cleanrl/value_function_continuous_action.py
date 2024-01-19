@@ -369,7 +369,7 @@ if __name__ == "__main__":
         initial_value_function_weights=torch.tensor(value_function_weights).reshape(-1,1),
         args=args
     )
-    # vf_target = SoftKoopmanVNetwork(koopman_tensor, value_function_weights).to(device)
+    vf_target = SoftKoopmanVNetwork(koopman_tensor, value_function_weights).to(device)
 
     qf1 = SoftQNetwork(envs).to(device)
     qf2 = SoftQNetwork(envs).to(device)
@@ -469,6 +469,8 @@ if __name__ == "__main__":
                     pi, log_pi, _ = actor.get_action(data.observations)
                     qf1_pi = qf1(data.observations, pi)
                     qf2_pi = qf2(data.observations, pi)
+                    # with torch.no_grad():
+                    #     pi_rewards = envs.envs[0].reward_fn(data.observations, pi)
                     min_qf_pi = torch.min(qf1_pi, qf2_pi).view(-1)
                     actor_loss = ((alpha * log_pi) - min_qf_pi).mean()
 
