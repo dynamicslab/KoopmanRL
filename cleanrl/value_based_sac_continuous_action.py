@@ -392,6 +392,13 @@ if __name__ == "__main__":
                 print("Steps per second (SPS):", sps)
                 writer.add_scalar("charts/SPS", sps, global_step)
 
+            # Save policy network every so often
+            if global_step % 1000 == 0:
+                torch.save(
+                    actor.state_dict(),
+                    f'./saved_models/{args.env_id}/value_based_sa{"k" if args.koopman else ""}c_actor.pt'
+                )
+
     envs.close()
     writer.close()
 
