@@ -1,84 +1,93 @@
 import matplotlib.pyplot as plt
 plt.style.use('ggplot')
 
+import numpy as np
 import os
-import pandas as pd
 
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
-def tabulate_events(dpath):
-    summary_iterators = [EventAccumulator(os.path.join(dpath, dname)).Reload() for dname in sorted(os.listdir(dpath))]
+def create_folder(folder_path: str):
+    """
+    Create a folder at the specified path if it does not already exist.
 
-    for summary_iterator in summary_iterators:
-        folder_name = summary_iterator.path.split('\\')[-1]
-        hyperparams = str(summary_iterator.Tensors('hyperparameters/text_summary')[0]).split('|')
-        env_id = hyperparams[hyperparams.index('env_id')+1]
+    Parameters
+    ----------
+    folder_path : str
+        The path at which the folder is to be created.
 
-        scalar_name = 'charts/episodic_return'
+    Returns
+    -------
+    None
 
-        steps = [e.step for e in summary_iterator.Scalars(scalar_name)]
-        data = [e.value for e in summary_iterator.Scalars(scalar_name)]
+    Notes
+    -----
+    If the folder already exists, a message will be printed indicating that the folder is already present.
 
-        df = pd.DataFrame()
-        df['steps'] = steps
-        df['data'] = data
-        df.to_csv(f'./analysis/{folder_name}_episodic_returns_data.csv')
+    Examples
+    --------
+    >>> create_folder('/path/to/new_folder')
+    Folder '/path/to/new_folder' created.
 
-    data = {
-        'LinearSystem-v0': {},
-        'FluidFlow-v0': {},
-        'Lorenz-v0': {},
-        'DoubleWell-v0': {}
-    }
+    >>> create_folder('/path/to/existing_folder')
+    Folder '/path/to/existing_folder' already exists.
+    """
 
-    for scalar_name in ('charts/episodic_return', 'losses/qf_loss', 'losses/actor_loss', 'losses/vf_loss'):
-        for summary_iterator in summary_iterators:
-            if scalar_name not in summary_iterator.Tags()['scalars']:
-                continue
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
+        print(f"Folder '{folder_path}' created.")
+    else:
+        print(f"Folder '{folder_path}' already exists.")
 
-            folder_name = summary_iterator.path.split('\\')[-1]
-            # if 'quadratic' in folder_name:
-            #     continue
-            hyperparams = str(summary_iterator.Tensors('hyperparameters/text_summary')[0]).split('|')
-            env_id = hyperparams[hyperparams.index('env_id')+1]
+def collect_episodic_returns(
+    tensorboard_file_directory: str,
+    tensorboard_file_name: str
+):
+    """
+    Collects episodic returns and corresponding environment steps from a TensorBoard file.
 
-            if folder_name not in data[env_id]:
-                data[env_id][folder_name] = {}
-            if scalar_name not in data[env_id][folder_name]:
-                data[env_id][folder_name][scalar_name] = {}
+    Parameters:
+    - tensorboard_file_directory (str): The directory containing the TensorBoard file.
+    - tensorboard_file_name (str): The name of the TensorBoard file.
 
-            data[env_id][folder_name][scalar_name]['steps'] = [e.step for e in summary_iterator.Scalars(scalar_name)]
-            data[env_id][folder_name][scalar_name]['data'] = [e.value for e in summary_iterator.Scalars(scalar_name)]
+    Returns:
+    Tuple[List[float], List[int]]: A tuple containing two lists -
+    1. episodic_returns (List[float]): List of episodic return values.
+    2. steps (List[int]): List of corresponding step values.
 
-    return data
+    Example:
+    >>> directory = '/path/to/tensorboard/files'
+    >>> file_name = 'experiment_log'
+    >>> returns, steps = collect_episodic_returns(directory, file_name)
+    """
+
+    summary_iterator = EventAccumulator(os.path.join(tensorboard_file_directory, tensorboard_file_name)).Reload()
+
+    scalar_name = 'charts/episodic_return'
+
+    steps = [e.step for e in summary_iterator.Scalars(scalar_name)]
+    episodic_returns = [e.value for e in summary_iterator.Scalars(scalar_name)]
+
+    return episodic_returns, steps
 
 if __name__ == '__main__':
+    # Going to collect the episodic return data for the following files
     path = "./runs"
-    data = tabulate_events(path)
-    scalar_name = 'charts/episodic_return'
-    env_ids = ('LinearSystem-v0', 'FluidFlow-v0', 'Lorenz-v0', 'DoubleWell-v0')
-    # env_ids = ('DoubleWell-v0',)
-    # fig = plt.figure()
-    fig = plt.figure(figsize=(8,4.5))
-    colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
-    for env_id in env_ids:
-        ax = fig.add_subplot(111)
-        plot_data = list(data[env_id].values())
-        for i in range(len(plot_data)):
-            ax.plot(
-                plot_data[i]['charts/episodic_return']['steps'],
-                plot_data[i]['charts/episodic_return']['data'],
-                color=colors[i]
-            )
-            # ax.plot(
-            #     plot_data[i]['charts/episodic_return']['steps'][4:],
-            #     plot_data[i]['charts/episodic_return']['data'][4:],
-            #     color=colors[i]
-            # )
-        ax.set_title(env_id)
-        ax.set_xlabel("Steps In Environment")
-        ax.set_ylabel("Episodic Return")
-        ax.legend(['Value Iteration', 'LQR', 'SAC (Q)', 'SAC (V)', 'SAKC (V)'])
-        # ax.legend(['Value Iteration', 'SAC (Q)', 'SAC (V)', 'SAKC (V)'])
-        plt.savefig(f'./analysis/{env_id}.png')
-        fig.clf()
+    file_names = [
+        "FluidFlow-v0__sac_continuous_action__1__1706390314",
+        "FluidFlow-v0__sac_continuous_action_eval__1__1706392297"
+    ]
+
+    # For each tensorboard file in the pre-defined list above,
+    for i, file_name in enumerate(file_names):
+        # Collect the episodic returns and environment steps
+        # and save the data into numpy files for use in other places
+        episodic_returns, steps = collect_episodic_returns(path, file_name)
+        create_folder(f'./analysis/{file_name}')
+        np.save(f"./analysis/{file_name}/episodic_returns.npy", episodic_returns)
+        np.save(f"./analysis/{file_name}/steps.npy", steps)
+
+        # Example usage
+        episodic_returns = np.load(f"./analysis/{file_name}/episodic_returns.npy")
+        steps = np.load(f"./analysis/{file_name}/steps.npy")
+        plt.plot(steps, episodic_returns)
+        plt.show()
