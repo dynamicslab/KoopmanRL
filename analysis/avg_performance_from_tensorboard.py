@@ -86,8 +86,10 @@ if __name__ == '__main__':
         np.save(f"./analysis/{file_name}/episodic_returns.npy", episodic_returns)
         np.save(f"./analysis/{file_name}/steps.npy", steps)
 
-        # Example usage
-        episodic_returns = np.load(f"./analysis/{file_name}/episodic_returns.npy")
-        steps = np.load(f"./analysis/{file_name}/steps.npy")
-        plt.plot(steps, episodic_returns)
-        plt.show()
+        # Print information about the data
+        print(f"{file_name}'s episodic returns length: {len(episodic_returns)}")
+        print(f"{file_name}'s steps length: {len(steps)}")
+        print(f"{file_name}'s steps per episode: {steps[0]+1}")
+
+        # Compute mean episodic return
+        print(f"{file_name}'s mean episodic return: {np.mean(episodic_returns)}\n")
