@@ -1,42 +1,10 @@
-import matplotlib.pyplot as plt
-plt.style.use('ggplot')
+import numpy as np
 
 import numpy as np
 import os
 
+from analysis.utils import create_folder
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
-
-def create_folder(folder_path: str):
-    """
-    Create a folder at the specified path if it does not already exist.
-
-    Parameters
-    ----------
-    folder_path : str
-        The path at which the folder is to be created.
-
-    Returns
-    -------
-    None
-
-    Notes
-    -----
-    If the folder already exists, a message will be printed indicating that the folder is already present.
-
-    Examples
-    --------
-    >>> create_folder('/path/to/new_folder')
-    Folder '/path/to/new_folder' created.
-
-    >>> create_folder('/path/to/existing_folder')
-    Folder '/path/to/existing_folder' already exists.
-    """
-
-    if not os.path.exists(folder_path):
-        os.makedirs(folder_path)
-        print(f"Folder '{folder_path}' created.")
-    else:
-        print(f"Folder '{folder_path}' already exists.")
 
 def collect_episodic_returns(
     tensorboard_file_directory: str,
@@ -73,8 +41,13 @@ if __name__ == '__main__':
     # Going to collect the episodic return data for the following files
     path = "./runs"
     file_names = [
-        "FluidFlow-v0__sac_continuous_action__1__1706390314",
-        "FluidFlow-v0__sac_continuous_action_eval__1__1706392297"
+        # "FluidFlow-v0__sac_continuous_action__1__1706390314",
+        # "FluidFlow-v0__sac_continuous_action_eval__1__1706392297"
+
+        # "FluidFlow-v0__interpretability_discrete_value_iteration__1__1707412846",
+        # "FluidFlow-v0__interpretability_discrete_value_iteration__1__1707413302",
+        # "FluidFlow-v0__interpretability_discrete_value_iteration__1__1707413512",
+        "FluidFlow-v0__interpretability_discrete_value_iteration__1__1707413673",
     ]
 
     # For each tensorboard file in the pre-defined list above,
