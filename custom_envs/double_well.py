@@ -82,8 +82,8 @@ class DoubleWell(gym.Env):
         # Track number of steps taken
         self.step_count = 0
 
-        # return self.state, {}
-        return self.state
+        return self.state, {}
+        # return self.state
 
     def cost_fn(self, state, action):
         _state = state - self.reference_point
@@ -185,4 +185,5 @@ class DoubleWell(gym.Env):
         # An episode is done if the system has run for max_episode_steps
         terminated = self.step_count >= max_episode_steps
 
-        return self.state, reward, terminated, {}
+        return self.state, reward, terminated, False, {}
+        # return self.state, reward, terminated, {}

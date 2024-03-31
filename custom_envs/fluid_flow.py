@@ -1,4 +1,5 @@
 import gym
+#gymnasium==0.28.1 ; python_version >= "3.8" and python_version < "3.11"
 import numpy as np
 import torch
 
@@ -79,25 +80,27 @@ class FluidFlow(gym.Env):
         # History of states traversed during the current episode
         self.states = []
 
-    def reset(self, seed=None, options={}):
+    def reset(self, state=None, seed=None, options={}):
         # We need the following line to seed self.np_random
         super().reset(seed=seed)
 
         # Choose the initial state uniformly at random
-        # self.state = self.observation_space.sample()
-        # self.state = np.array([1, 1, 1])
-        self.state = np.random.uniform(
-            low=self.state_minimums,
-            high=self.state_maximums,
-            size=(self.state_dim,)
-        )
+        if state is None:
+            # self.state = self.observation_space.sample()
+            self.state = np.random.uniform(
+                low=self.state_minimums,
+                high=self.state_maximums,
+                size=(self.state_dim,)
+            )
+        else:
+            self.state = state
         self.states = [self.state]
 
         # Track number of steps taken
         self.step_count = 0
 
-        # return self.state, {}
-        return self.state
+        return self.state, {}
+        # return self.state
 
     def cost_fn(self, state, action):
         _state = state - self.reference_point
@@ -177,4 +180,5 @@ class FluidFlow(gym.Env):
         # An episode is done if the system has run for max_episode_steps
         terminated = self.step_count >= max_episode_steps
 
-        return self.state, reward, terminated, {}
+        return self.state, reward, terminated, False, {}
+        # return self.state, reward, terminated, {}

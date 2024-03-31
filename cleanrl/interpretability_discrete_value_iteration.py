@@ -602,18 +602,18 @@ if __name__ == "__main__":
     #     -0.0201005,  # y*z
     #     -0.40703518, # z*z
     # ]).reshape(-1,1)
-    # value_function_weights = torch.tensor([
-    #     [-333.7974], # 1
-    #     [  22.5883], # x
-    #     [  -8.0066], # y
-    #     [-157.5718], # z
-    #     [ 267.9301], # x*x
-    #     [ -80.5217], # x*y
-    #     [ -27.1598], # x*z
-    #     [ 173.2158], # y*y
-    #     [   6.2852], # y*z
-    #     [ 149.4211]  # z*z
-    # ])
+    value_function_weights = torch.tensor([
+        [-333.7974], # 1
+        [  22.5883], # x
+        [  -8.0066], # y
+        [-157.5718], # z
+        [ 267.9301], # x*x
+        [ -80.5217], # x*y
+        [ -27.1598], # x*z
+        [ 173.2158], # y*y
+        [   6.2852], # y*z
+        [ 149.4211]  # z*z
+    ])
     # value_function_weights = torch.tensor([
     #     [-26.9559], # 1
     #     [  1.8241], # x
@@ -794,18 +794,30 @@ if __name__ == "__main__":
     #     [   0.0   ], # y*z
     #     [ 150.0   ]  # z*z
     # ])
-    value_function_weights = torch.tensor([
-        [-300.0   ], # 1
-        [   0.0   ], # x
-        [   0.0   ], # y
-        [   0.0   ], # z
-        [   0.0   ], # x*x
-        [   0.0   ], # x*y
-        [   0.0   ], # x*z
-        [ 200.0   ], # y*y
-        [   0.0   ], # y*z
-        [ 150.0   ]  # z*z
-    ])
+    # value_function_weights = torch.tensor([
+    #     [-300.0   ], # 1
+    #     [   0.0   ], # x
+    #     [   0.0   ], # y
+    #     [   0.0   ], # z
+    #     [   0.0   ], # x*x
+    #     [   0.0   ], # x*y
+    #     [   0.0   ], # x*z
+    #     [ 200.0   ], # y*y
+    #     [   0.0   ], # y*z
+    #     [ 150.0   ]  # z*z
+    # ])
+    # value_function_weights = torch.tensor([
+    #     [   0.0   ], # 1
+    #     [   0.0   ], # x
+    #     [   0.0   ], # y
+    #     [   0.0   ], # z
+    #     [   0.0   ], # x*x
+    #     [   0.0   ], # x*y
+    #     [   0.0   ], # x*z
+    #     [ 200.0   ], # y*y
+    #     [   0.0   ], # y*z
+    #     [   0.0   ]  # z*z
+    # ])
     value_iteration_policy = DiscreteKoopmanValueIterationPolicy(
         env_id=args.env_id,
         gamma=args.gamma,
