@@ -38,7 +38,7 @@ class Generator:
 
                 # Get action from generic policy and get new state
                 action = self.policy.get_action(state)
-                new_state, _, done, _, _ = self.env.step(action)
+                new_state, _, done, _ = self.env.step(action)
 
                 # Update state
                 state = new_state

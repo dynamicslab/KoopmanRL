@@ -19,7 +19,8 @@ scale_factor = 150
 
 # Load in saved trajectory after running
 # `python -m movies.generate_trajectories`
-trajectories_npy_path = "./video_frames/FluidFlow-v0_1711857440"
+#! Change the directory to saved path here
+trajectories_npy_path = "./video_frames/FluidFlow-v0_1712432544"
 trajectories = np.load(f"{trajectories_npy_path}/trajectories.npy") * scale_factor
 trajectory_index = 0
 trajectory = trajectories[trajectory_index]

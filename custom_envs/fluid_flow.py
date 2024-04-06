@@ -180,5 +180,5 @@ class FluidFlow(gym.Env):
         # An episode is done if the system has run for max_episode_steps
         terminated = self.step_count >= max_episode_steps
 
-        return self.state, reward, terminated, False, {}
-        # return self.state, reward, terminated, {}
+        # return self.state, reward, terminated, False, {}
+        return self.state, reward, terminated, {}

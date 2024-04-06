@@ -12,6 +12,7 @@ torch.set_default_dtype(torch.float64)
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from analysis.utils import create_folder
 from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
 
@@ -201,7 +202,8 @@ class Actor(nn.Module):
 
 if __name__ == "__main__":
     args = parse_args()
-    run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
+    curr_time = int(time.time())
+    run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{curr_time}"
     if args.track:
         import wandb
 
@@ -219,6 +221,11 @@ if __name__ == "__main__":
         "hyperparameters",
         "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
     )
+
+    # Create folder for model checkpoints
+    create_folder("./saved_models/")
+    create_folder(f"./saved_models/{args.env_id}/")
+    create_folder(f"./saved_models/{args.env_id}/sac_chkpts_{curr_time}/")
 
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
@@ -368,11 +375,11 @@ if __name__ == "__main__":
                 if args.autotune:
                     writer.add_scalar("losses/alpha_loss", alpha_loss.item(), global_step)
 
-            # Save policy network every so often
+            # Checkpoint policy network every so often
             if global_step % 1000 == 0:
                 torch.save(
                     actor.state_dict(),
-                    f'./saved_models/{args.env_id}/sac_actor.pt'
+                    f"./saved_models/{args.env_id}/sac_chkpts_{curr_time}/step_{global_step}.pt"
                 )
 
     envs.close()
