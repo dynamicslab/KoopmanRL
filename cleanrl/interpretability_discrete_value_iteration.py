@@ -7,6 +7,7 @@ import time
 import torch
 torch.set_default_dtype(torch.float64)
 
+from analysis.utils import create_folder
 from custom_envs import *
 from distutils.util import strtobool
 from koopman_tensor.torch_tensor import KoopmanTensor
@@ -18,28 +19,23 @@ delta = torch.finfo(torch.float64).eps # 2.220446049250313e-16
 class DiscreteKoopmanValueIterationPolicy:
     def __init__(
         self,
-        env_id,
+        args,
         gamma,
         alpha,
         dynamics_model: KoopmanTensor,
         all_actions,
         cost,
-        save_data_path,
         use_ols=True,
         learning_rate=0.003,
         dt=None,
-        seed=123,
-        load_model=False,
-        initial_value_function_weights=None,
-        args=None,
     ):
         """
         Initialize DiscreteKoopmanValueIterationPolicy.
 
         Parameters
         ----------
-        env_id : str
-            The name of the environment.
+        args
+            The command line arguments parsed using argparse.
         gamma : float
             The discount factor of the system.
         alpha : float
@@ -50,8 +46,6 @@ class DiscreteKoopmanValueIterationPolicy:
             The actions that the policy can take.
         cost : function
             The cost function of the system. Function must take in states and actions and return scalars.
-        save_data_path : str
-            The path to save the training data and policy model.
         use_ols : bool, optional
             Boolean to indicate whether or not to use OLS in computing new value function weights,
             by default True.
@@ -61,8 +55,6 @@ class DiscreteKoopmanValueIterationPolicy:
             The time step of the system, by default 1.0.
         seed : int, optional
             Random seed for reproducibility, by default 123.
-        load_model : bool, optional
-            Boolean indicating whether or not to load a saved model, by default False.
         initial_value_function_weights : float[], optional
             Array of float coefficients for the value function features. None by default.
         args : ..., optional
@@ -74,10 +66,12 @@ class DiscreteKoopmanValueIterationPolicy:
             Instance of the DiscreteKoopmanValueIterationPolicy class.
         """
 
-        self.seed = seed
-        random.seed(seed)
-        np.random.seed(seed)
-        torch.manual_seed(seed)
+        self.env_id = args.env_id
+
+        self.seed = args.seed
+        random.seed(self.seed)
+        np.random.seed(self.seed)
+        torch.manual_seed(self.seed)
         torch.backends.cudnn.deterministic = args.torch_deterministic
 
         self.gamma = gamma
@@ -85,7 +79,8 @@ class DiscreteKoopmanValueIterationPolicy:
         self.dynamics_model = dynamics_model
         self.all_actions = all_actions
         self.cost = cost
-        self.save_data_path = save_data_path + "/" + env_id
+        self.start_timestamp = int(time.time())
+        self.save_data_path = f"./saved_models/{self.env_id}/skvi_chkpts_{self.start_timestamp}"
         self.use_ols = use_ols
         self.learning_rate = learning_rate
         self.dt = dt
@@ -94,27 +89,30 @@ class DiscreteKoopmanValueIterationPolicy:
 
         self.discount_factor = self.gamma**self.dt
 
-        self.has_initial_value_function_weights = initial_value_function_weights is not None
-
-        if load_model:
-            if self.has_initial_value_function_weights:
-                self.value_function_weights = initial_value_function_weights
-            else:
-                self.value_function_weights = torch.load(f"{self.save_data_path}/policy.pt")
+        if self.use_ols:
+            self.value_function_weights = torch.zeros((self.dynamics_model.phi_dim, 1))
         else:
-            if self.use_ols:
-                if self.has_initial_value_function_weights:
-                    self.value_function_weights = initial_value_function_weights
-                else:
-                    self.value_function_weights = torch.zeros((self.dynamics_model.phi_dim, 1))
-            else:
-                if self.has_initial_value_function_weights:
-                    self.value_function_weights = torch.tensor(initial_value_function_weights, requires_grad=True)
-                else:
-                    self.value_function_weights = torch.zeros((self.dynamics_model.phi_dim, 1), requires_grad=True)
-
-        if not self.use_ols:
+            self.value_function_weights = torch.zeros((self.dynamics_model.phi_dim, 1), requires_grad=True)
             self.value_function_optimizer = torch.optim.Adam([self.value_function_weights], lr=self.learning_rate)
+
+    def load_model(
+        self,
+        value_function_weights=None,
+        trained_model_start_timestamp=None,
+        chkpt_epoch_number=None,
+    ):
+        # If provided, use value function weights
+        # Make sure to enable gradient computations if not using OLS
+        # Otherwise, load a previously trained model with given start timestamp and epoch number
+        if value_function_weights is not None:
+            if self.use_ols:
+                self.value_function_weights = torch.tensor(value_function_weights)
+            else:
+                self.value_function_weights = torch.tensor(value_function_weights, requires_grad=True)
+        else:
+            self.value_function_weights = torch.load(
+                f"./saved_models/{self.env_id}/skvi_chkpts_{trained_model_start_timestamp}/epoch_{chkpt_epoch_number}.pt"
+            )
 
     def pis(self, xs):
         """
@@ -382,6 +380,9 @@ class DiscreteKoopmanValueIterationPolicy:
         After running this function, you can call `policy.get_action(x)` to get an action using the trained policy.
         """
 
+        # Create all directories needed to save data
+        create_folder(f"{self.save_data_path}/training_data")
+
         # Save original gamma and set gamma to first in array
         original_gamma = self.gamma
         if len(gammas) > 0:
@@ -577,18 +578,15 @@ if __name__ == "__main__":
 
     # Construct value iteration policy
     # value_iteration_policy = DiscreteKoopmanValueIterationPolicy(
-    #     env_id=args.env_id,
+    # .   args=args
     #     gamma=args.gamma,
     #     alpha=args.alpha,
     #     dynamics_model=koopman_tensor,
     #     all_actions=all_actions,
     #     cost=envs.envs[0].vectorized_cost_fn,
-    #     save_data_path="./saved_models",
     #     use_ols=True,
     #     learning_rate=args.lr,
     #     dt=dt,
-    #     seed=args.seed,
-    #     args=args
     # )
     # value_function_weights = torch.tensor([
     #     -0.12562814, # 1
@@ -819,20 +817,20 @@ if __name__ == "__main__":
     #     [   0.0   ]  # z*z
     # ])
     value_iteration_policy = DiscreteKoopmanValueIterationPolicy(
-        env_id=args.env_id,
+        args=args,
         gamma=args.gamma,
         alpha=args.alpha,
         dynamics_model=koopman_tensor,
         all_actions=all_actions,
         cost=envs.envs[0].vectorized_cost_fn,
-        save_data_path="./saved_models",
         use_ols=True,
         learning_rate=args.lr,
         dt=dt,
-        seed=args.seed,
-        load_model=True,
-        initial_value_function_weights=value_function_weights,
-        args=args
+    )
+    value_iteration_policy.load_model(
+        value_function_weights=value_function_weights,
+        trained_model_start_timestamp=None,
+        chkpt_epoch_number=None
     )
 
     # Use Koopman tensor training data to train policy

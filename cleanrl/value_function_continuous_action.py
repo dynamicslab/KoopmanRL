@@ -106,22 +106,26 @@ def load_koopman_value_iteration_policy(
     seed,
     gamma=0.99,
     alpha=1.0,
-    initial_value_function_weights=None,
+    value_function_weights=None,
+    trained_model_start_timestamp=None,
+    epoch_number=None,
     args=None,
 ):
-    return DiscreteKoopmanValueIterationPolicy(
-        env_id=env_id,
+    policy = DiscreteKoopmanValueIterationPolicy(
+        args=args,
         gamma=gamma,
         alpha=alpha,
         dynamics_model=tensor,
         all_actions=all_actions,
         cost=cost,
-        save_data_path=f"../saved_models/{env_id}",
-        seed=seed,
-        load_model=True,
-        initial_value_function_weights=initial_value_function_weights,
-        args=args
     )
+    policy.load_model(
+        value_function_weights=value_function_weights,
+        trained_model_start_timestamp=trained_model_start_timestamp,
+        epoch_number=epoch_number
+    )
+
+    return policy
 
 
 # ALGO LOGIC: initialize agent here:

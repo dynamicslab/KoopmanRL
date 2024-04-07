@@ -52,7 +52,15 @@ class LQR(Policy):
 
 
 class SKVI(Policy):
-    def __init__(self, args, envs, saved_koopman_model_name, path_to_checkpoint, device):
+    def __init__(
+        self,
+        args,
+        envs,
+        saved_koopman_model_name,
+        trained_model_start_timestamp,
+        chkpt_epoch_number,
+        device
+    ):
         # Define device
         self.device = device
 
@@ -74,17 +82,17 @@ class SKVI(Policy):
 
         # Load SKVI policy
         self.policy = DiscreteKoopmanValueIterationPolicy(
-            env_id=args.env_id,
+            args=args,
             gamma=args.gamma,
             alpha=args.alpha,
             dynamics_model=self.koopman_tensor,
             all_actions=all_actions,
             cost=envs.envs[0].vectorized_cost_fn,
-            save_data_path=path_to_checkpoint,
-            seed=args.seed,
-            load_model=True,
-            args=args,
-            dt=dt
+            dt=dt,
+        )
+        self.policy.load_model(
+            trained_model_start_timestamp=trained_model_start_timestamp,
+            chkpt_epoch_number=chkpt_epoch_number,
         )
 
     def get_action(self, state, *args, **kwargs):

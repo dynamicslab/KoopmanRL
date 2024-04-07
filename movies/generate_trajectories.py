@@ -37,6 +37,20 @@ args = parser.parse_args()
 device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
 # Help making vectorized envs
+# def make_env(env_id, seed, idx, capture_video, run_name):
+#     def thunk():
+#         env = gym.make(env_id)
+#         env = gym.wrappers.RecordEpisodeStatistics(env)
+#         if capture_video:
+#             if idx == 0:
+#                 env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
+#         env.seed(seed)
+#         env.action_space.seed(seed)
+#         env.observation_space.seed(seed)
+#         return env
+
+#     return thunk
+
 def make_env(env_id, seed):
     def thunk():
         env = gym.make(env_id)
@@ -50,24 +64,26 @@ def make_env(env_id, seed):
 
 # Create gym env with ID
 env = gym.make(args.env_id)
+# envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, False, run_name)])
 envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed)])
 
 """ CREATE YOUR POLICY INSTANCE HERE """
 
 # policy = ZeroPolicy()
 
-policy = LQR(
-    args=args,
-    envs=envs
-)
-
-# policy = SKVI(
+# policy = LQR(
 #     args=args,
-#     envs=envs,
-#     saved_koopman_model_name="path_based_tensor",
-#     path_to_checkpoint=f"./saved_models",
-#     device=device
+#     envs=envs
 # )
+
+policy = SKVI(
+    args=args,
+    envs=envs,
+    saved_koopman_model_name="path_based_tensor",
+    trained_model_start_timestamp=1712513474,
+    chkpt_epoch_number=149,
+    device=device,
+)
 
 # policy = SAKC(
 #     envs=envs,
@@ -78,7 +94,7 @@ policy = LQR(
 """ TRY NOT TO CHANGE ANYTHING BELOW """
 
 # Create generator
-generator = Generator(env, policy)
+generator = Generator(envs, policy)
 
 # Generate trajectories
 trajectories = generator.generate_trajectories(num_trajectories=1) # (num_trajectories, steps_per_trajectory, state_dim)
@@ -101,15 +117,6 @@ else:
 
 for trajectory_num in range(trajectories.shape[0]):
     frames = []
-
-    # Calculate min and max values
-    min_x = trajectories[trajectory_num, :, 0].min()
-    max_x = trajectories[trajectory_num, :, 0].max()
-    min_y = trajectories[trajectory_num, :, 1].min()
-    max_y = trajectories[trajectory_num, :, 1].max()
-    if is_3d_env:
-        min_z = trajectories[trajectory_num, :, 2].min()
-        max_z = trajectories[trajectory_num, :, 2].max()
 
     for step_num in range(trajectories.shape[1]):
         # Set axis limits
@@ -137,6 +144,10 @@ for trajectory_num in range(trajectories.shape[0]):
 
         # Append frame to list for GIF creation
         frames.append(imageio.imread(frame_path))
+
+        # Print out progress
+        if step_num != 0 and step_num % 100 == 0:
+            print(f"Created {step_num} video frames")
 
     gif_path = os.path.join(output_folder, f"trajectory_{trajectory_num}.gif")
     imageio.mimsave(gif_path, frames, duration=0.1)

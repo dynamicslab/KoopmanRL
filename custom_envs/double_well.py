@@ -82,8 +82,8 @@ class DoubleWell(gym.Env):
         # Track number of steps taken
         self.step_count = 0
 
-        return self.state, {}
-        # return self.state
+        # return self.state, {}
+        return self.state
 
     def cost_fn(self, state, action):
         _state = state - self.reference_point
