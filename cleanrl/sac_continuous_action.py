@@ -223,9 +223,8 @@ if __name__ == "__main__":
     )
 
     # Create folder for model checkpoints
-    create_folder("./saved_models/")
-    create_folder(f"./saved_models/{args.env_id}/")
-    create_folder(f"./saved_models/{args.env_id}/sac_chkpts_{curr_time}/")
+    model_chkpt_path = f"./saved_models/{args.env_id}/sac_chkpts_{curr_time}"
+    create_folder(model_chkpt_path)
 
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
@@ -376,10 +375,10 @@ if __name__ == "__main__":
                     writer.add_scalar("losses/alpha_loss", alpha_loss.item(), global_step)
 
             # Checkpoint policy network every so often
-            if global_step % 1000 == 0:
+            if global_step == 0 or (global_step+1) % 1000 == 0:
                 torch.save(
                     actor.state_dict(),
-                    f"./saved_models/{args.env_id}/sac_chkpts_{curr_time}/step_{global_step}.pt"
+                    f"{model_chkpt_path}/step_{global_step+1}.pt"
                 )
 
     envs.close()

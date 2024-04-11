@@ -471,8 +471,8 @@ class DiscreteKoopmanValueIterationPolicy:
                 print(f"Epoch number: {epoch+1}")
 
                 # Every so often, print out and save the model weights and bellman errors
-                if (epoch+1) % how_often_to_chkpt == 0:
-                    torch.save(self.value_function_weights, f"{self.save_data_path}/epoch_{epoch}.pt")
+                if epoch == 0 or (epoch+1) % how_often_to_chkpt == 0:
+                    torch.save(self.value_function_weights, f"{self.save_data_path}/epoch_{epoch+1}.pt")
                     torch.save(bellman_errors, f"{self.save_data_path}/training_data/bellman_errors.pt")
                     print(f"Bellman error at epoch {epoch+1}: {BE}")
 

@@ -12,7 +12,7 @@ from analysis.utils import create_folder
 from custom_envs import *
 from distutils.util import strtobool
 from movies.default_policies import ZeroPolicy
-from movies.algo_policies import LQR, SAKC, SKVI
+from movies.algo_policies import *
 from movies.generator import Generator
 
 # Allow environment ID to be passed as command line argument
@@ -76,20 +76,24 @@ envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed)])
 #     envs=envs
 # )
 
-policy = SKVI(
+# policy = SKVI(
+#     args=args,
+#     envs=envs,
+#     saved_koopman_model_name="path_based_tensor",
+#     trained_model_start_timestamp=1712513474,
+#     chkpt_epoch_number=149,
+#     device=device,
+# )
+
+policy = SAKC(
     args=args,
     envs=envs,
-    saved_koopman_model_name="path_based_tensor",
-    trained_model_start_timestamp=1712513474,
-    chkpt_epoch_number=149,
-    device=device,
+    is_value_based=True,
+    is_koopman=True,
+    chkpt_timestamp=1712808892,
+    chkpt_step_number=50_000,
+    device=device
 )
-
-# policy = SAKC(
-#     envs=envs,
-#     path_to_checkpoint=f"./saved_models/{args.env_id}/sac_chkpts_1889579283/step_999.pt",
-#     device=device
-# )
 
 """ TRY NOT TO CHANGE ANYTHING BELOW """
 

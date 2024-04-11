@@ -103,10 +103,14 @@ class SKVI(Policy):
 
 
 class SAKC(Policy):
-    def __init__(self, envs, path_to_checkpoint, device):
+    def __init__(self, args, envs, is_value_based, is_koopman, chkpt_timestamp, chkpt_step_number, device):
         self.device = device
         self.policy = Actor(envs).to(device)
-        self.policy.load_state_dict(path_to_checkpoint)
+        if is_value_based:
+            path_to_state_dict = f"./saved_models/{args.env_id}/value_based_sa{'k' if is_koopman else ''}c_chkpts_{chkpt_timestamp}/step_{chkpt_step_number}.pt"
+        else:
+            path_to_state_dict = f"./saved_models/{args.env_id}/sac_chkpts_{chkpt_timestamp}/step_{chkpt_step_number}.pt"
+        self.policy.load_state_dict(torch.load(path_to_state_dict))
 
     def get_action(self, state, *args, **kwargs):
         actions, _, _ = self.policy.get_action(torch.tensor(state).to(self.device))
