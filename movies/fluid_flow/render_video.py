@@ -20,7 +20,7 @@ scale_factor = 150
 # Load in saved trajectory after running
 # `python -m movies.generate_trajectories`
 #! Change the timestamp or directory to saved path here
-video_frame_creation_timestamp = 1712809349
+video_frame_creation_timestamp = 1714194153
 trajectories_npy_path = f"./video_frames/FluidFlow-v0_{video_frame_creation_timestamp}"
 trajectories = np.load(f"{trajectories_npy_path}/trajectories.npy") * scale_factor
 trajectory_index = 0

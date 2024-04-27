@@ -89,8 +89,8 @@ policy = SAKC(
     args=args,
     envs=envs,
     is_value_based=True,
-    is_koopman=True,
-    chkpt_timestamp=1712808892,
+    is_koopman=False,
+    chkpt_timestamp=1714193458,
     chkpt_step_number=50_000,
     device=device
 )
@@ -98,7 +98,7 @@ policy = SAKC(
 """ TRY NOT TO CHANGE ANYTHING BELOW """
 
 # Create generator
-generator = Generator(envs, policy)
+generator = Generator(args, envs, policy)
 
 # Generate trajectories
 trajectories = generator.generate_trajectories(num_trajectories=1) # (num_trajectories, steps_per_trajectory, state_dim)
@@ -113,33 +113,47 @@ np.save(f"{output_folder}/trajectories.npy", trajectories)
 
 # Plot trajectories
 fig = plt.figure()
-is_3d_env = args.env_id != 'DoubleWell-v0'
-if is_3d_env:
+is_double_well = args.env_id == 'DoubleWell-v0'
+if not is_double_well:
     ax = fig.add_subplot(111, projection='3d')
 else:
     ax = fig.add_subplot(111)
 
+offset = 0
+if is_double_well:
+    offset = 0
+
 for trajectory_num in range(trajectories.shape[0]):
     frames = []
 
-    for step_num in range(trajectories.shape[1]):
-        # Set axis limits
-        ax.set_xlim(env.state_minimums[0], env.state_maximums[0])
-        ax.set_ylim(env.state_minimums[1], env.state_maximums[1])
-        if is_3d_env:
-            ax.set_zlim(env.state_minimums[2], env.state_maximums[2])
+    full_x = trajectories[trajectory_num, :, 0]
+    full_y = trajectories[trajectory_num, :, 1]
+    full_z = trajectories[trajectory_num, :, 2]
 
-        if is_3d_env:
-            ax.plot3D(
-                trajectories[trajectory_num, :(step_num+1), 0],
-                trajectories[trajectory_num, :(step_num+1), 1],
-                trajectories[trajectory_num, :(step_num+1), 2]
-            )
+    if is_double_well:
+        step_size = 0.1
+        X, Y = np.meshgrid(
+            np.arange(start=env.state_minimums[0]-offset, stop=env.state_maximums[0]+offset+step_size, step=step_size),
+            np.arange(start=env.state_minimums[1]-offset, stop=env.state_maximums[1]+offset+step_size, step=step_size),
+        )
+        Z = env.potential(X, Y)
+
+    for step_num in range(trajectories.shape[1]):
+        x = full_x[:(step_num+1)]
+        y = full_y[:(step_num+1)]
+        z = full_z[:(step_num+1)]
+
+        # Set axis limits
+        ax.set_xlim(env.state_minimums[0]-offset, env.state_maximums[0]+offset)
+        ax.set_ylim(env.state_minimums[1]-offset, env.state_maximums[1]+offset)
+        if not is_double_well:
+            ax.set_zlim(env.state_minimums[2]-offset, env.state_maximums[2]+offset)
+
+        if is_double_well:
+            ax.contour(X, Y, Z)
+            ax.plot(x, y)
         else:
-            ax.plot(
-                trajectories[trajectory_num, :(step_num+1), 0],
-                trajectories[trajectory_num, :(step_num+1), 1]
-            )
+            ax.plot3D(x, y, z)
 
         # Save frame as image
         frame_path = os.path.join(output_folder, f"frame_{step_num}.png")

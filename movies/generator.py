@@ -3,13 +3,14 @@ import random
 import torch
 
 class Generator:
-    def __init__(self, envs, policy, seed=1234):
-        self.seed = seed
+    def __init__(self, args, envs, policy):
+        self.seed = args.seed
         random.seed(self.seed)
         np.random.seed(self.seed)
         torch.manual_seed(self.seed)
 
         self.envs = envs
+        self.is_double_well = args.env_id == 'DoubleWell-v0'
         self.policy = policy
 
     def generate_trajectories(self, num_trajectories, num_steps_per_trajectory=None):
@@ -21,6 +22,8 @@ class Generator:
             # Create new trajectory and reset environment
             trajectory = []
             state = self.envs.reset()
+            if self.is_double_well:
+                potential = self.envs.envs[0].potential()
             dones = [False]
 
             # Set up our loop condition
@@ -41,7 +44,12 @@ class Generator:
             # Loop through trajectory until condition is met
             while check_loop_condition() is False:
                 # Append new state to trajectory
-                trajectory.append(state[0])
+                if self.is_double_well:
+                    trajectory.append(
+                        np.concatenate((state[0], [potential]))
+                    )
+                else:
+                    trajectory.append(state[0])
 
                 # Get action from generic policy and get new state
                 action = self.policy.get_action(state)
@@ -53,6 +61,8 @@ class Generator:
 
                 # Update state
                 state = new_state
+                if self.is_double_well:
+                    potential = self.envs.envs[0].potential()
                 step_num += 1
 
             # Append trajectory to list of trajectories

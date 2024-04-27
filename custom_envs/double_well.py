@@ -66,6 +66,12 @@ class DoubleWell(gym.Env):
         # History of states traversed during the current episode
         self.states = []
 
+    def potential(self, X=None, Y=None):
+        if X is not None and Y is not None:
+            return (X**2 - 1)**2 + Y**2
+
+        return (self.state[0]**2 - 1)**2 + self.state[1]**2
+
     def reset(self, seed=None, options={}):
         # We need the following line to seed self.np_random
         super().reset(seed=seed)
@@ -78,6 +84,7 @@ class DoubleWell(gym.Env):
             size=(self.state_dim,)
         )
         self.states = [self.state]
+        self.potentials = [self.potential()]
 
         # Track number of steps taken
         self.step_count = 0
@@ -178,6 +185,7 @@ class DoubleWell(gym.Env):
         # Update state
         self.state = self.f(self.state, action)
         self.states.append(self.state)
+        self.potentials.append(self.potential())
 
         # Update global step count
         self.step_count += 1
