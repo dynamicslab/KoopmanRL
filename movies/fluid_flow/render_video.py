@@ -4,6 +4,7 @@ import scipy.io
 
 from custom_envs import FluidFlow
 from matplotlib.animation import FuncAnimation
+from matplotlib.colors import ListedColormap
 
 p = scipy.io.loadmat('./movies/fluid_flow/data/POD-COEFFS.mat')
 alpha = p['alpha'] # (17000, 8)
@@ -11,6 +12,8 @@ p2 = scipy.io.loadmat('./movies/fluid_flow/data/POD-MODES.mat')
 Xavg = p2['Xavg'] # (89351, 1)
 Xdelta = p2['Xdelta'] # (89351, 1)
 Phi = p2['Phi'] # (89351, 8)
+CCcool = scipy.io.loadmat('./movies/fluid_flow/data/CCcool.mat')['CC'] # (64, 3)
+cmap = ListedColormap(CCcool) # Load as a custom color map
 
 # Video constants
 fps = 10
@@ -20,7 +23,7 @@ scale_factor = 150
 # Load in saved trajectory after running
 # `python -m movies.generate_trajectories`
 #! Change the timestamp or directory to saved path here
-video_frame_creation_timestamp = 1714194153
+video_frame_creation_timestamp = 1714233299
 trajectories_npy_path = f"./video_frames/FluidFlow-v0_{video_frame_creation_timestamp}"
 trajectories = np.load(f"{trajectories_npy_path}/trajectories.npy") * scale_factor
 trajectory_index = 0
@@ -37,7 +40,7 @@ for k in range(0, trajectory.shape[0], trajectory.shape[0] // (fps*num_seconds))
 fig = plt.figure(figsize=(8,8))
 
 a = snapshots[0]
-im = plt.imshow(a, cmap='hot', clim=(-1,1))
+im = plt.imshow(a, cmap=cmap, clim=(-1,1))
 
 def animate_func(i):
     if i % fps == 0:
