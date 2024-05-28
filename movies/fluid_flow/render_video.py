@@ -36,6 +36,10 @@ for k in range(0, trajectory.shape[0], trajectory.shape[0] // (fps*num_seconds))
     u = Xavg[:,0] + Phi[:,0] * trajectory[k,0] + Phi[:,1] * trajectory[k,1] + Xdelta[:,0] * trajectory[k,2]
     snapshots.append(u.reshape(449,199).T)
 
+theta = np.linspace(0, 2*np.pi, 100)
+x = 49+25*np.sin(theta)
+y = 99+25*np.cos(theta)
+
 # First set up the figure, the axis, and the plot element we want to animate
 fig = plt.figure(figsize=(8,8))
 
@@ -46,7 +50,11 @@ def animate_func(i):
     if i % fps == 0:
         print( '.', end ='' )
 
+    # Update flow
     im.set_array(snapshots[i])
+    # Update cylinder
+    plt.fill(x, y, color=[.3, .3, .3])
+    plt.plot(x, y, 'k', linewidth=1.2)
     return [im]
 
 # Create animation object
