@@ -1,8 +1,11 @@
+# Example usage: python -m movies.generate_trajectories --env-id=FluidFlow-v0
+
 # Imports
 import argparse
 import gym
 import imageio.v2 as imageio
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 import numpy as np
 import os
 import time
@@ -90,7 +93,7 @@ policy = SAKC(
     envs=envs,
     is_value_based=True,
     is_koopman=True,
-    chkpt_timestamp=1714232570,
+    chkpt_timestamp=1719200487,
     chkpt_step_number=50_000,
     device=device
 )
@@ -115,17 +118,22 @@ np.save(f"{output_folder}/costs.npy", costs)
 # Plot trajectories
 trajectory_fig = plt.figure()
 is_double_well = args.env_id == 'DoubleWell-v0'
-if not is_double_well:
-    trajectory_ax = trajectory_fig.add_subplot(111, projection='3d')
-else:
-    trajectory_ax = trajectory_fig.add_subplot(111)
+# if not is_double_well:
+    # trajectory_ax = trajectory_fig.add_subplot(111, projection='3d')
+# else:
+    # trajectory_ax = trajectory_fig.add_subplot(111)
+trajectory_ax = trajectory_fig.add_subplot(111, projection='3d')
 
 for trajectory_num in range(trajectories.shape[0]):
     trajectory_frames = []
 
     full_x = trajectories[trajectory_num, :, 0]
     full_y = trajectories[trajectory_num, :, 1]
-    full_z = trajectories[trajectory_num, :, 2]
+    if is_double_well:
+        full_u = trajectories[trajectory_num, :, 2]
+        full_z = trajectories[trajectory_num, :, 3]
+    else:
+        full_z = trajectories[trajectory_num, :, 2]
 
     if is_double_well:
         step_size = 0.1
@@ -133,12 +141,15 @@ for trajectory_num in range(trajectories.shape[0]):
             np.arange(start=env.state_minimums[0], stop=env.state_maximums[0]+step_size, step=step_size),
             np.arange(start=env.state_minimums[1], stop=env.state_maximums[1]+step_size, step=step_size),
         )
-        Z = env.potential(X, Y)
 
     for step_num in range(trajectories.shape[1]):
         x = full_x[:(step_num+1)]
         y = full_y[:(step_num+1)]
         z = full_z[:(step_num+1)]
+        if is_double_well:
+            u = full_u[:(step_num+1)]
+            Z = env.potential(X, Y, u[step_num])
+            Z_path = env.potential(x, y, u[step_num])
 
         # Set axis limits
         trajectory_ax.set_xlim(env.state_minimums[0], env.state_maximums[0])
@@ -147,8 +158,13 @@ for trajectory_num in range(trajectories.shape[0]):
             trajectory_ax.set_zlim(env.state_minimums[2], env.state_maximums[2])
 
         if is_double_well:
+            # trajectory_ax.contour(X, Y, Z)
+            # trajectory_ax.plot(x, y)
+
             trajectory_ax.contour(X, Y, Z)
-            trajectory_ax.plot(x, y)
+            trajectory_ax.plot3D(x, y, Z_path, alpha=1.0, linewidth=2, color='black')
+            trajectory_ax.plot_surface(X, Y, Z, alpha=0.7, cmap=cm.coolwarm)
+            trajectory_ax.set_zlim(0,15)
         else:
             trajectory_ax.plot3D(x, y, z)
 

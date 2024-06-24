@@ -1,3 +1,5 @@
+# Example usage: python -m movies.fluid_flow.render_video
+
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.io
@@ -44,7 +46,7 @@ y = 99+25*np.cos(theta)
 fig = plt.figure(figsize=(8,8))
 
 a = snapshots[0]
-im = plt.imshow(a, cmap=cmap, clim=(-1,1))
+im = plt.imshow(a, cmap=cmap, clim=(-5,5))
 
 def animate_func(i):
     if i % fps == 0:

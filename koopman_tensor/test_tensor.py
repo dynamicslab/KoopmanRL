@@ -1,3 +1,5 @@
+# Example usage: python -m koopman_tensor.test_tensor --env-id=Lorenz-v0 --state-order=2 --action-order=2 --save-model=True
+
 """ Imports """
 
 import argparse
@@ -170,14 +172,26 @@ be good so we might just want to include more
 information in the state dictionary for value function
 """
 
-path_based_tensor = KoopmanTensor(
-    X,
-    Y,
-    U,
-    phi=observables.monomials(args.state_order),
-    psi=observables.monomials(args.action_order),
-    regressor=Regressor(args.regressor)
-)
+try:
+    path_based_tensor = KoopmanTensor(
+        X,
+        Y,
+        U,
+        phi=observables.monomials(args.state_order),
+        psi=observables.monomials(args.action_order),
+        regressor=Regressor(args.regressor),
+        dt=env.dt,
+    )
+except:
+    # Assume the error was because there is no dt for LinearSystem
+    path_based_tensor = KoopmanTensor(
+        X,
+        Y,
+        U,
+        phi=observables.monomials(args.state_order),
+        psi=observables.monomials(args.action_order),
+        regressor=Regressor(args.regressor),
+    )
 
 """ Predict sample points """
 
