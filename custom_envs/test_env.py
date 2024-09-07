@@ -20,10 +20,7 @@ args = parser.parse_args()
 
 
 np.random.seed(args.seed)
-
-if args.env_id == "DoubleWell-v0":
-    is_3d_env = False
-else: is_3d_env = True
+is_3d_env = False if args.env_id == "DoubleWell-v0" else True
 
 # Create the environment
 env = gym.make(args.env_id)

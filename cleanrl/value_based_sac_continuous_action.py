@@ -1,3 +1,13 @@
+"""
+Example usage:
+
+Without Koopman Tensor:
+python -m cleanrl.value_based_sac_continuous_action --env-id=FluidFlow-v0 --alpha=1 --autotune=false --total-timesteps=50000
+
+With Koopman Tensor:
+python -m cleanrl.value_based_sac_continuous_action --env-id=FluidFlow-v0 --alpha=1 --autotune=false --total-timesteps=50000 --koopman
+"""
+
 # docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/sac/#sac_continuous_actionpy
 import argparse
 import os
