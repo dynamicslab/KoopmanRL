@@ -43,10 +43,7 @@ args = parser.parse_args()
 
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
-if args.env_id == "DoubleWell-v0":
-    is_3d_env = False
-else:
-    is_3d_env = True
+is_3d_env = False if args.env_id == "DoubleWell-v0" else True
 env = gym.make(args.env_id)
 env.observation_space.seed(args.seed)
 env.action_space.seed(args.seed)
@@ -54,26 +51,23 @@ env.action_space.seed(args.seed)
 """ Collect data """
 
 state_dim = env.observation_space.shape
-if len(state_dim) == 0:
-    state_dim = 1
-else:
-    state_dim = state_dim[0]
+state_dim = 1 if len(state_dim) == 0 else state_dim[0]
 action_dim = env.action_space.shape
-if len(action_dim) == 0:
-    action_dim = 1
-else:
-    action_dim = action_dim[0]
+action_dim = 1 if len(action_dim) == 0 else action_dim[0]
 
 print(f"\nState dimension: {state_dim}")
 print(f"Action dimension: {action_dim}\n")
 
 # Path-based data collection
+# i.e. generate a bunch of independent paths
+# and train the Koopman tensor on those transitions
 X = torch.zeros((args.num_paths, args.num_steps_per_path, state_dim))
 Y = torch.zeros_like(X)
 U = torch.zeros((args.num_paths, args.num_steps_per_path, action_dim))
 
 for path_num in range(args.num_paths):
     state = env.reset()
+    # state = env.reset(seed=args.seed)
     for step_num in range(args.num_steps_per_path):
         X[path_num, step_num] = torch.tensor(state)
 

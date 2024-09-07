@@ -148,7 +148,7 @@ class LQRPolicy:
 
         Returns
         -------
-        ndarray
+        np.ndarray
             Action from the Linear Quadratic Regulator (LQR) policy.
 
         Notes

@@ -167,7 +167,7 @@ for trajectory_num in range(main_policy_trajectories.shape[0]):
                 plt.tight_layout()
 
                 # Plot values
-                cost_ax.plot(partial_costs)
+                cost_ax.plot(all_cost_ratios)
 
                 # Save trajectory frame as image
                 cost_frame_path = os.path.join(args.data_folder, f"cost_frame_{step_num}.png")

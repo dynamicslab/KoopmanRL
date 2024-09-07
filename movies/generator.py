@@ -14,6 +14,8 @@ class Generator:
         self.policy = policy
 
     def generate_trajectories(self, num_trajectories, num_steps_per_trajectory=None):
+        print(f"Generating {num_trajectories} {'trajectory' if num_trajectories == 1 else 'trajectories'}...")
+
         # Store trajectories in an array
         trajectories = []
         action = [[0]]
@@ -31,7 +33,7 @@ class Generator:
             dones = [False]
 
             # Set up our loop condition
-            # Using lambda functions so the boolean value is not hardcoded and can be recomputed
+            # Using a function so the boolean value is not hardcoded and can be recomputed
             step_num = 0
             def check_loop_condition():
                 if num_steps_per_trajectory is not None:
@@ -78,5 +80,8 @@ class Generator:
         # Cast trajectories into numpy array
         trajectories = np.array(trajectories)
         costs = np.array(costs)
+
+        # Print success message
+        print(f"Finished generating {num_trajectories} {'trajectory' if num_steps_per_trajectory == 1 else 'trajectories'}!")
 
         return trajectories, costs
