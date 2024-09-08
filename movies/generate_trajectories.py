@@ -23,6 +23,8 @@ parser.add_argument('--env-id', default="FluidFlow-v0",
     help='Gym environment (default: FluidFlow-v0)')
 parser.add_argument("--seed", type=int, default=123,
     help="seed of the experiment (default: 123)")
+parser.add_argument('--num-trajectories', type=int, default=1,
+    help="number of trajectories to generate (default: 1)")
 parser.add_argument("--torch-deterministic", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
     help="if toggled, `torch.backends.cudnn.deterministic=False` (default: True)")
 parser.add_argument("--cuda", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
@@ -60,14 +62,15 @@ envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed)])
 
 """ CREATE YOUR POLICY INSTANCES HERE """
 
-# policy = ZeroPolicy()
+# Main policy
+# main_policy = ZeroPolicy(is_2d=True)
 
-# policy = LQR(
+# main_policy = LQR(
 #     args=args,
 #     envs=envs
 # )
 
-# policy = SKVI(
+# main_policy = SKVI(
 #     args=args,
 #     envs=envs,
 #     saved_koopman_model_name="path_based_tensor",
@@ -87,25 +90,30 @@ main_policy = SAKC(
 )
 
 # Baseline policy
-baseline_policy = LQR(
-    args=args,
-    envs=envs
-)
+baseline_policy = ZeroPolicy(is_2d=True)
+
+# baseline_policy = LQR(
+#     args=args,
+#     envs=envs
+# )
 
 # Create generator
 main_policy_generator = Generator(args, envs, main_policy)
 baseline_policy_generator = Generator(args, envs, baseline_policy)
 
 # Generate trajectories
-num_trajectories = 1
+np.random.seed(args.seed)
+torch.manual_seed(args.seed)
 (
     main_policy_trajectories,
     main_policy_costs
-) = main_policy_generator.generate_trajectories(num_trajectories)  # (num_trajectories, steps_per_trajectory, state_dim)
+) = main_policy_generator.generate_trajectories(args.num_trajectories)  # (num_trajectories, steps_per_trajectory, state_dim)
+np.random.seed(args.seed)
+torch.manual_seed(args.seed)
 (
     baseline_policy_trajectories,
     baseline_policy_costs
-) = baseline_policy_generator.generate_trajectories(num_trajectories)  # (num_trajectories, steps_per_trajectory, state_dim)
+) = baseline_policy_generator.generate_trajectories(args.num_trajectories)  # (num_trajectories, steps_per_trajectory, state_dim)
 print("Completed generating trajectories")
 
 # Save additional metadata
@@ -126,7 +134,7 @@ np.save(f"{output_folder}/main_policy_trajectories.npy", main_policy_trajectorie
 np.save(f"{output_folder}/main_policy_costs.npy", main_policy_costs)
 np.save(f"{output_folder}/baseline_policy_trajectories.npy", baseline_policy_trajectories)
 np.save(f"{output_folder}/baseline_policy_costs.npy", baseline_policy_costs)
-np.save(f"{output_folder}/metadata.npy", metadata)
+np.save(f"{output_folder}/metadata.npy", metadata, allow_pickle=True)
 
 # Print out success message and data path
 print(f"Saved trajectories to {output_folder}")

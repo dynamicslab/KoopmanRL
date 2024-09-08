@@ -82,6 +82,6 @@ class Generator:
         costs = np.array(costs)
 
         # Print success message
-        print(f"Finished generating {num_trajectories} {'trajectory' if num_steps_per_trajectory == 1 else 'trajectories'}!")
+        print(f"Finished generating {num_trajectories} {'trajectory' if num_trajectories == 1 else 'trajectories'}!")
 
         return trajectories, costs
