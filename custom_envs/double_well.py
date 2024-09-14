@@ -85,6 +85,9 @@ class DoubleWell(gym.Env):
         self.states = [self.state]
         self.potentials = [self.potential()]
 
+        # Generating randomness up front with a lot of buffer room
+        self.random_draws = np.random.normal(loc=0, scale=1, size=(self.max_episode_steps*10, 2, 1))
+
         # Track number of steps taken
         self.step_count = 0
 
@@ -171,7 +174,7 @@ class DoubleWell(gym.Env):
         ])
 
         drift = self.continuous_f(action)(0, state) * dt
-        diffusion = (sigma_x @ np.random.normal(loc=0, scale=1, size=(2,1)) * np.sqrt(dt))[:, 0]
+        diffusion = (sigma_x @ self.random_draws[self.step_count] * np.sqrt(dt))[:, 0]
         return state + (drift + diffusion)
 
     def step(self, action):
