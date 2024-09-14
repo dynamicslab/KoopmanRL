@@ -1,11 +1,11 @@
 import gym
-# import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
 from gym import spaces
 from gym.envs.registration import register
 from scipy.integrate import solve_ivp
+from typing import Optional
 
 dt = 0.01
 max_episode_steps = int(20 / dt)
@@ -86,7 +86,7 @@ class Lorenz(gym.Env):
         # History of states traversed during the current episode
         self.states = []
 
-    def reset(self, seed=None, options={"state": None}):
+    def reset(self, seed: Optional[int]=None, options: Optional[dict]=None):
         # We need the following line to seed self.np_random
         super().reset(seed=seed)
 
@@ -114,29 +114,34 @@ class Lorenz(gym.Env):
 
     def reward_fn(self, state, action):
         return -self.cost_fn(state, action)
-    
+
     def vectorized_cost_fn(self, states, actions):
         _states = (states - self.reference_point).T
         mat = torch.diag(_states.T @ self.Q @ _states).unsqueeze(-1) + torch.pow(actions.T, 2) * self.R
 
         return mat.T
-    
+
     def vectorized_reward_fn(self, states, actions):
         return -self.vectorized_cost_fn(states, actions)
 
     def continuous_f(self, action=None):
         """
-            True, continuous dynamics of the system.
+        Ground-truth, continuous dynamics of the system.
 
-            INPUTS:
-                action - Action vector. If left as None, then random policy is used.
+        Parameters
+        ----------
+        action : np.ndarray
+            Action vector. If left as None, then random policy is used.
         """
 
         def f_u(t, input):
             """
-                INPUTS:
-                    input - State vector.
-                    t - Timestep.
+            Parameters
+            ----------
+            input : np.ndarray
+                State vector.
+            t : float
+                Timestep.
             """
 
             x, y, z = input
@@ -155,14 +160,18 @@ class Lorenz(gym.Env):
 
     def f(self, state, action):
         """
-            True, discretized dynamics of the system. Pushes forward from (t) to (t + dt) using a constant action.
+        Ground-truth, discretized dynamics of the system. Pushes forward from (t) to (t + dt) using a constant action.
 
-            INPUTS:
-                state - State array.
-                action - Action array.
+        Parameters
+        ----------
+        state : any
+            State array.
+        action : any
+            Action array.
 
-            OUTPUTS:
-                State array pushed forward in time.
+        Returns
+        -------
+            State array pushed forward in time.
         """
 
         soln = solve_ivp(fun=self.continuous_f(action), t_span=[0, dt], y0=state, method='RK45')

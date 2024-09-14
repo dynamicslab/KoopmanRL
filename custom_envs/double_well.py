@@ -4,10 +4,10 @@ import torch
 
 from gym import spaces
 from gym.envs.registration import register
+from typing import Optional
 
 dt = 0.01
 max_episode_steps = int(20 / dt)
-# max_episode_steps = int(2 / dt)
 
 register(
     id='DoubleWell-v0',
@@ -24,7 +24,6 @@ class DoubleWell(gym.Env):
         self.state_range = [-2.0, 2.0]
 
         self.action_range = [-25.0, 25.0]
-        # self.action_range = [-75.0, 75.0]
 
         self.dt = dt
         self.max_episode_steps = max_episode_steps
@@ -67,22 +66,17 @@ class DoubleWell(gym.Env):
         self.states = []
 
     def potential(self, X=None, Y=None, U=0):
-        # if X is not None and Y is not None:
-        #     return (X**2 - 1)**2 + Y**2
-
-        # return (self.state[0]**2 - 1)**2 + self.state[1]**2
-
         if X is not None and Y is not None:
             return (X**2 - 1)**2 + Y**2 + U*X + U*Y
 
         return (self.state[0]**2 - 1)**2 + self.state[1]**2 + U*self.state[0] + U*self.state[1]
 
-    def reset(self, seed=None, options={}):
+    def reset(self, seed: Optional[int]=None, options: Optional[dict]=None):
         # We need the following line to seed self.np_random
+        # Not sure if this will work for any environments that depend on PyTorch
         super().reset(seed=seed)
 
         # Choose the initial state uniformly at random
-        # self.state = self.observation_space.sample()
         self.state = np.random.uniform(
             low=self.state_minimums,
             high=self.state_maximums,
@@ -90,6 +84,9 @@ class DoubleWell(gym.Env):
         )
         self.states = [self.state]
         self.potentials = [self.potential()]
+
+        # Generating randomness up front with a lot of buffer room
+        self.random_draws = np.random.normal(loc=0, scale=1, size=(self.max_episode_steps*10, 2, 1))
 
         # Track number of steps taken
         self.step_count = 0
@@ -106,33 +103,38 @@ class DoubleWell(gym.Env):
 
     def reward_fn(self, state, action):
         return -self.cost_fn(state, action)
-    
+
     def vectorized_cost_fn(self, states, actions):
         _states = (states - self.reference_point).T
         mat = torch.diag(_states.T @ self.Q @ _states).unsqueeze(-1) + torch.pow(actions.T, 2) * self.R
 
         return mat.T
-    
+
     def vectorized_reward_fn(self, states, actions):
         return -self.vectorized_cost_fn(states, actions)
 
     def continuous_f(self, action=None):
         """
-            True, continuous dynamics of the system.
+        Ground-truth, continuous dynamics of the system.
 
-            INPUTS:
-                action - Action vector. If left as None, then random policy is used.
+        Parameters
+        ----------
+        action : np.ndarray
+            Action vector. If left as None, then random policy is used.
         """
 
         def f_u(t, input):
             """
-                INPUTS:
-                    t - Timestep.
-                    input - State vector.
+            Parameters
+            ----------
+            t : float
+                Timestep.
+            input : np.ndarray
+                State vector.
             """
 
             x, y = input
-            
+
             u = action
             if u is None:
                 u = np.zeros(self.action_dim)
@@ -141,12 +143,8 @@ class DoubleWell(gym.Env):
                 [4*x - 4*(x**3)],
                 [-2*y]
             ])
-            # sigma_x = np.array([
-            #     [0.7, x],
-            #     [0, 0.5]
-            # ])
 
-            column_output = b_x + u[0] #+ sigma_x @ np.random.normal(loc=0, scale=1, size=(2,1))
+            column_output = b_x + u[0]
             x_dot = column_output[0,0]
             y_dot = column_output[1,0]
 
@@ -156,31 +154,27 @@ class DoubleWell(gym.Env):
 
     def f(self, state, action):
         """
-            True, discretized dynamics of the system. Pushes forward from (t) to (t + dt) using a constant action.
-    
-            INPUTS:
-                state - State array.
-                action - Action array.
+        Ground-truth, discretized dynamics of the system. Pushes forward from (t) to (t + dt) using a constant action.
 
-            OUTPUTS:
-                State array vector pushed forward in time.
+        Parameters
+        ----------
+        state : any
+            State array.
+        action : any
+            Action array.
+
+        Returns
+        -------
+            State array vector pushed forward in time.
         """
 
         sigma_x = np.array([
             [0.7, state[0]],
             [0, 0.5]
         ])
-        # sigma_x = np.array([
-        #     [0.7, 0],
-        #     [0, 0.5]
-        # ])
-        # sigma_x = np.array([
-        #     [0, 0],
-        #     [0, 0]
-        # ])
 
         drift = self.continuous_f(action)(0, state) * dt
-        diffusion = (sigma_x @ np.random.normal(loc=0, scale=1, size=(2,1)) * np.sqrt(dt))[:, 0]
+        diffusion = (sigma_x @ self.random_draws[self.step_count] * np.sqrt(dt))[:, 0]
         return state + (drift + diffusion)
 
     def step(self, action):

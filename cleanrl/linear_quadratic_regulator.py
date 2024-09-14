@@ -1,3 +1,8 @@
+"""
+Example usage:
+python -m cleanrl.linear_quadratic_regulator --env-id=FluidFlow-v0 --alpha=1 --total-timesteps=50000
+"""
+
 import argparse
 import gym
 import numpy as np
@@ -148,7 +153,7 @@ class LQRPolicy:
 
         Returns
         -------
-        ndarray
+        np.ndarray
             Action from the Linear Quadratic Regulator (LQR) policy.
 
         Notes
@@ -212,6 +217,9 @@ if __name__ == "__main__":
         "hyperparameters",
         "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
     )
+
+    # Set seed
+    np.random.seed(args.seed)
 
     envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, False, run_name)])
 

@@ -1,3 +1,8 @@
+"""
+Example usage:
+python -m cleanrl.discrete_value_iteration --env-id=FluidFlow-v0 --alpha=1 --num-training-epochs=150 --total-timesteps=50000
+"""
+
 import argparse
 import gym
 import numpy as np
@@ -434,7 +439,7 @@ class DiscreteKoopmanValueIterationPolicy:
                 # Softmax distribution
                 pi_us = torch.exp(diff) + delta # (all_actions.shape[1], batch_size)
                 Z_x = torch.sum(pi_us, axis=0) # (batch_size,)
-                pis_response = pi_us / Z_x # (all_actions.shape[1], batch_size)                
+                pis_response = pi_us / Z_x # (all_actions.shape[1], batch_size)
 
                 # Compute log pi
                 log_pis = torch.log(pis_response) # (all_actions.shape[1], batch_size)

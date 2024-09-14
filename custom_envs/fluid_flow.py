@@ -1,11 +1,11 @@
 import gym
-#gymnasium==0.28.1 ; python_version >= "3.8" and python_version < "3.11"
 import numpy as np
 import torch
 
 from gym import spaces
 from gym.envs.registration import register
 from scipy.integrate import solve_ivp
+from typing import Optional
 
 dt = 0.01
 max_episode_steps = int(20 / dt)
@@ -80,8 +80,9 @@ class FluidFlow(gym.Env):
         # History of states traversed during the current episode
         self.states = []
 
-    def reset(self, state=None, seed=None, options={}):
+    def reset(self, state=None, seed: Optional[int]=None, options: Optional[dict]=None):
         # We need the following line to seed self.np_random
+        # Not sure if this will work for any environments that depend on PyTorch
         super().reset(seed=seed)
 
         # Choose the initial state uniformly at random
@@ -111,29 +112,34 @@ class FluidFlow(gym.Env):
 
     def reward_fn(self, state, action):
         return -self.cost_fn(state, action)
-    
+
     def vectorized_cost_fn(self, states, actions):
         _states = (states - self.reference_point).T
         mat = torch.diag(_states.T @ self.Q @ _states).unsqueeze(-1) + torch.pow(actions.T, 2) * self.R
 
         return mat.T
-    
+
     def vectorized_reward_fn(self, states, actions):
         return -self.vectorized_cost_fn(states, actions)
-    
+
     def continuous_f(self, action=None):
         """
-            True, continuous dynamics of the system.
+        Ground-truth, continuous dynamics of the system.
 
-            INPUTS:
-                action - Action vector. If left as None, then random policy is used.
+        Parameters
+        ----------
+        action : np.ndarray
+            Action vector. If left as None, then random policy is used.
         """
 
         def f_u(t, input):
             """
-                INPUTS:
-                    t - Timestep.
-                    input - State vector.
+            Parameters
+            ----------
+            t : float
+                Timestep.
+            input : np.ndarray
+                State vector.
             """
 
             x, y, z = input
@@ -152,14 +158,18 @@ class FluidFlow(gym.Env):
 
     def f(self, state, action):
         """
-            True, discretized dynamics of the system. Pushes forward from (t) to (t + dt) using a constant action.
+        Ground-truth, discretized dynamics of the system. Pushes forward from (t) to (t + dt) using a constant action.
 
-            INPUTS:
-                state - State array.
-                action - Action array.
+        Parameters
+        ----------
+        state : any
+            State array.
+        action : any
+            Action array.
 
-            OUTPUTS:
-                State array pushed forward in time.
+        Returns
+        -------
+            State array pushed forward in time.
         """
 
         soln = solve_ivp(fun=self.continuous_f(action), t_span=[0, dt], y0=state, method='RK45')
