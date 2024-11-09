@@ -1,6 +1,6 @@
 """
 Example usage:
-python -m movies.generate_gifs --save-every-n-steps=100 --data-folder=./video_frames/FluidFlow-v0_1723125311
+python -m movies.generate_gifs_zero_policy --save-every-n-steps=100 --data-folder=./video_frames/FluidFlow-v0_1723125311
 """
 
 import argparse
@@ -59,7 +59,7 @@ envs = gym.vector.SyncVectorEnv([make_env(metadata['env_id'], args.seed)])
 # Plot trajectories
 for trajectory_num in range(main_policy_trajectories.shape[0]):
     # Create trajectory figure
-    trajectory_fig = plt.figure(figsize=(21, 14), dpi=300)
+    trajectory_fig = plt.figure(figsize=(21, 14), dpi=300, constrained_layout=True)
     trajectory_ax = trajectory_fig.add_subplot(111, projection='3d')
 
     # Create array of frames
@@ -107,17 +107,34 @@ for trajectory_num in range(main_policy_trajectories.shape[0]):
             # Clear the previous plot
             trajectory_ax.clear()
 
+            # Place Green dot at the reference point as determined from the environment with zorder smaller than all other objects
+            trajectory_ax.scatter(envs.envs[0].reference_point[0], envs.envs[0].reference_point[1], envs.envs[0].reference_point[2], color='green', s=100, zorder=1)
+
+
             # Reapply the axis settings
             trajectory_ax.set_xticklabels([])
             trajectory_ax.set_yticklabels([])
             trajectory_ax.set_yticklabels([])
 
-            # Set axis limits
-            trajectory_ax.set_xlim(envs.envs[0].state_minimums[0], envs.envs[0].state_maximums[0])
-            trajectory_ax.set_ylim(envs.envs[0].state_minimums[1], envs.envs[0].state_maximums[1])
-            # trajectory_ax.set_ylim(envs.envs[0].state_minimums[1], 10)
+            # Set axis limits according to the trajectory limits
+            max_x = np.max([np.max(full_x), np.max(full_x_zero)])
+            max_y = np.max([np.max(full_y), np.max(full_y_zero)])
+            max_z = np.max([np.max(full_z), np.max(full_z_zero)])
+            min_x = np.min([np.min(full_x), np.min(full_x_zero)])
+            min_y = np.min([np.min(full_y), np.min(full_y_zero)])
+            min_z = np.min([np.min(full_z), np.min(full_z_zero)])
+
+            trajectory_ax.set_xlim(min_x, max_x)
+            trajectory_ax.set_ylim(min_y, max_y)
             if not is_double_well:
-                trajectory_ax.set_zlim(envs.envs[0].state_minimums[2], envs.envs[0].state_maximums[2])
+                trajectory_ax.set_zlim(min_z, max_z)
+
+
+            # trajectory_ax.set_xlim(envs.envs[0].state_minimums[0], envs.envs[0].state_maximums[0])
+            # trajectory_ax.set_ylim(envs.envs[0].state_minimums[1], envs.envs[0].state_maximums[1])
+            # # trajectory_ax.set_ylim(envs.envs[0].state_minimums[1], 10)
+            # if not is_double_well:
+            #     trajectory_ax.set_zlim(envs.envs[0].state_minimums[2], envs.envs[0].state_maximums[2])
 
             # Plot trajectory
             if is_double_well:
@@ -127,21 +144,31 @@ for trajectory_num in range(main_policy_trajectories.shape[0]):
                 #trajectory_ax.contour(X, Y, Z)
                 # plot the contour associated with the zero policy
 
-                trajectory_ax.plot3D(x, y, Z_path, alpha=1.0, linewidth=2, color='black')
+                trajectory_ax.plot3D(x, y, Z_path, alpha=1.0, linewidth=2, color='black', pad=0.1)
                 trajectory_ax.plot_surface(X, Y, Z, alpha=0.7, cmap=cm.coolwarm)
                 trajectory_ax.set_zlim(0,15)
             else:
                 # Plot 
-                trajectory_ax.plot3D(x, y, z)
+                trajectory_ax.plot3D(x, y, z, zorder=2)
                 # plot the zero trajectory on the same graph
-                trajectory_ax.plot3D(full_x_zero, full_y_zero, full_z_zero)
+                trajectory_ax.plot3D(x_zero, y_zero, z_zero, zorder=2)
 
 
                 # Adjust the view angle for better visibility
-                trajectory_ax.view_init(elev=20, azim=45)
+                # trajectory_ax.view_init(elev=20, azim=45)
 
                 # Adjust layout to reduce white space
-                plt.tight_layout(pad=0.1)
+                plt.tight_layout(pad=0.01)
+
+                # Turn off grid
+                trajectory_ax.grid(False)
+
+                # Turn off axis
+                trajectory_ax.set_axis_off()
+
+                
+                # Make legend with hard coded names for each series
+                trajectory_ax.legend(['Target Point', 'Main Policy Trajectory', 'Zero Policy Trajectory'])
 
             # Save trajectory frame as image
             trajectory_frame_path = os.path.join(args.data_folder, f"trajectory_frame_{step_num+1}.png")
@@ -161,7 +188,7 @@ for trajectory_num in range(main_policy_trajectories.shape[0]):
 
 
     # Create cost figure
-    cost_fig = plt.figure(figsize=(17, 11), dpi=300)
+    cost_fig = plt.figure(figsize=(21, 14), dpi=300)
     cost_ax = cost_fig.add_subplot(111)
 
     for cost_num in range(main_policy_costs.shape[0]):
@@ -171,20 +198,26 @@ for trajectory_num in range(main_policy_trajectories.shape[0]):
         all_main_costs = main_policy_costs[cost_num]
         all_baseline_costs = baseline_policy_costs[cost_num]
         all_cost_ratios = all_main_costs / all_baseline_costs
-        min_ratio = np.min(all_cost_ratios)
-        max_ratio = np.max(all_cost_ratios)
+        log_all_cost_ratios = np.log(all_main_costs / all_baseline_costs)
+        # min_cost_ratio = np.min(all_cost_ratios)
+        # max_cost_ratio = np.max(all_cost_ratios)
+        min_log_cost_ratio = np.min(log_all_cost_ratios)
+        max_log_cost_ratio = np.max(log_all_cost_ratios)
 
         for step_num in range(main_policy_costs.shape[1]):
             if step_num == 0 or (step_num+1) % args.save_every_n_steps == 0:  # Only save every n steps
-                cost_ratio = all_cost_ratios[:(step_num+1)]
+                # cost_ratio = all_cost_ratios[:(step_num+1)]
+                log_cost_ratio = log_all_cost_ratios[:(step_num+1)]
 
                 # Clear the previous plot
                 cost_ax.clear()
 
                 # Set axis limits
                 cost_ax.set_xlim(0, main_policy_costs.shape[1])
-                # cost_ax.set_ylim(max(0, min_ratio * 0.9), max_ratio * 1.1)
-                cost_ax.set_ylim(max(0, min_ratio * 0.9), 10)
+                # cost_ax.set_ylim(max(0, min_cost_ratio * 0.9), max_cost_ratio * 1.1)
+                cost_ax.set_ylim(min_log_cost_ratio * 1.1, max_log_cost_ratio * 1.1)
+                # cost_ax.set_ylim(0, 100)
+
                 # Set axis labels
                 cost_ax.set_xlabel("Steps")
                 cost_ax.set_ylabel(f"Cost Ratio ({metadata['main_policy_name']} / {metadata['baseline_policy_name']})")
@@ -192,17 +225,20 @@ for trajectory_num in range(main_policy_trajectories.shape[0]):
                 # Set axis title
                 cost_ax.set_title(f"Cost Ratio: {metadata['main_policy_name']} / {metadata['baseline_policy_name']}")
 
-                # Plot a horizontal line at y=1
-                cost_ax.axhline(y=1, color='r', linestyle='--')
+                # Plot a horizontal line at y=0
+                cost_ax.axhline(y=0, color='r', linestyle='--')
 
-                # Turn on grid lines
-                cost_ax.grid()
+                # Turn off grid lines
+                cost_ax.grid(False)
+
+                # Make Title larger
+                cost_ax.title.set_fontsize(20)
 
                 # Adjust layout to reduce white space
-                plt.tight_layout()
+                plt.tight_layout(pad=0.1)
 
                 # Plot values
-                cost_ax.plot(cost_ratio)
+                cost_ax.plot(log_cost_ratio)
 
                 # Save trajectory frame as image
                 cost_frame_path = os.path.join(args.data_folder, f"cost_frame_{step_num+1}.png")

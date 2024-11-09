@@ -83,12 +83,18 @@ envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed)])
 # Zero Policy
 zero_policy = ZeroPolicy(is_2d=True, name = 'Zero_Policy')
 
+# SAKC checkpt for linear system -- 1726405258
+# SAKC checkpt for  -- 1726402862
+
 main_policy = SAKC(
     args=args,
     envs=envs,
     is_value_based=True,
     is_koopman=True,
-    chkpt_timestamp=1726405258,
+    # chkpt_timestamp=1726405258,  # linear system
+    # chkpt_timestamp=1726405630,  # Fluid Flow
+    chkpt_timestamp=1726406022,  # Lorenz
+    # chkpt_timestamp=1731169975,  # Double Well
     chkpt_step_number=50_000,
     device=device,
     name = 'SAKC'
@@ -109,7 +115,10 @@ baseline_policy = SAKC(
     envs=envs,
     is_value_based=True,
     is_koopman=False,
-    chkpt_timestamp=1726402862,
+    # chkpt_timestamp=1726402862,  # linear system
+    # chkpt_timestamp=1726403302,  # Fluid Flow
+    chkpt_timestamp=1726403745,  # Lorenz
+    # chkpt_timestamp=1731170342,  # Double Well
     chkpt_step_number=50_000,
     device=device,
     name = 'SAC(V)'
@@ -118,20 +127,26 @@ baseline_policy = SAKC(
 # Create generator
 main_policy_generator = Generator(args, envs, main_policy)
 baseline_policy_generator = Generator(args, envs, baseline_policy)
+zero_policy_generator = Generator(args, envs, zero_policy)
+
+
+def reset_seed():
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
 
 # Generate trajectories
-np.random.seed(args.seed)
-torch.manual_seed(args.seed)
+reset_seed()
 (
     main_policy_trajectories,
     main_policy_costs
 ) = main_policy_generator.generate_trajectories(args.num_trajectories)  # (num_trajectories, steps_per_trajectory, state_dim)
-np.random.seed(args.seed)
-torch.manual_seed(args.seed)
+reset_seed()
 (
     baseline_policy_trajectories,
     baseline_policy_costs
 ) = baseline_policy_generator.generate_trajectories(args.num_trajectories)  # (num_trajectories, steps_per_trajectory, state_dim)
+reset_seed()
+zero_policy_trajectories, zero_policy_costs = zero_policy_generator.generate_trajectories(args.num_trajectories)  # (num_trajectories, steps_per_trajectory, state_dim)
 print("Completed generating trajectories")
 
 # Save additional metadata
@@ -139,6 +154,7 @@ metadata = {
     "env_id": args.env_id,
     "main_policy_name": main_policy.name,
     "baseline_policy_name": baseline_policy.name,
+    "zero_policy_name": zero_policy.name,
 }
 print(f"Metadata: {metadata}")
 
