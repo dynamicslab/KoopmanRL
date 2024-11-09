@@ -63,19 +63,19 @@ envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed)])
 """ CREATE YOUR POLICY INSTANCES HERE """
 
 # Main policy
-# main_policy = ZeroPolicy(is_2d=True)
+# main_policy = ZeroPolicy(is_2d=True, name="Uncontrolled")
 
 # main_policy = LQR(
 #     args=args,
-#     envs=envs
+#     envs=envs,
 # )
 
 # main_policy = SKVI(
 #     args=args,
 #     envs=envs,
 #     saved_koopman_model_name="path_based_tensor",
-#     trained_model_start_timestamp=1712513474,
-#     chkpt_epoch_number=149,
+#     trained_model_start_timestamp=1726408690,
+#     chkpt_epoch_number=150,
 #     device=device,
 # )
 
@@ -84,18 +84,29 @@ main_policy = SAKC(
     envs=envs,
     is_value_based=True,
     is_koopman=True,
-    chkpt_timestamp=1719200487,
+    chkpt_timestamp=1730943305,
     chkpt_step_number=50_000,
-    device=device
+    device=device,
 )
 
 # Baseline policy
-baseline_policy = ZeroPolicy(is_2d=True)
+# baseline_policy = ZeroPolicy(is_2d=True, name="Uncontrolled")
 
 # baseline_policy = LQR(
 #     args=args,
-#     envs=envs
+#     envs=envs,
 # )
+
+baseline_policy = SAKC(
+    args=args,
+    envs=envs,
+    is_value_based=True,
+    is_koopman=False,
+    chkpt_timestamp=1726403302,
+    chkpt_step_number=50_000,
+    device=device,
+    name="SAC (V)",
+)
 
 # Create generator
 main_policy_generator = Generator(args, envs, main_policy)
@@ -119,8 +130,8 @@ print("Completed generating trajectories")
 # Save additional metadata
 metadata = {
     "env_id": args.env_id,
-    "main_policy_name": main_policy.__class__.__name__,
-    "baseline_policy_name": baseline_policy.__class__.__name__,
+    "main_policy_name": main_policy.name,
+    "baseline_policy_name": baseline_policy.name,
 }
 print(f"Metadata: {metadata}")
 

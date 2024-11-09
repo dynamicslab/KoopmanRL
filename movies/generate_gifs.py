@@ -145,19 +145,25 @@ for trajectory_num in range(main_policy_trajectories.shape[0]):
         all_main_costs = main_policy_costs[cost_num]
         all_baseline_costs = baseline_policy_costs[cost_num]
         all_cost_ratios = all_main_costs / all_baseline_costs
-        min_ratio = np.min(all_cost_ratios)
-        max_ratio = np.max(all_cost_ratios)
+        log_all_cost_ratios = np.log(all_main_costs / all_baseline_costs)
+        # min_cost_ratio = np.min(all_cost_ratios)
+        # max_cost_ratio = np.max(all_cost_ratios)
+        min_log_cost_ratio = np.min(log_all_cost_ratios)
+        max_log_cost_ratio = np.max(log_all_cost_ratios)
 
         for step_num in range(main_policy_costs.shape[1]):
             if step_num == 0 or (step_num+1) % args.save_every_n_steps == 0:  # Only save every n steps
-                cost_ratio = all_cost_ratios[:(step_num+1)]
+                # cost_ratio = all_cost_ratios[:(step_num+1)]
+                log_cost_ratio = log_all_cost_ratios[:(step_num+1)]
 
                 # Clear the previous plot
                 cost_ax.clear()
 
                 # Set axis limits
                 cost_ax.set_xlim(0, main_policy_costs.shape[1])
-                cost_ax.set_ylim(max(0, min_ratio * 0.9), max_ratio * 1.1)
+                # cost_ax.set_ylim(max(0, min_cost_ratio * 0.9), max_cost_ratio * 1.1)
+                cost_ax.set_ylim(min_log_cost_ratio * 1.1, max_log_cost_ratio * 1.1)
+                # cost_ax.set_ylim(0, 100)
 
                 # Set axis labels
                 cost_ax.set_xlabel("Steps")
@@ -167,7 +173,8 @@ for trajectory_num in range(main_policy_trajectories.shape[0]):
                 cost_ax.set_title(f"Cost Ratio: {metadata['main_policy_name']} / {metadata['baseline_policy_name']}")
 
                 # Plot a horizontal line at y=1
-                cost_ax.axhline(y=1, color='r', linestyle='--')
+                # cost_ax.axhline(y=1, color='r', linestyle='--')  # Line at y=1 if using cost ratio
+                cost_ax.axhline(y=0, color='r', linestyle='--')  # Line at y=0 using log cost ratio
 
                 # Turn on grid lines
                 cost_ax.grid()
@@ -176,7 +183,8 @@ for trajectory_num in range(main_policy_trajectories.shape[0]):
                 plt.tight_layout()
 
                 # Plot values
-                cost_ax.plot(cost_ratio)
+                # cost_ax.plot(cost_ratio)
+                cost_ax.plot(log_cost_ratio)
 
                 # Save trajectory frame as image
                 cost_frame_path = os.path.join(args.data_folder, f"cost_frame_{step_num+1}.png")

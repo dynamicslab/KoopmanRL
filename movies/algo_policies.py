@@ -9,7 +9,7 @@ from movies import Policy
 
 
 class LQR(Policy):
-    def __init__(self, args, envs):
+    def __init__(self, args, envs, name=None):
         # Recover dt from environment
         try:
             dt = envs.envs[0].dt
@@ -46,6 +46,14 @@ class LQR(Policy):
                 seed=args.seed
             )
 
+        self._name = name
+
+    @property
+    def name(self):
+        if self._name is None:
+            return self.__class__.__name__
+        return self._name
+
     def get_action(self, state, *args, **kwargs):
         state_col_vec = state.reshape(-1, 1)
         return self.policy.get_action(state_col_vec, **kwargs)
@@ -59,7 +67,8 @@ class SKVI(Policy):
         saved_koopman_model_name,
         trained_model_start_timestamp,
         chkpt_epoch_number,
-        device
+        device,
+        name=None,
     ):
         # Define device
         self.device = device
@@ -95,6 +104,14 @@ class SKVI(Policy):
             chkpt_epoch_number=chkpt_epoch_number,
         )
 
+        self._name = name
+
+    @property
+    def name(self):
+        if self._name is None:
+            return self.__class__.__name__
+        return self._name
+
     def get_action(self, state, *args, **kwargs):
         state_row_vec = state.reshape(1, -1)
         actions = self.policy.get_action(torch.tensor(state_row_vec).to(self.device))
@@ -103,7 +120,17 @@ class SKVI(Policy):
 
 
 class SAKC(Policy):
-    def __init__(self, args, envs, is_value_based, is_koopman, chkpt_timestamp, chkpt_step_number, device):
+    def __init__(
+        self,
+        args,
+        envs,
+        is_value_based,
+        is_koopman,
+        chkpt_timestamp,
+        chkpt_step_number,
+        device,
+        name=None,
+    ):
         self.device = device
         self.policy = Actor(envs).to(device)
         if is_value_based:
@@ -111,6 +138,13 @@ class SAKC(Policy):
         else:
             path_to_state_dict = f"./saved_models/{args.env_id}/sac_chkpts_{chkpt_timestamp}/step_{chkpt_step_number}.pt"
         self.policy.load_state_dict(torch.load(path_to_state_dict))
+        self._name = name
+
+    @property
+    def name(self):
+        if self._name is None:
+            return self.__class__.__name__
+        return self._name
 
     def get_action(self, state, *args, **kwargs):
         actions, _, _ = self.policy.get_action(torch.tensor(state).to(self.device))
