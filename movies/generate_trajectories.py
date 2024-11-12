@@ -1,6 +1,6 @@
 """
 Example usage:
-python -m movies.generate_trajectories --env-id=FluidFlow-v0
+python -m movies.generate_trajectories --plot-uncontrolled=True --env-id=FluidFlow-v0
 """
 
 # Imports
@@ -54,73 +54,93 @@ def make_env(env_id, seed):
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
 # Create gym env with ID
-# env = gym.make(args.env_id)
-# env.observation_space.seed(args.seed)
-# env.action_space.seed(args.seed)
-# envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, False, run_name)])
 envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed)])
 
 """ CREATE YOUR POLICY INSTANCES HERE """
 
 # Main policy
-# main_policy = ZeroPolicy(is_2d=True, name="Uncontrolled")
+# main_policy = ZeroPolicy(is_2d=True, name="Zero Policy")
 
 # main_policy = LQR(
 #     args=args,
-#     envs=envs,
+#     envs=envs
 # )
 
 # main_policy = SKVI(
 #     args=args,
 #     envs=envs,
 #     saved_koopman_model_name="path_based_tensor",
-#     trained_model_start_timestamp=1726408690,
-#     chkpt_epoch_number=150,
+#     trained_model_start_timestamp=1726432208,
+#     chkpt_epoch_number=30,
 #     device=device,
+#     name="SKVI"
 # )
+
+# Zero Policy
+zero_policy = ZeroPolicy(is_2d=True, name="Zero Policy")
+
+# SAKC checkpt for linear system -- 1726405258
+# SAKC checkpt for  -- 1726402862
 
 main_policy = SAKC(
     args=args,
     envs=envs,
     is_value_based=True,
     is_koopman=True,
-    chkpt_timestamp=1730943305,
+    # chkpt_timestamp=1726405258,  # Linear system
+    # chkpt_timestamp=1726405630,  # Fluid Flow
+    chkpt_timestamp=1726406022,  # Lorenz
+    # chkpt_timestamp=1731169975,  # Double Well
     chkpt_step_number=50_000,
     device=device,
+    name = "SAKC"
 )
 
 # Baseline policy
-# baseline_policy = ZeroPolicy(is_2d=True, name="Uncontrolled")
+# baseline_policy = ZeroPolicy(is_2d=True, name="Zero Policy")
 
+# LQR Baseline
 # baseline_policy = LQR(
 #     args=args,
-#     envs=envs,
+#     envs=envs
 # )
 
+# SAC (V) Baseline
 baseline_policy = SAKC(
     args=args,
     envs=envs,
     is_value_based=True,
     is_koopman=False,
-    chkpt_timestamp=1726403302,
+    # chkpt_timestamp=1726402862,  # Linear system
+    # chkpt_timestamp=1726403302,  # Fluid Flow
+    chkpt_timestamp=1726403745,  # Lorenz
+    # chkpt_timestamp=1731170342,  # Double Well
     chkpt_step_number=50_000,
     device=device,
-    name="SAC (V)",
+    name="SAC (V)"
 )
 
 # Create generator
+zero_policy_generator = Generator(args, envs, zero_policy)
 main_policy_generator = Generator(args, envs, main_policy)
 baseline_policy_generator = Generator(args, envs, baseline_policy)
 
+def reset_seed():
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+
 # Generate trajectories
-np.random.seed(args.seed)
-torch.manual_seed(args.seed)
+reset_seed()
+(
+    zero_policy_trajectories,
+    zero_policy_costs
+) = zero_policy_generator.generate_trajectories(args.num_trajectories)  # (num_trajectories, steps_per_trajectory, state_dim)
+reset_seed()
 (
     main_policy_trajectories,
     main_policy_costs
 ) = main_policy_generator.generate_trajectories(args.num_trajectories)  # (num_trajectories, steps_per_trajectory, state_dim)
-np.random.seed(args.seed)
-torch.manual_seed(args.seed)
+reset_seed()
 (
     baseline_policy_trajectories,
     baseline_policy_costs
@@ -132,6 +152,7 @@ metadata = {
     "env_id": args.env_id,
     "main_policy_name": main_policy.name,
     "baseline_policy_name": baseline_policy.name,
+    "zero_policy_name": zero_policy.name,
 }
 print(f"Metadata: {metadata}")
 
@@ -140,11 +161,16 @@ curr_time = int(time.time())
 output_folder = f"video_frames/{args.env_id}_{curr_time}"
 create_folder(output_folder)
 
+# Save zero policy trajectories and costs
+np.save(f"{output_folder}/zero_policy_trajectories.npy", zero_policy_trajectories)
+np.save(f"{output_folder}/zero_policy_costs.npy", zero_policy_costs)
 # Store the trajectories on hard drive
 np.save(f"{output_folder}/main_policy_trajectories.npy", main_policy_trajectories)
 np.save(f"{output_folder}/main_policy_costs.npy", main_policy_costs)
+# Save baseline policy trajectories and costs
 np.save(f"{output_folder}/baseline_policy_trajectories.npy", baseline_policy_trajectories)
 np.save(f"{output_folder}/baseline_policy_costs.npy", baseline_policy_costs)
+# Save metadata
 np.save(f"{output_folder}/metadata.npy", metadata, allow_pickle=True)
 
 # Print out success message and data path
