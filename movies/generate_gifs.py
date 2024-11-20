@@ -13,6 +13,7 @@ import os
 import torch
 
 from custom_envs import *
+from movies.env_enum import EnvEnum
 
 # Parse arguments
 parser = argparse.ArgumentParser()
@@ -40,10 +41,6 @@ def make_env(env_id, seed):
 
     return thunk
 
-# Set seeds
-np.random.seed(args.seed)
-torch.manual_seed(args.seed)
-
 # Load main policy data
 main_policy_trajectories = np.load(f"{args.data_folder}/main_policy_trajectories.npy")
 main_policy_costs = np.load(f"{args.data_folder}/main_policy_costs.npy")
@@ -56,7 +53,16 @@ if args.plot_uncontrolled:
     zero_costs = np.load(f"{args.data_folder}/zero_policy_costs.npy")
 # Load metadata
 metadata = np.load(f"{args.data_folder}/metadata.npy", allow_pickle=True).item()
-is_double_well = metadata['env_id'] == 'DoubleWell-v0'
+# Extract env_id
+env_id = metadata['env_id']
+
+# Function to reset seeds
+def reset_seed():
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+
+# Set seeds
+reset_seed()
 
 # Create gym env with ID
 envs = gym.vector.SyncVectorEnv([make_env(metadata['env_id'], args.seed)])
@@ -104,7 +110,7 @@ for trajectory_num in range(main_policy_trajectories.shape[0]):
     if args.plot_uncontrolled:
         full_x_zero = zero_trajectories[trajectory_num, :, 0]
         full_y_zero = zero_trajectories[trajectory_num, :, 1]
-    if is_double_well:
+    if env_id == EnvEnum.DoubleWell:
         full_u = main_policy_trajectories[trajectory_num, :, 2]
         full_z = main_policy_trajectories[trajectory_num, :, 3]
         if args.plot_uncontrolled:
@@ -115,7 +121,7 @@ for trajectory_num in range(main_policy_trajectories.shape[0]):
         if args.plot_uncontrolled:
             full_z_zero = zero_trajectories[trajectory_num, :, 2]
 
-    if is_double_well:
+    if env_id == EnvEnum.DoubleWell:
         step_size = 0.1
         X, Y = np.meshgrid(
             np.arange(
@@ -136,7 +142,7 @@ for trajectory_num in range(main_policy_trajectories.shape[0]):
             x = full_x[:(step_num+1)]
             y = full_y[:(step_num+1)]
             z = full_z[:(step_num+1)]
-            if is_double_well:
+            if env_id == EnvEnum.DoubleWell:
                 u = full_u[:(step_num+1)]
                 Z = envs.envs[0].potential(X, Y, u[step_num])
                 Z_path = envs.envs[0].potential(x, y, u[step_num])
@@ -146,7 +152,7 @@ for trajectory_num in range(main_policy_trajectories.shape[0]):
                 x_zero = full_x_zero[:(step_num+1)]
                 y_zero = full_y_zero[:(step_num+1)]
                 z_zero = full_z_zero[:(step_num+1)]
-                if is_double_well:
+                if env_id == EnvEnum.DoubleWell:
                     u_zero = full_u_zero[:(step_num+1)]
                     # Z_zero = envs.envs[0].potential(X_zero, Y_zero, u_zero[step_num])
                     # Z_path_zero = envs.envs[0].potential(x_zero, y_zero, u_zero[step_num])
@@ -191,23 +197,24 @@ for trajectory_num in range(main_policy_trajectories.shape[0]):
 
             trajectory_ax.set_xlim(min_x, max_x)
             trajectory_ax.set_ylim(min_y, max_y)
-            if not is_double_well:
+            if not env_id == EnvEnum.DoubleWell:
                 trajectory_ax.set_zlim(min_z, max_z)
 
             # Plot trajectory
-            if is_double_well:
+            if env_id == EnvEnum.DoubleWell:
                 trajectory_ax.plot3D(x, y, Z_path, alpha=1.0, linewidth=2, color='black', pad=0.1)
                 trajectory_ax.plot_surface(X, Y, Z, alpha=0.7, cmap=cm.coolwarm)
                 trajectory_ax.set_zlim(0,15)
             else:
                 # Plot
-                trajectory_ax.plot3D(x, y, z, zorder=2)
                 if args.plot_uncontrolled:
                     # Plot the zero trajectory on the same graph
-                    trajectory_ax.plot3D(x_zero, y_zero, z_zero, zorder=2)
+                    trajectory_ax.plot3D(x_zero, y_zero, z_zero, color='tab:blue', zorder=2)
+                trajectory_ax.plot3D(x, y, z, linewidth=3, color='tab:orange', zorder=2)
 
                 # Adjust the view angle for better visibility
-                # trajectory_ax.view_init(elev=20, azim=45)
+                # if env_enum == EnvEnum.DoubleWell:
+                #     trajectory_ax.view_init(elev=20, azim=45)
 
                 # Adjust layout to reduce white space
                 plt.tight_layout(pad=0.01)

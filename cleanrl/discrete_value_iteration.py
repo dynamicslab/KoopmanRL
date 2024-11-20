@@ -71,11 +71,11 @@ class DiscreteKoopmanValueIterationPolicy:
         self.env_id = args.env_id
 
         # Set settings for determinism
-        self.seed = args.seed
-        random.seed(self.seed)
-        np.random.seed(self.seed)
-        torch.manual_seed(self.seed)
-        torch.backends.cudnn.deterministic = args.torch_deterministic
+        # self.seed = args.seed
+        # random.seed(self.seed)
+        # np.random.seed(self.seed)
+        # torch.manual_seed(self.seed)
+        # torch.backends.cudnn.deterministic = args.torch_deterministic
 
         # Set up algorithm variables
         self.gamma = gamma
@@ -564,6 +564,12 @@ if __name__ == "__main__":
     )
 
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
+
+    # TRY NOT TO MODIFY: seeding
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    torch.backends.cudnn.deterministic = args.torch_deterministic
 
     envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, False, run_name)])
 

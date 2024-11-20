@@ -434,7 +434,7 @@ class DiscreteKoopmanValueIterationPolicy:
                 # Softmax distribution
                 pi_us = torch.exp(diff) + delta # (all_actions.shape[1], batch_size)
                 Z_x = torch.sum(pi_us, axis=0) # (batch_size,)
-                pis_response = pi_us / Z_x # (all_actions.shape[1], batch_size)                
+                pis_response = pi_us / Z_x # (all_actions.shape[1], batch_size)
 
                 # Compute log pi
                 log_pis = torch.log(pis_response) # (all_actions.shape[1], batch_size)
@@ -559,6 +559,12 @@ if __name__ == "__main__":
     )
 
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
+
+    # TRY NOT TO MODIFY: seeding
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    torch.backends.cudnn.deterministic = args.torch_deterministic
 
     envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, False, run_name)])
 
