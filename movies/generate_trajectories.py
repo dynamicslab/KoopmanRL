@@ -157,6 +157,13 @@ reset_seed()
 ) = baseline_policy_generator.generate_trajectories(args.num_trajectories)  # (num_trajectories, steps_per_trajectory, state_dim)
 print("Completed generating trajectories")
 
+# We will not store the generated trajectories if they do not
+# have the same initial conditions, so we check that with an assertion
+assert (
+    np.array_equal(zero_policy_trajectories[0, 0], main_policy_trajectories[0, 0]) and
+    np.array_equal(main_policy_trajectories[0, 0], baseline_policy_trajectories[0, 0])
+), "Your trajectories have different initial conditions"
+
 # Save additional metadata
 metadata = {
     "env_id": args.env_id,
