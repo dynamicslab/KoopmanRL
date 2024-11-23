@@ -44,7 +44,6 @@ class Generator:
                 potential = self.envs.envs[0].potential()
 
                 # Add initial state to trajectory
-                print(np.concatenate((state[0], [potential]), axis=0).shape)
                 trajectory.append(
                     np.concatenate((state[0], [potential]), axis=0)
                 )
@@ -95,7 +94,6 @@ class Generator:
 
                 # Append new state, action, and cost to respective local lists
                 if self.env_id == EnvEnum.DoubleWell:
-                    print(np.concatenate((state[0], [potential]), axis=0).shape)
                     trajectory.append(
                         np.concatenate((state[0], [potential]), axis=0)
                     )

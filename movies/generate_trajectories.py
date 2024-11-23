@@ -15,6 +15,7 @@ from custom_envs import *
 from distutils.util import strtobool
 from movies.algo_policies import *
 from movies.default_policies import ZeroPolicy
+from movies.env_enum import EnvEnum
 from movies.generator import Generator
 
 # Command-line arguments
@@ -65,6 +66,28 @@ envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed)])
 
 """ CREATE YOUR POLICY INSTANCES HERE """
 
+timestamp_map = {
+    EnvEnum.LinearSystem: {
+        "SAKC": 1732367820,
+        "SAC (V)": 1732364757,
+    },
+    EnvEnum.FluidFlow: {
+        "SAKC": 1732368170,
+        "SAC (V)": 1732365537,
+    },
+    EnvEnum.Lorenz: {
+        "SAKC": 1732369019,
+        "SAC (V)": 1732366427,
+    },
+    EnvEnum.DoubleWell: {
+        "SAKC": 1732368563,
+        "SAC (V)": 1732367266,
+    },
+}
+
+# Zero Policy
+zero_policy = ZeroPolicy(is_2d=True, name="Zero Policy")
+
 # Main policy
 # main_policy = ZeroPolicy(is_2d=True, name="Zero Policy")
 
@@ -83,21 +106,12 @@ envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed)])
 #     name="SKVI"
 # )
 
-# Zero Policy
-zero_policy = ZeroPolicy(is_2d=True, name="Zero Policy")
-
-# SAKC checkpt for linear system -- 1726405258
-# SAKC checkpt for  -- 1726402862
-
 main_policy = SAKC(
     args=args,
     envs=envs,
     is_value_based=True,
     is_koopman=True,
-    chkpt_timestamp=1726405258,  # Linear system
-    # chkpt_timestamp=1726405630,  # Fluid Flow
-    # chkpt_timestamp=1726406022,  # Lorenz
-    # chkpt_timestamp=1731169975,  # Double Well
+    chkpt_timestamp=timestamp_map[args.env_id]["SAKC"],
     chkpt_step_number=50_000,
     device=device,
     name = "SAKC"
@@ -118,10 +132,7 @@ baseline_policy = SAKC(
     envs=envs,
     is_value_based=True,
     is_koopman=False,
-    chkpt_timestamp=1726402862,  # Linear system
-    # chkpt_timestamp=1726403302,  # Fluid Flow
-    # chkpt_timestamp=1726403745,  # Lorenz
-    # chkpt_timestamp=1731170342,  # Double Well
+    chkpt_timestamp=timestamp_map[args.env_id]["SAC (V)"],
     chkpt_step_number=50_000,
     device=device,
     name="SAC (V)"
