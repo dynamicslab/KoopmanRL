@@ -70,18 +70,26 @@ timestamp_map = {
     EnvEnum.LinearSystem: {
         "SAKC": 1732367820,
         "SAC (V)": 1732364757,
+        "SAC (Q)": 1738509308,
+        "SKVI": 1738511301,
     },
     EnvEnum.FluidFlow: {
         "SAKC": 1732368170,
         "SAC (V)": 1732365537,
+        "SAC (Q)": 1738509644,
+        "SKVI": 1738511504,
     },
     EnvEnum.Lorenz: {
         "SAKC": 1732369019,
         "SAC (V)": 1732366427,
+        "SAC (Q)": 1738509985,
+        "SKVI": 1738511670,
     },
     EnvEnum.DoubleWell: {
         "SAKC": 1732368563,
         "SAC (V)": 1732367266,
+        "SAC (Q)": 1738510316,
+        "SKVI": 1738511824,
     },
 }
 
@@ -100,25 +108,47 @@ zero_policy = ZeroPolicy(is_2d=True, name="Zero Policy")
 #     args=args,
 #     envs=envs,
 #     saved_koopman_model_name="path_based_tensor",
-#     trained_model_start_timestamp=1726432208,
-#     chkpt_epoch_number=30,
+#     trained_model_start_timestamp=timestamp_map[args.env_id]["SKVI"],
+#     chkpt_epoch_number=150,
 #     device=device,
 #     name="SKVI"
+# )
+
+# main_policy = SAKC(
+#     args=args,
+#     envs=envs,
+#     is_value_based=True,
+#     is_koopman=True,
+#     chkpt_timestamp=timestamp_map[args.env_id]["SAKC"],
+#     chkpt_step_number=50_000,
+#     device=device,
+#     name = "SAKC"
+# )
+
+# main_policy = SAKC(
+#     args=args,
+#     envs=envs,
+#     is_value_based=True,
+#     is_koopman=False,
+#     chkpt_timestamp=timestamp_map[args.env_id]["SAC (V)"],
+#     chkpt_step_number=50_000,
+#     device=device,
+#     name = "SAC (V)"
 # )
 
 main_policy = SAKC(
     args=args,
     envs=envs,
-    is_value_based=True,
-    is_koopman=True,
-    chkpt_timestamp=timestamp_map[args.env_id]["SAKC"],
+    is_value_based=False,
+    is_koopman=False,
+    chkpt_timestamp=timestamp_map[args.env_id]["SAC (Q)"],
     chkpt_step_number=50_000,
     device=device,
-    name = "SAKC"
+    name = "SAC (Q)"
 )
 
 # Baseline policy
-# baseline_policy = ZeroPolicy(is_2d=True, name="Zero Policy")
+baseline_policy = ZeroPolicy(is_2d=True, name="Zero Policy")
 
 # LQR Baseline
 # baseline_policy = LQR(
@@ -127,16 +157,16 @@ main_policy = SAKC(
 # )
 
 # SAC (V) Baseline
-baseline_policy = SAKC(
-    args=args,
-    envs=envs,
-    is_value_based=True,
-    is_koopman=False,
-    chkpt_timestamp=timestamp_map[args.env_id]["SAC (V)"],
-    chkpt_step_number=50_000,
-    device=device,
-    name="SAC (V)"
-)
+# baseline_policy = SAKC(
+#     args=args,
+#     envs=envs,
+#     is_value_based=True,
+#     is_koopman=False,
+#     chkpt_timestamp=timestamp_map[args.env_id]["SAC (V)"],
+#     chkpt_step_number=50_000,
+#     device=device,
+#     name="SAC (V)"
+# )
 
 # Create generator
 zero_policy_generator = Generator(args, envs, zero_policy)
