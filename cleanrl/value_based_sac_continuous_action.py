@@ -213,7 +213,11 @@ class Actor(nn.Module):
 if __name__ == "__main__":
     args = parse_args()
     curr_time = int(time.time())
-    run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{curr_time}"
+
+    # Generate a random seed
+    sampled_seed = np.random.randint(1000)
+
+    run_name = f"{args.env_id}__{args.exp_name}__{sampled_seed}__{curr_time}"
     if args.track:
         import wandb
 
@@ -237,15 +241,16 @@ if __name__ == "__main__":
     create_folder(model_chkpt_path)
 
     # TRY NOT TO MODIFY: seeding
-    random.seed(args.seed)
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
+    random.seed(sampled_seed)
+    np.random.seed(sampled_seed)
+    torch.manual_seed(sampled_seed)
     torch.backends.cudnn.deterministic = args.torch_deterministic
 
-    device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
+    # Running everything on CPU
+    device = torch.device("cpu")
 
     # env setup
-    envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, args.capture_video, run_name)])
+    envs = gym.vector.SyncVectorEnv([make_env(args.env_id, sampled_seed, 0, args.capture_video, run_name)])
     assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
 
     max_action = float(envs.single_action_space.high[0])

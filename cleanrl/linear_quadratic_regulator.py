@@ -210,7 +210,11 @@ def make_env(env_id, seed, idx, capture_video, run_name):
 
 if __name__ == "__main__":
     args = parse_args()
-    run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
+
+    # Generate a random seed
+    sampled_seed = np.random.randint(1000)
+
+    run_name = f"{args.env_id}__{args.exp_name}__{sampled_seed}__{int(time.time())}"
 
     writer = SummaryWriter(f"runs/{run_name}")
     writer.add_text(
@@ -219,9 +223,9 @@ if __name__ == "__main__":
     )
 
     # Set seed
-    np.random.seed(args.seed)
+    np.random.seed(sampled_seed)
 
-    envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, False, run_name)])
+    envs = gym.vector.SyncVectorEnv([make_env(args.env_id, sampled_seed, 0, False, run_name)])
 
     try:
         dt = envs.envs[0].dt
@@ -242,7 +246,7 @@ if __name__ == "__main__":
             alpha=args.alpha,
             dt=dt,
             is_continuous=is_continuous,
-            seed=args.seed
+            seed=sampled_seed
         )
     except:
         lqr_policy = LQRPolicy(
@@ -255,7 +259,7 @@ if __name__ == "__main__":
             alpha=args.alpha,
             dt=dt,
             is_continuous=is_continuous,
-            seed=args.seed
+            seed=sampled_seed
         )
 
     envs.single_observation_space.dtype = np.float64
