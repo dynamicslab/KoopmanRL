@@ -29,7 +29,7 @@ class LQRPolicy:
         alpha=1.0,
         dt=None,
         is_continuous=False,
-        seed=1
+        seed=123  # Mostly for easy carrying
     ):
         """
         Initialize an LQR (Linear Quadratic Regulator) policy for an arbitrary system.
@@ -65,7 +65,7 @@ class LQRPolicy:
         the state and action are represented by Q and R, respectively.
         """
 
-        self.seed = seed
+        self.seed = np.random.randint(1000)
 
         self.A = A
         self.B = B
@@ -174,8 +174,6 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--exp-name", type=str, default=os.path.basename(__file__).rstrip(".py"),
         help="the name of this experiment")
-    parser.add_argument("--seed", type=int, default=1,
-        help="seed of the experiment (default: 1)")
     parser.add_argument("--torch-deterministic", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="if toggled, `torch.backends.cudnn.deterministic=False` (default: True)")
     parser.add_argument("--cuda", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
@@ -225,7 +223,7 @@ if __name__ == "__main__":
     # Set seed
     np.random.seed(sampled_seed)
 
-    envs = gym.vector.SyncVectorEnv([make_env(args.env_id, sampled_seed, 0, False, run_name)])
+    envs = gym.vector.SyncVectorEnv([make_env(args.env_id, seed=sampled_seed, idx=0, capture_video=False, run_name=run_name)])
 
     try:
         dt = envs.envs[0].dt
