@@ -29,7 +29,7 @@ class LQRPolicy:
         alpha=1.0,
         dt=None,
         is_continuous=False,
-        seed=1
+        seed=123  # Mostly for easy carrying
     ):
         """
         Initialize an LQR (Linear Quadratic Regulator) policy for an arbitrary system.
@@ -65,7 +65,7 @@ class LQRPolicy:
         the state and action are represented by Q and R, respectively.
         """
 
-        self.seed = seed
+        self.seed = np.random.randint(1000)
 
         self.A = A
         self.B = B
@@ -174,8 +174,6 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--exp-name", type=str, default=os.path.basename(__file__).rstrip(".py"),
         help="the name of this experiment")
-    parser.add_argument("--seed", type=int, default=1,
-        help="seed of the experiment (default: 1)")
     parser.add_argument("--torch-deterministic", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="if toggled, `torch.backends.cudnn.deterministic=False` (default: True)")
     parser.add_argument("--cuda", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
@@ -210,7 +208,11 @@ def make_env(env_id, seed, idx, capture_video, run_name):
 
 if __name__ == "__main__":
     args = parse_args()
-    run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
+
+    # Generate a random seed
+    sampled_seed = np.random.randint(1000)
+
+    run_name = f"{args.env_id}__{args.exp_name}__{sampled_seed}__{int(time.time())}"
 
     writer = SummaryWriter(f"runs/{run_name}")
     writer.add_text(
@@ -219,9 +221,9 @@ if __name__ == "__main__":
     )
 
     # Set seed
-    np.random.seed(args.seed)
+    np.random.seed(sampled_seed)
 
-    envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, False, run_name)])
+    envs = gym.vector.SyncVectorEnv([make_env(args.env_id, seed=sampled_seed, idx=0, capture_video=False, run_name=run_name)])
 
     try:
         dt = envs.envs[0].dt
@@ -242,7 +244,7 @@ if __name__ == "__main__":
             alpha=args.alpha,
             dt=dt,
             is_continuous=is_continuous,
-            seed=args.seed
+            seed=sampled_seed
         )
     except:
         lqr_policy = LQRPolicy(
@@ -255,7 +257,7 @@ if __name__ == "__main__":
             alpha=args.alpha,
             dt=dt,
             is_continuous=is_continuous,
-            seed=args.seed
+            seed=sampled_seed
         )
 
     envs.single_observation_space.dtype = np.float64
