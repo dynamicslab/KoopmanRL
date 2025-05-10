@@ -985,7 +985,7 @@ class DiscreteKoopmanValueIterationPolicy:
 
 if __name__ == "__main__":
     args = parse_args()
-    run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
+    run_name = f"{args.env_id}__{args.exp_name}__{args.num_actions}__{args.num_training_epochs}__{args.seed}__{int(time.time())}"
 
     writer = SummaryWriter(f"runs/{run_name}")
     writer.add_text(
