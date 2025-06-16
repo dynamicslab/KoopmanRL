@@ -8,51 +8,34 @@ from ray import tune
 from ray.tune.search import ConcurrencyLimiter
 from ray.tune.search.optuna import OptunaSearch
 
-from tensorboard.backend.event_processing import event_accumulator  # --> Probably also don't need this.
+from opt_wrappers import ppo_tuning_wrapper
 
 # initialize Ray
 ray.init(configure_logging=False)
 
 
-class HiddenPrints:
-    def __enter__(self):
-        self._original_stdout = sys.stdout
-        sys.stdout = open(os.devnull, "w")
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        sys.stdout.close()
-        sys.stdout = self._original_stdout
-
-
 def evaluate(config):
-    # Assemble the algorithm command
-    algo_command = [f"--{key}={value}" for key, value in config.items()]
-
-    # Connect the runtime commands & run it
-    sys.argv = algo_command + [  # TODO: This does NOT ingest the entire configuration into the respective run
-        f"--env-id={config['env-id']}",
-        f"--seed={config['seed']}",
-        "--track=False",
-    ]
-    with HiddenPrints():
-        _experiment = runpy.run_path(path_name=config["script"], run_name="__main__")
+    _experiment = ppo_tuning_wrapper(
+        seed=config["seed"],
+        env_id=config["env-id"],
+        learning_rate=config["learning-rate"],
+        num_minibatches=config["num-minibatches"],
+        update_epochs=config["update-epochs"],
+        number_of_steps=config["num-steps"],
+        vfunc_coefficient=config["vf-coef"],
+        max_gradient_norm=config["max-grad-norm"],
+        total_timesteps=config["total-timesteps"]
+    )
     return _experiment
-
-# TODO: 
-#   - The error is originating from runpy messing with the process isolation
-#   - Go back into the files for e.g. PPO to grab the `main`, and run PPO raw inside of the algorithm here. I.e. the process sub servience introduced by runpy needs to be reverted s.t. the entire sub-thingy doesn't take place with its weird folder structure
-#   - Want a function which takes the config as input, and then runs the RL
 
 
 def objective(config):
-    run = None
 
     experiment = evaluate(config)
     normalized_scores = []
 
-    # Extract the metrics from Tensorboard
-    ea = event_accumulator.EventAccumulator(f"runs/{experiment['run_name']}")
-    ea.Reload()
+    # Extract the metrics from the experiment
+    # TODO: The extraction logic needs to be redone
     metric_values = [
         scalar_event.value
         for scalar_event in ea.Scalars(config["metric"])[
@@ -69,8 +52,6 @@ def objective(config):
         ]
     else:
         normalized_scores += [np.average(metric_values)]
-    if run:
-        run.log({f"{config['env-id']}_return": np.average(metric_values)})
     aggregated_normalized_score = np.median(normalized_scores)
     print(
         f"The median normalized score is {aggregated_normalized_score} with num_seeds={config['seed']}"
@@ -87,7 +68,6 @@ def objective(config):
 search_space = {
     "env-id": "CartPole-v1",
     "seed": tune.randint(0, 10000),
-    "script": "cleanrl/ppo.py",
     "learning-rate": tune.loguniform(0.0003, 0.003),
     "num-minibatches": tune.choice([1, 2, 4]),
     "update-epochs": tune.choice([1, 2, 4, 8]),
