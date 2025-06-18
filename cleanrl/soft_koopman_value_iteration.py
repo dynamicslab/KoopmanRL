@@ -423,7 +423,7 @@ def generate_koopman_tensor(
 class DiscreteKoopmanValueIterationPolicy:
     def __init__(
         self,
-        args,
+        env_id,
         gamma,
         alpha,
         dynamics_model: KoopmanTensor,
@@ -467,7 +467,7 @@ class DiscreteKoopmanValueIterationPolicy:
         """
 
         # Store env id
-        self.env_id = args.env_id
+        self.env_id = env_id
 
         # Set settings for determinism
         # self.seed = args.seed
@@ -1034,7 +1034,7 @@ if __name__ == "__main__":
 
     # Construct value iteration policy
     value_iteration_policy = DiscreteKoopmanValueIterationPolicy(
-        args=args,
+        env_id=args.env_id,
         gamma=args.gamma,
         alpha=args.alpha,
         dynamics_model=koopman_tensor,
