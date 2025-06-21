@@ -1,7 +1,5 @@
-import os
-import sys
-
 import numpy as np
+import warnings
 
 import ray
 from ray import tune
@@ -9,6 +7,9 @@ from ray.tune.search import ConcurrencyLimiter
 from ray.tune.search.optuna import OptunaSearch
 
 from opt_wrappers import ppo_tuning_wrapper
+
+# Reduce the number of displayed error messages
+warnings.filterwarnings("ignore")
 
 # initialize Ray
 ray.init(configure_logging=False)
@@ -31,35 +32,22 @@ def evaluate(config):
 
 def objective(config):
 
-    experiment = evaluate(config)
-    normalized_scores = []
+    _experiment = evaluate(config)
 
     # Extract the metrics from the experiment
-    # TODO: The extraction logic needs to be redone
     metric_values = [
-        scalar_event.value
-        for scalar_event in ea.Scalars(config["metric"])[
+        scalar_event[0] for scalar_event in _experiment[config["metric"]][
             -config["metric-last-n-average-window"] :
-        ]
+       ]
     ]
-    print(
-        f"The average episodic return on {config['env-id']} is {np.average(metric_values)} average over the last {config['metric-last-n-average-window']} episodes."
-    )
     if config["target-score"] is not None:
-        normalized_scores += [
-            (np.average(metric_values) - config["target_score"][0])
-            / (config["target_score"][1] - config["target_scores"][0])
-        ]
+        normalized_score =  (np.average(metric_values) - config["target-score"][0])/ (config["target-score"][1] - config["target-score"][0])
     else:
-        normalized_scores += [np.average(metric_values)]
-    aggregated_normalized_score = np.median(normalized_scores)
-    print(
-        f"The median normalized score is {aggregated_normalized_score} with num_seeds={config['seed']}"
-    )
+        normalized_score = np.average(metric_values)
     tune.report(
         {
             "iterations": config["seed"],
-            "aggregated_normalized_score": aggregated_normalized_score,
+            "normalized_score": normalized_score,
         }
     )
 
@@ -78,7 +66,7 @@ search_space = {
     "total-timesteps": 100000,
     "num-envs": 16,
     "metric": "charts/episodic_return",
-    "metric-list-n-average-window": 50,
+    "metric-last-n-average-window": 50,
 }
 
 # Initialize the search algorithm
@@ -90,7 +78,7 @@ num_samples = 50
 tuner = tune.Tuner(
     objective,
     tune_config=tune.TuneConfig(
-        metric="aggregated_normalized_score",
+        metric="normalized_score",
         mode="max",
         search_alg=algo,
         num_samples=num_samples,
