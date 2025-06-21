@@ -11,7 +11,7 @@ import os
 import random
 import time
 import torch
-from analysis.utils import create_folder
+from .utils import create_folder
 from distutils.util import strtobool
 from cleanrl_utils.koopman_observables import monomials
 from torch.utils.tensorboard import SummaryWriter
