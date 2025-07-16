@@ -61,22 +61,18 @@ if __name__ == "__main__":
     ray.init(configure_logging=False)
 
     # Definition of the search space
-    search_space = {  # TODO: Values need to be dialed in
+    search_space = {
         "env-id": "CartPole-v1",
         "seed": tune.randint(0, 10000),
-        "gamma": tune.loguniform(0.0003, 0.003),
-        "tau": tune.choice([1, 2, 4]),
-        "batch-size": tune.choice([1, 2, 4, 8]),
-        "policy-lr": tune.loguniform(0.0003, 0.003),
-        "v-lr": tune.loguniform(0.0003, 0.003),
-        "q-lr": tune.loguniform(0.0003, 0.003),
-        "alpha": tune.uniform(0, 1),
-        "alpha-lr": tune.loguniform(0.0003, 0.003),
-        "num-paths": tune.choice([1, 2, 4, 8]),
-        "num-steps-per-path": tune.choice([1, 2, 4, 8]),
-        "state-order": tune.choice([1, 2, 4, 8]),
-        "action-order": tune.choice([1, 2, 4, 8]),
-        "target-score": [0, 500],
+        "gamma": tune.loguniform(0.7, 1.3),
+        "policy-lr": tune.loguniform(3e-5, 5e-4),
+        "v-lr": tune.loguniform(1e-4, 1e-2),
+        "q-lr": tune.loguniform(1e-4, 1e-2),
+        "num-paths": tune.choice([50, 100, 150, 200]),
+        "num-steps-per-path": tune.choice([200, 250, 300, 350, 400, 450]),
+        "state-order": tune.choice([1, 2, 3, 4]),
+        "action-order": tune.choice([1, 2, 3, 4]),
+        "target-score": [0, 500],  # TODO: Might end up omitting these.
         "total-timesteps": 100000,
         "num-envs": 16,
         "metric": "charts/episodic_return",
