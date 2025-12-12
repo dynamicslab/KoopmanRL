@@ -9,16 +9,16 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.distributions.categorical import Categorical
 
-from cleanrl.ppo import make_env, Agent
-from cleanrl.soft_koopman_value_iteration import (
-    generate_koopman_tensor,
-    DiscreteKoopmanValueIterationPolicy,
-)
+from cleanrl.ppo import Agent, make_env
 from cleanrl.soft_actor_koopman_critic import (
     Actor,
+    ReplayBuffer,
     SoftKoopmanVNetwork,
     SoftQNetwork,
-    ReplayBuffer,
+)
+from cleanrl.soft_koopman_value_iteration import (
+    DiscreteKoopmanValueIterationPolicy,
+    generate_koopman_tensor,
 )
 
 
@@ -379,7 +379,7 @@ def skvi_tuning_wrapper(
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         for item in info:
-            if "episode" in info.keys():
+            if "episode" in item.keys():
                 episodic_returns_list.append([item["episode"]["r"], global_step])
                 episodic_lengths_list.append([item["episode"]["l"], global_step])
                 break
@@ -536,9 +536,11 @@ def sakc_tuning_wrapper(
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards, dones, infos = envs.step(actions)
 
+        # print(infos)
+
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         for item in infos:
-            if "episode" in infos.keys():
+            if "episode" in item.keys():
                 episodic_returns_list.append([item["episode"]["r"], global_step])
                 episodic_lengths_list.append([item["episode"]["l"], global_step])
                 break
