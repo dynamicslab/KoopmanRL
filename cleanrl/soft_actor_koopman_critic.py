@@ -11,15 +11,17 @@ import random
 import time
 from distutils.util import strtobool
 from enum import Enum
+
 import gym
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from .utils import create_folder
 from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
+
+from cleanrl.utils import create_folder
 from cleanrl_utils.koopman_observables import monomials
 from custom_envs import *  # noqa: F403
 
