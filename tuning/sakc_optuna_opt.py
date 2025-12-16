@@ -1,5 +1,6 @@
+import json
+import os
 import warnings
-from functools import partial
 
 import numpy as np
 import ray
@@ -10,15 +11,19 @@ from ray.tune.search.optuna import OptunaSearch
 from tap import Tap
 
 
-# TODO: Need argparse input to be able to control the parameters
+# Read in the hyperparameter optimization instructions
 class ArgumentParser(Tap):
     env_id: str = "LinearSystem-v0"  # Environment which is to be optimized
     num_samples: int = 50  # Number of samples permitted to the optimization
     max_concurrent: int = 4  # Maximum of concurrent sample evaluations
-    num_envs: int = 16  # Number of environments to optimize over
-    average_window: int = 50  # Number of time-steps the eval metrics is averaged over
+    num_envs: int = 1  # Number of environments to optimize over
+    average_window: int = 5  # Number of time-steps the eval metrics is averaged over
     total_timesteps: int = 50000  # Number of total timesteps
-    cpu_cores_per_trial: int = 24  # Number of CPU cores per trial
+    cpu_cores_per_trial: int = 28  # Number of CPU cores per trial
+    storage_dir: str = "/home/lpaehler/Work/ReinforcementLearning/KoopmanRLLaptop/KoopmanRL/BayesianOptimization/koopman-rl/tuning"  # Directory into which to store the result
+    output_file: str = (
+        "sakc_linear_system_params"  # Name of the json with the best configuration
+    )
 
 
 def evaluate(config):
@@ -31,6 +36,7 @@ def evaluate(config):
         number_of_steps_per_path=config["num-steps-per-path"],
         state_order=config["state-order"],
         action_order=config["action-order"],
+        total_timesteps=config["total-timesteps"],
     )
     return _experiment
 
@@ -109,6 +115,11 @@ if __name__ == "__main__":
         param_space=search_space,
     )
     results = tuner.fit()
+
+    # Store the best results to a json file
+    output_file_name = args.output_file + ".json"
+    with open(os.path.join(args.storage_dir, output_file_name), "w") as file:
+        json.dump(results.get_best_result().config, file, indent=4)
 
     # Print the best found hyperparameters of this initial trial
     print("Best hyperparameters found were: ", results.get_best_result().config)
