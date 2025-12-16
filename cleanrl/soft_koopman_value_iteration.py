@@ -4,17 +4,19 @@ python -m cleanrl.discrete_value_iteration --env-id=FluidFlow-v0 --alpha=1 --num
 """
 
 import argparse
-import gym
-import numpy as np
-from enum import Enum
 import os
 import random
 import time
-import torch
-from cleanrl.utils import create_folder
 from distutils.util import strtobool
-from cleanrl_utils.koopman_observables import monomials
+from enum import Enum
+
+import gym
+import numpy as np
+import torch
 from torch.utils.tensorboard import SummaryWriter
+
+from cleanrl.utils import create_folder
+from cleanrl_utils.koopman_observables import monomials
 from custom_envs import *  # noqa: F403
 
 torch.set_default_dtype(torch.float64)
