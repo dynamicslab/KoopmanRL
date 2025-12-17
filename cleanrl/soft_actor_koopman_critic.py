@@ -577,7 +577,7 @@ if __name__ == "__main__":
             monitor_gym=True,
             save_code=True,
         )
-    writer = SummaryWriter(f"runs/{run_name}")
+    writer = SummaryWriter(f"runs/SAKC/{run_name}")
     writer.add_text(
         "hyperparameters",
         "|param|value|\n|-|-|\n%s"
@@ -586,7 +586,7 @@ if __name__ == "__main__":
 
     # Create folder for model checkpoints
     model_chkpt_path = (
-        f"./saved_models/{args.env_id}/value_based_sakc_chkpts_{curr_time}"
+        f"./saved_models/SAKC/{args.env_id}/sakc_chkpts_{args.seed}_{curr_time}"
     )
     create_folder(model_chkpt_path)
 

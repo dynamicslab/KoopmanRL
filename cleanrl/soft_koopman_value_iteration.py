@@ -431,6 +431,7 @@ class DiscreteKoopmanValueIterationPolicy:
         dynamics_model: KoopmanTensor,
         all_actions,
         cost,
+        seed,
         use_ols=True,
         learning_rate=0.003,
         dt=None,
@@ -485,9 +486,7 @@ class DiscreteKoopmanValueIterationPolicy:
         self.all_actions = all_actions
         self.cost = cost
         self.start_timestamp = int(time.time())
-        self.save_data_path = (
-            f"./saved_models/{self.env_id}/skvi_chkpts_{self.start_timestamp}"
-        )
+        self.save_data_path = f"./saved_models/SKVI/{self.env_id}/skvi_chkpts_{seed}_{self.start_timestamp}"
         self.use_ols = use_ols
         self.learning_rate = learning_rate
         self.dt = dt
@@ -989,7 +988,7 @@ if __name__ == "__main__":
     args = parse_args()
     run_name = f"{args.env_id}__{args.exp_name}__{args.num_actions}__{args.num_training_epochs}__{args.seed}__{int(time.time())}"
 
-    writer = SummaryWriter(f"runs/{run_name}")
+    writer = SummaryWriter(f"runs/SKVI/{run_name}")
     writer.add_text(
         "hyperparameters",
         "|param|value|\n|-|-|\n%s"
@@ -1044,6 +1043,7 @@ if __name__ == "__main__":
         cost=envs.envs[0].vectorized_cost_fn,
         use_ols=True,
         learning_rate=args.lr,
+        seed=args.seed,
         dt=dt,
     )
 
