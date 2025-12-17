@@ -93,7 +93,6 @@ if __name__ == "__main__":
         "env-id": args.env_id,
         "seed": tune.randint(0, 10000),
         "learning-rate": tune.loguniform(0.0003, 0.003),
-        # "number-of-actions": tune.choice([50, 75, 100, 125, 150]),
         "number-of-train-epochs": tune.choice([100, 125, 150, 175]),
         "num-paths": tune.choice([50, 75, 100, 125, 150, 175, 200]),
         "num-steps-per-path": tune.choice(
