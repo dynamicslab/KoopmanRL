@@ -1,0 +1,14 @@
+{
+    "SKVI": {
+        "LinearSystem": "/home/lpaehler/Work/ReinforcementLearning/KoopmanRLLaptop/KoopmanRL/BayesianOptimization/koopman-rl/saved_models/SKVI/LinearSystem-v0/skvi_chkpts_4605_1765985999/epoch_120.pt",
+        "FluidFlow": "/home/lpaehler/Work/ReinforcementLearning/KoopmanRLLaptop/KoopmanRL/BayesianOptimization/koopman-rl/saved_models/SKVI/FluidFlow-v0/skvi_chkpts_6517_1765997479/epoch_120.pt",
+        "Lorenz": "/home/lpaehler/Work/ReinforcementLearning/KoopmanRLLaptop/KoopmanRL/BayesianOptimization/koopman-rl/saved_models/SKVI/Lorenz-v0/skvi_chkpts_8953_1766007978/epoch_120.pt",
+        "DoubleWell": "/home/lpaehler/Work/ReinforcementLearning/KoopmanRLLaptop/KoopmanRL/BayesianOptimization/koopman-rl/saved_models/SKVI/DoubleWell-v0/skvi_chkpts_8294_1766018367/epoch_170.pt"
+    },
+    "SAKC": {
+        "LinearSystem": "/home/lpaehler/Work/ReinforcementLearning/KoopmanRLLaptop/KoopmanRL/BayesianOptimization/koopman-rl/saved_models/SAKC/LinearSystem-v0/sakc_chkpts_7_1765986507/step_50000.pt",
+        "FluidFlow": "/home/lpaehler/Work/ReinforcementLearning/KoopmanRLLaptop/KoopmanRL/BayesianOptimization/koopman-rl/saved_models/SAKC/FluidFlow-v0/sakc_chkpts_6597_1765998108/step_50000.pt",
+        "Lorenz": "/home/lpaehler/Work/ReinforcementLearning/KoopmanRLLaptop/KoopmanRL/BayesianOptimization/koopman-rl/saved_models/SAKC/Lorenz-v0/sakc_chkpts_6504_1766008534/step_50000.pt",
+        "DoubleWell": "/home/lpaehler/Work/ReinforcementLearning/KoopmanRLLaptop/KoopmanRL/BayesianOptimization/koopman-rl/saved_models/SAKC/DoubleWell-v0/sakc_chkpts_469_1766018911/step_50000.pt"
+    }
+}
