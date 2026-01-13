@@ -1,0 +1,15 @@
+{
+    "env-id": "Lorenz-v0",
+    "seed": 6504,
+    "v-lr": 0.05156797026843538,
+    "q-lr": 0.023617484550332347,
+    "num-paths": 200,
+    "num-steps-per-path": 150,
+    "state-order": 2,
+    "action-order": 1,
+    "total-timesteps": 50000,
+    "target-score": null,
+    "num-envs": 1,
+    "metric": "charts/episodic_return",
+    "metric-last-n-average-window": 5
+}

@@ -1,0 +1,15 @@
+{
+    "env-id": "DoubleWell-v0",
+    "seed": 469,
+    "v-lr": 0.0003310304069101045,
+    "q-lr": 0.00039795751924458065,
+    "num-paths": 150,
+    "num-steps-per-path": 300,
+    "state-order": 4,
+    "action-order": 4,
+    "total-timesteps": 50000,
+    "target-score": null,
+    "num-envs": 1,
+    "metric": "charts/episodic_return",
+    "metric-last-n-average-window": 5
+}

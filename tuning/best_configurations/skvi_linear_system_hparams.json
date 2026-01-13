@@ -1,0 +1,15 @@
+{
+    "env-id": "LinearSystem-v0",
+    "seed": 4605,
+    "learning-rate": 0.0010866250292703465,
+    "number-of-train-epochs": 125,
+    "num-paths": 75,
+    "num-steps-per-path": 250,
+    "state-order": 2,
+    "action-order": 3,
+    "target-score": null,
+    "total-timesteps": 50000,
+    "num-envs": 1,
+    "metric": "charts/episodic_return",
+    "metric-last-n-average-window": 5
+}

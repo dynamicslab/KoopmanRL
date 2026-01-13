@@ -1,0 +1,15 @@
+{
+    "env-id": "DoubleWell-v0",
+    "seed": 8294,
+    "learning-rate": 0.0016556726497130062,
+    "number-of-train-epochs": 175,
+    "num-paths": 175,
+    "num-steps-per-path": 100,
+    "state-order": 2,
+    "action-order": 4,
+    "target-score": null,
+    "total-timesteps": 50000,
+    "num-envs": 1,
+    "metric": "charts/episodic_return",
+    "metric-last-n-average-window": 5
+}

@@ -1,0 +1,15 @@
+{
+    "env-id": "FluidFlow-v0",
+    "seed": 6517,
+    "learning-rate": 0.00031904756404241047,
+    "number-of-train-epochs": 125,
+    "num-paths": 200,
+    "num-steps-per-path": 225,
+    "state-order": 4,
+    "action-order": 2,
+    "target-score": null,
+    "total-timesteps": 50000,
+    "num-envs": 1,
+    "metric": "charts/episodic_return",
+    "metric-last-n-average-window": 5
+}
