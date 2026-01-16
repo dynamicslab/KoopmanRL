@@ -1,0 +1,25 @@
+# --> Can export SAKC & SKVI as scripts, see tokenization package.
+
+
+
+
+
+
+
+[project.scripts]
+soft_koopman_value_iteration = "koopmanrl.soft_koopman_value_iteration:main"
+soft_actor_koopman_critic = "koopmanrl.soft_actor_koopman_critic:main"
+skvi_optimization = "koopmanrl.skvi_optuna_opt:main"
+sakc_optimization = "koopmanrl.sakc_optuna_opt:main"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F"]
+ignore = ["F401", "E731"]
+
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling"]
