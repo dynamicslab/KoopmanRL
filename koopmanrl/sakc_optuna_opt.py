@@ -66,7 +66,7 @@ def objective(config):
     )
 
 
-if __name__ == "__main__":
+def main():
     # Ingest the command-line arguments
     args = ArgumentParser().parse_args()
 
@@ -124,3 +124,7 @@ if __name__ == "__main__":
 
     # Print the best found hyperparameters of this initial trial
     print("Best hyperparameters found were: ", results.get_best_result().config)
+
+
+if __name__ == "__main__":
+    main()
