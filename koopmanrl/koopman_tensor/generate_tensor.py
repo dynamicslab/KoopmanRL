@@ -1,23 +1,20 @@
-# Example usage: python -m koopman_tensor.test_tensor --env-id=Lorenz-v0 --state-order=2 --action-order=2 --save-model=True
-
-""" Imports """
-
 import argparse
 import gym
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-torch.set_default_dtype(torch.float64)
 
-from custom_envs import *
+from environments import *
 from distutils.util import strtobool
-from koopman_tensor.torch_tensor import KoopmanTensor, Regressor
-from koopman_tensor.observables import torch_observables as observables
-from koopman_tensor.utils import save_tensor
+from koopmanrl.koopman_tensor.torch_tensor import KoopmanTensor, Regressor
+from koopmanrl.koopman_tensor.observables import torch_observables as observables
+from koopmanrl.koopman_tensor.utils import save_tensor
 from matplotlib.animation import FuncAnimation
 
-""" Allow environment specification """
+torch.set_default_dtype(torch.float64)
 
+
+""" Allow environment specification """
 parser = argparse.ArgumentParser(description='Test Custom Environment')
 parser.add_argument('--env-id', default="LinearSystem-v0",
                     help='Gym environment (default: LinearSystem-v0)')
@@ -142,25 +139,6 @@ Y = Y.reshape(total_num_datapoints, state_dim).T
 U = U.reshape(total_num_datapoints, action_dim).T
 
 """ Construct Koopman tensor """
-
-"""
-Linear System is best with
-state_order = 2
-action_order = 2
-
-Lorenz does best with
-state_order = 3
-action_order = 1
-
-Fluid Flow is best with
-state_order = 4
-action_order = 2
-
-Double Well state estimation will never really
-be good so we might just want to include more
-information in the state dictionary for value function
-"""
-
 try:
     path_based_tensor = KoopmanTensor(
         X,
@@ -183,7 +161,6 @@ except:
     )
 
 """ Predict sample points """
-
 sample_indices = (0, X.shape[1])
 sample_x = X[:, sample_indices[0]:sample_indices[1]]
 sample_u = U[:, sample_indices[0]:sample_indices[1]]
@@ -213,6 +190,5 @@ print(f"Average single step phi estimation error norm per average phi norm: {avg
 print(f"Max single step phi estimation error norm per average phi norm: {max_single_step_phi_estimation_error_norm_per_avg_phi_norm}")
 
 """ Save Koopman tensor """
-
 if args.save_model:
     save_tensor(path_based_tensor, args.env_id, "path_based_tensor")
