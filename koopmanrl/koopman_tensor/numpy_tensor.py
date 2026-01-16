@@ -1,11 +1,8 @@
-""" Imports """
-
 import numpy as np
-
 from enum import Enum
 
-""" Helper functions """
 
+""" Helper functions """
 def checkMatrixRank(X, name):
     rank = np.linalg.matrix_rank(X)
     print(f"{name} matrix rank: {rank}")
@@ -24,7 +21,7 @@ def checkConditionNumber(X, name, threshold=200):
 def SINDy(Theta, dXdt, lamb=0.05):
     d = dXdt.shape[1]
     Xi = np.linalg.lstsq(Theta, dXdt, rcond=None)[0] # Initial guess: Least-squares
-    
+
     for _ in range(10): #which parameter should we be tuning here for RRR comp
         smallinds = np.abs(Xi) < lamb # Find small coefficients
         Xi[smallinds] = 0             # and threshold

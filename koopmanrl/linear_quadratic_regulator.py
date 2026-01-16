@@ -11,7 +11,7 @@ import time
 import torch
 torch.set_default_dtype(torch.float64)
 
-from custom_envs import *
+from environments import *
 from control import dlqr, lqr
 from distutils.util import strtobool
 from scipy.stats import norm

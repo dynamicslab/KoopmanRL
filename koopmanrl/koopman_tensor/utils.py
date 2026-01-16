@@ -1,10 +1,8 @@
-""" Imports """
-
 import os
 import pickle
 
-""" Helper functions """
 
+""" Helper functions """
 def save_tensor(koopman_tensor, env_id, saved_model_name):
     # Define the directory where the pickle file will be saved
     directory = f'./koopman_tensor/saved_models/{env_id}/'

@@ -15,9 +15,9 @@ import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from cleanrl.utils import create_folder
-from cleanrl_utils.koopman_observables import monomials
-from custom_envs import *  # noqa: F403
+from koopmanrl.utils import create_folder
+from koopmanrl.koopman_observables import monomials
+from environments import *  # noqa: F403
 
 torch.set_default_dtype(torch.float64)
 delta = torch.finfo(torch.float64).eps  # 2.220446049250313e-16

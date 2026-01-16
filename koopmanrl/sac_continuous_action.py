@@ -21,7 +21,7 @@ from analysis.utils import create_folder
 from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
 
-from custom_envs import *
+from environments import *
 from koopman_tensor.utils import load_tensor
 
 def parse_args():

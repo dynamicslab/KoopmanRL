@@ -8,10 +8,10 @@ import torch
 torch.set_default_dtype(torch.float64)
 
 from analysis.utils import create_folder
-from custom_envs import *
+from environments import *
 from distutils.util import strtobool
-from koopman_tensor.torch_tensor import KoopmanTensor
-from koopman_tensor.utils import load_tensor
+from koopmanrl.koopman_tensor.torch_tensor import KoopmanTensor
+from koopmanrl.koopman_tensor.utils import load_tensor
 from torch.utils.tensorboard import SummaryWriter
 
 delta = torch.finfo(torch.float64).eps # 2.220446049250313e-16

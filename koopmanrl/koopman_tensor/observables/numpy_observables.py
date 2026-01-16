@@ -2,7 +2,6 @@
 This file was directly copied from the
 codebase at https://github.com/sklus/d3s
 '''
-
 import math
 import numpy as np
 from scipy.spatial import distance
@@ -110,7 +109,7 @@ class monomials(object):
                     print(' + %.5f' % alpha[ind[i]], end = '')
                 else:
                     print(' - %.5f' % -alpha[ind[i]], end = '')
-                        
+
             self._displayMonomial(c[:, ind[i]])
         print('')
 
@@ -168,7 +167,7 @@ class gaussians(object):
         D = distance.cdist(c.T, x.T, 'sqeuclidean')
         y = np.exp(-1/(2*self.sigma**2)*D)
         return y
-    
+
     def diff(self, x):
         '''
         Compute partial derivatives for all data points in x.
@@ -183,7 +182,7 @@ class gaussians(object):
                 y[i, j, :] =  -2/(2*self.sigma**2) * (x[j, :] - c[j, i]) * np.exp(-1/(2*self.sigma**2)*D[i, :])
 
         return y
-    
+
     def ddiff(self, x):
         '''
         Compute second order derivatives for all data points in x.

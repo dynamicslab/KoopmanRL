@@ -10,13 +10,14 @@ import torch.optim as optim
 from torch.distributions.categorical import Categorical
 
 from cleanrl.ppo import Agent, make_env
-from cleanrl.soft_actor_koopman_critic import (
+
+from koopmanrl.soft_actor_koopman_critic import (
     Actor,
     ReplayBuffer,
     SoftKoopmanVNetwork,
     SoftQNetwork,
 )
-from cleanrl.soft_koopman_value_iteration import (
+from koopmanrl.soft_koopman_value_iteration import (
     DiscreteKoopmanValueIterationPolicy,
     generate_koopman_tensor,
 )

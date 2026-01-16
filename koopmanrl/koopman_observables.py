@@ -7,8 +7,10 @@ import copy
 import math
 import numpy as np
 import torch
-torch.set_default_dtype(torch.float64)
 from scipy.spatial import distance
+
+torch.set_default_dtype(torch.float64)
+
 
 def identity(x):
     """
@@ -114,7 +116,7 @@ class monomials(object):
                     print(' + %.5f' % alpha[ind[i]], end = '')
                 else:
                     print(' - %.5f' % -alpha[ind[i]], end = '')
-                        
+
             self._displayMonomial(c[:, ind[i]])
         print('')
 
@@ -187,7 +189,7 @@ class gaussians(object):
                 y[i, j, :] =  -2/(2*self.sigma**2) * (x[j, :] - c[j, i]) * torch.exp(-1/(2*self.sigma**2)*D[i, :])
 
         return y
-    
+
     def ddiff(self, x):
         """
             Compute second order derivatives for all data points in x.

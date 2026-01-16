@@ -4,11 +4,12 @@ import warnings
 
 import numpy as np
 import ray
-from opt_wrappers import sakc_tuning_wrapper
 from ray import tune
 from ray.tune.search import ConcurrencyLimiter
 from ray.tune.search.optuna import OptunaSearch
 from tap import Tap
+
+from koopmanrl.opt_wrappers import sakc_tuning_wrapper
 
 
 # Read in the hyperparameter optimization instructions

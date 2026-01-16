@@ -16,8 +16,8 @@ import torch.optim as optim
 from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
 
-from custom_envs import *
-from koopman_tensor.utils import load_tensor
+from environments import *
+from koopmanrl.koopman_tensor.utils import load_tensor
 
 def parse_args():
     # fmt: off
