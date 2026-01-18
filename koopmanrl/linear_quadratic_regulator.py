@@ -1,21 +1,39 @@
-"""
-Example usage:
-python -m cleanrl.linear_quadratic_regulator --env-id=FluidFlow-v0 --alpha=1 --total-timesteps=50000
-"""
-
 import argparse
-import gym
-import numpy as np
 import os
 import time
-import torch
-torch.set_default_dtype(torch.float64)
-
-from environments import *
-from control import dlqr, lqr
 from distutils.util import strtobool
+
+import gym
+import numpy as np
+import torch
+from control import dlqr, lqr
 from scipy.stats import norm
 from torch.utils.tensorboard import SummaryWriter
+
+torch.set_default_dtype(torch.float64)
+
+
+def parse_args():
+    # fmt: off
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--exp-name", type=str, default=os.path.basename(__file__).rstrip(".py"),
+        help="the name of this experiment")
+    parser.add_argument("--torch-deterministic", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
+        help="if toggled, `torch.backends.cudnn.deterministic=False` (default: True)")
+    parser.add_argument("--cuda", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
+        help="if toggled, cuda will be enabled (default: True)")
+    parser.add_argument("--env-id", type=str, default="LinearSystem-v0",
+        help="the id of the environment (default: LinearSystem-v0)")
+    parser.add_argument("--total-timesteps", type=int, default=100_000,
+        help="total timesteps of the experiments (default: 100_000)")
+    parser.add_argument("--gamma", type=float, default=0.99,
+        help="the discount factor gamma (default: 0.99)")
+    parser.add_argument("--alpha", type=float, default=1.0,
+        help="entropy regularization coefficient (default: 1.0)")
+    args = parser.parse_args()
+    # fmt: on
+    return args
+
 
 class LQRPolicy:
     def __init__(
@@ -29,7 +47,7 @@ class LQRPolicy:
         alpha=1.0,
         dt=None,
         is_continuous=False,
-        seed=123  # Mostly for easy carrying
+        seed=123,  # Mostly for easy carrying
     ):
         """
         Initialize an LQR (Linear Quadratic Regulator) policy for an arbitrary system.
@@ -84,19 +102,9 @@ class LQRPolicy:
         self.discounted_R = self.R / self.discount_factor
 
         if is_continuous:
-            self.lqr_soln = lqr(
-                self.discounted_A,
-                self.B,
-                self.Q,
-                self.discounted_R
-            )
+            self.lqr_soln = lqr(self.discounted_A, self.B, self.Q, self.discounted_R)
         else:
-            self.lqr_soln = dlqr(
-                self.discounted_A,
-                self.B,
-                self.Q,
-                self.discounted_R
-            )
+            self.lqr_soln = dlqr(self.discounted_A, self.B, self.Q, self.discounted_R)
 
         self.C = self.lqr_soln[0]
         self.P = self.lqr_soln[1]
@@ -169,28 +177,6 @@ class LQRPolicy:
         else:
             return -self.C @ (x - self.reference_point)
 
-def parse_args():
-    # fmt: off
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--exp-name", type=str, default=os.path.basename(__file__).rstrip(".py"),
-        help="the name of this experiment")
-    parser.add_argument("--torch-deterministic", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="if toggled, `torch.backends.cudnn.deterministic=False` (default: True)")
-    parser.add_argument("--cuda", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="if toggled, cuda will be enabled (default: True)")
-
-    # Algorithm specific arguments
-    parser.add_argument("--env-id", type=str, default="LinearSystem-v0",
-        help="the id of the environment (default: LinearSystem-v0)")
-    parser.add_argument("--total-timesteps", type=int, default=100_000,
-        help="total timesteps of the experiments (default: 100_000)")
-    parser.add_argument("--gamma", type=float, default=0.99,
-        help="the discount factor gamma (default: 0.99)")
-    parser.add_argument("--alpha", type=float, default=1.0,
-        help="entropy regularization coefficient (default: 1.0)")
-    args = parser.parse_args()
-    # fmt: on
-    return args
 
 def make_env(env_id, seed, idx, capture_video, run_name):
     def thunk():
@@ -205,6 +191,7 @@ def make_env(env_id, seed, idx, capture_video, run_name):
         return env
 
     return thunk
+
 
 if __name__ == "__main__":
     args = parse_args()
@@ -223,15 +210,17 @@ if __name__ == "__main__":
     # Set seed
     np.random.seed(sampled_seed)
 
-    envs = gym.vector.SyncVectorEnv([make_env(args.env_id, seed=sampled_seed, idx=0, capture_video=False, run_name=run_name)])
+    envs = gym.vector.SyncVectorEnv(
+        [make_env(args.env_id, seed=sampled_seed, idx=0, capture_video=False, run_name=run_name)]
+    )
 
     try:
         dt = envs.envs[0].dt
-    except:
+    except Exception:
         dt = None
 
     # Construct LQR policy
-    discrete_systems = ('LinearSystem-v0')
+    discrete_systems = "LinearSystem-v0"
     is_continuous = False if args.env_id in discrete_systems else True
     try:
         lqr_policy = LQRPolicy(
@@ -244,9 +233,9 @@ if __name__ == "__main__":
             alpha=args.alpha,
             dt=dt,
             is_continuous=is_continuous,
-            seed=sampled_seed
+            seed=sampled_seed,
         )
-    except:
+    except Exception:
         lqr_policy = LQRPolicy(
             A=envs.envs[0].A,
             B=envs.envs[0].B,
@@ -257,7 +246,7 @@ if __name__ == "__main__":
             alpha=args.alpha,
             dt=dt,
             is_continuous=is_continuous,
-            seed=sampled_seed
+            seed=sampled_seed,
         )
 
     envs.single_observation_space.dtype = np.float64
@@ -289,7 +278,7 @@ if __name__ == "__main__":
                 sps = int(global_step / (time.time() - start_time))
                 print("Steps per second (SPS):", sps)
                 writer.add_scalar("charts/SPS", sps, global_step)
-            except:
+            except Exception:
                 pass
 
     envs.close()

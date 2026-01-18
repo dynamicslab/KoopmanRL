@@ -1,17 +1,15 @@
-import matplotlib.pyplot as plt
-plt.style.use('ggplot')
-
-import numpy as np
 import os
-import pandas as pd
 
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 from analysis.utils import create_folder
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
-def collect_episodic_returns(
-    tensorboard_file_directory: str,
-    tensorboard_file_name: str
-):
+plt.style.use("ggplot")
+
+
+def collect_episodic_returns(tensorboard_file_directory: str, tensorboard_file_name: str):
     """
     Collects episodic returns and corresponding environment steps from a TensorBoard file.
 
@@ -32,14 +30,15 @@ def collect_episodic_returns(
 
     summary_iterator = EventAccumulator(os.path.join(tensorboard_file_directory, tensorboard_file_name)).Reload()
 
-    scalar_name = 'charts/episodic_return'
+    scalar_name = "charts/episodic_return"
 
     steps = [e.step for e in summary_iterator.Scalars(scalar_name)]
     episodic_returns = [e.value for e in summary_iterator.Scalars(scalar_name)]
 
     return episodic_returns, steps
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     # Going to collect the episodic return data for the following files
     path = "./runs"
     file_names = [
@@ -59,23 +58,23 @@ if __name__ == '__main__':
     for i, file_name in enumerate(file_names):
         # Collect seed number and environment id
         summary_iterator = EventAccumulator(os.path.join(path, file_name)).Reload()
-        hyperparams = str(summary_iterator.Tensors('hyperparameters/text_summary')[0]).split('|')
+        hyperparams = str(summary_iterator.Tensors("hyperparameters/text_summary")[0]).split("|")
         # file_seed = i+1 #! Hardcoded seed value for testing
-        file_seed = hyperparams[hyperparams.index('seed')+1]
+        file_seed = hyperparams[hyperparams.index("seed") + 1]
         file_seeds.append(f"Seed {file_seed}")
-        env_id = hyperparams[hyperparams.index('env_id')+1]
+        env_id = hyperparams[hyperparams.index("env_id") + 1]
 
         # Collect the episodic returns and environment steps
         # and save the data into numpy files for use in other places
         episodic_returns, steps = collect_episodic_returns(path, file_name)
-        create_folder(f'./analysis/{file_name}')
+        create_folder(f"./analysis/{file_name}")
         np.save(f"./analysis/{file_name}/episodic_returns.npy", episodic_returns)
         np.save(f"./analysis/{file_name}/steps.npy", steps)
 
         # Print information about the data
         print(f"{file_name}'s episodic returns length: {len(episodic_returns)}")
         print(f"{file_name}'s steps length: {len(steps)}")
-        print(f"{file_name}'s steps per episode: {steps[0]+1}")
+        print(f"{file_name}'s steps per episode: {steps[0] + 1}")
 
         # Compute mean episodic return
         print(f"{file_name}'s mean episodic return: {np.mean(episodic_returns)}\n")
@@ -84,14 +83,14 @@ if __name__ == '__main__':
         try:
             # Try to write to all entries at once
             df.loc[steps, f"Seed {file_seed}"] = episodic_returns
-        except:
+        except Exception:
             # We end up here if there is an error accessing the index above
             # Loop through the steps and returns and add them to the dataframe
             for step, episodic_return in zip(steps, episodic_returns):
                 df.loc[step, f"Seed {file_seed}"] = episodic_return
 
     # Save dataframe to local CSV
-    df.to_csv(f'./analysis/{env_id}_performance.csv')
+    df.to_csv(f"./analysis/{env_id}_performance.csv")
 
     # Plot the path data from the dataframe
     plt.plot(df)
@@ -107,14 +106,9 @@ if __name__ == '__main__':
     two_sigma_upper = mean_episodic_returns + 2 * std_episodic_returns
     two_sigma_lower = mean_episodic_returns - 2 * std_episodic_returns
 
-    plt.plot(mean_episodic_returns, label='Mean Episodic Return')
+    plt.plot(mean_episodic_returns, label="Mean Episodic Return")
     plt.fill_between(
-        mean_episodic_returns.index,
-        two_sigma_lower,
-        two_sigma_upper,
-        color='gray',
-        alpha=0.3,
-        label='Two Sigma'
+        mean_episodic_returns.index, two_sigma_lower, two_sigma_upper, color="gray", alpha=0.3, label="Two Sigma"
     )
     plt.title("Average Episodic Returns with Two Sigma Bounds")
     plt.xlabel("Step in Environment")

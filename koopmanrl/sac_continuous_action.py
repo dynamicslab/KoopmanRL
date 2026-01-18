@@ -1,9 +1,3 @@
-"""
-Example usage:
-python -m cleanrl.sac_continuous_action --env-id=FluidFlow-v0 --alpha=1 --autotune=false --total-timesteps=50000
-"""
-
-# docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/sac/#sac_continuous_actionpy
 import argparse
 import os
 import random
@@ -13,16 +7,16 @@ from distutils.util import strtobool
 import gym
 import numpy as np
 import torch
-torch.set_default_dtype(torch.float64)
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from analysis.utils import create_folder
+from koopman_tensor.utils import load_tensor
 from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
 
-from environments import *
-from koopman_tensor.utils import load_tensor
+torch.set_default_dtype(torch.float64)
+
 
 def parse_args():
     # fmt: off
@@ -43,12 +37,6 @@ def parse_args():
         help="the entity (team) of wandb's project (default: None)")
     parser.add_argument("--capture-video", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="whether to capture videos of the agent performances (check out `videos` folder; default: False)")
-
-    # Algorithm specific arguments
-    # parser.add_argument("--env-id", type=str, default="Hopper-v4",
-    #     help="the id of the environment")
-    # parser.add_argument("--env-id", type=str, default="Hopper-v3",
-    #     help="the id of the environment")
     parser.add_argument("--env-id", type=str, default="LinearSystem-v0",
         help="the id of the environment (default: LinearSystem-v0)")
     parser.add_argument("--total-timesteps", type=int, default=1000000,
@@ -69,7 +57,7 @@ def parse_args():
         help="the learning rate of the Q network network optimizer (default: 0.001)")
     parser.add_argument("--policy-frequency", type=int, default=2,
         help="the frequency of training policy (delayed; default: 2)")
-    parser.add_argument("--target-network-frequency", type=int, default=1, # Denis Yarats' implementation delays this by 2.
+    parser.add_argument("--target-network-frequency", type=int, default=1, # Denis' implementation delays this by 2.
         help="the frequency of updates for the target nerworks (default: 1)")
     parser.add_argument("--noise-clip", type=float, default=0.5,
         help="noise clip parameter of the Target Policy Smoothing Regularization (default: 0.5)")
@@ -104,7 +92,9 @@ class SoftQNetwork(nn.Module):
     def __init__(self, env):
         super().__init__()
 
-        self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod() + np.prod(env.single_action_space.shape), 256)
+        self.fc1 = nn.Linear(
+            np.array(env.single_observation_space.shape).prod() + np.prod(env.single_action_space.shape), 256
+        )
         self.fc2 = nn.Linear(256, 256)
         self.fc3 = nn.Linear(256, 1)
 
@@ -116,6 +106,7 @@ class SoftQNetwork(nn.Module):
         x = self.fc3(x)
 
         return x
+
 
 class SoftKoopmanQNetwork(nn.Module):
     def __init__(self, koopman_tensor):
@@ -129,7 +120,7 @@ class SoftKoopmanQNetwork(nn.Module):
         self.linear = nn.Linear(self.phi_state_dim, 1, bias=False)
 
     def forward(self, state, action):
-        """ Linear in the Kronecker product of dictionary spaces """
+        """Linear in the Kronecker product of dictionary spaces"""
 
         # batch_size = state.shape[0]
 
@@ -328,7 +319,9 @@ if __name__ == "__main__":
                 qf1_next_target = qf1_target(data.next_observations, next_state_actions)
                 qf2_next_target = qf2_target(data.next_observations, next_state_actions)
                 min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
-                next_q_value = data.rewards.flatten() + (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
+                next_q_value = data.rewards.flatten() + (1 - data.dones.flatten()) * args.gamma * (
+                    min_qf_next_target
+                ).view(-1)
 
             qf1_a_values = qf1(data.observations, data.actions).view(-1)
             qf2_a_values = qf2(data.observations, data.actions).view(-1)
@@ -385,11 +378,8 @@ if __name__ == "__main__":
                     writer.add_scalar("losses/alpha_loss", alpha_loss.item(), global_step)
 
             # Checkpoint policy network every so often
-            if global_step == 0 or (global_step+1) % 1000 == 0:
-                torch.save(
-                    actor.state_dict(),
-                    f"{model_chkpt_path}/step_{global_step+1}.pt"
-                )
+            if global_step == 0 or (global_step + 1) % 1000 == 0:
+                torch.save(actor.state_dict(), f"{model_chkpt_path}/step_{global_step + 1}.pt")
 
     envs.close()
     writer.close()

@@ -1,21 +1,18 @@
+from typing import Optional
+
 import gym
 import numpy as np
 import torch
-
 from gym import spaces
 from gym.envs.registration import register
 from scipy.integrate import solve_ivp
-from typing import Optional
 
 dt = 0.01
 max_episode_steps = int(20 / dt)
 # max_episode_steps = int(2 / dt)
 
-register(
-    id='FluidFlow-v0',
-    entry_point='custom_envs.fluid_flow:FluidFlow',
-    max_episode_steps=max_episode_steps
-)
+register(id="FluidFlow-v0", entry_point="custom_envs.fluid_flow:FluidFlow", max_episode_steps=max_episode_steps)
+
 
 class FluidFlow(gym.Env):
     def __init__(self):
@@ -40,16 +37,14 @@ class FluidFlow(gym.Env):
         x_bar = 0
         y_bar = 0
         z_bar = 0
-        self.continuous_A = np.array([
-            [self.mu + self.A * z_bar, -self.omega, self.A * x_bar],
-            [self.omega, self.mu + self.A * z_bar, self.A * y_bar],
-            [2 * self.lamb * x_bar, 2 * self.lamb * y_bar, -self.lamb]
-        ])
-        self.continuous_B = np.array([
-            [0],
-            [1],
-            [0]
-        ])
+        self.continuous_A = np.array(
+            [
+                [self.mu + self.A * z_bar, -self.omega, self.A * x_bar],
+                [self.omega, self.mu + self.A * z_bar, self.A * y_bar],
+                [2 * self.lamb * x_bar, 2 * self.lamb * y_bar, -self.lamb],
+            ]
+        )
+        self.continuous_B = np.array([[0], [1], [0]])
 
         # Define cost/reward values
         self.Q = np.eye(self.state_dim)
@@ -61,26 +56,20 @@ class FluidFlow(gym.Env):
         self.state_minimums = np.array([-1.0, -1.0, 0.0])
         self.state_maximums = np.array([1.0, 1.0, 1.0])
         self.observation_space = spaces.Box(
-            low=self.state_minimums,
-            high=self.state_maximums,
-            shape=(self.state_dim,),
-            dtype=np.float64
+            low=self.state_minimums, high=self.state_maximums, shape=(self.state_dim,), dtype=np.float64
         )
 
         # We have a continuous action space. In this case, there is only 1 dimension per action
         self.action_minimums = np.ones(self.action_dim) * self.action_range[0]
         self.action_maximums = np.ones(self.action_dim) * self.action_range[1]
         self.action_space = spaces.Box(
-            low=self.action_minimums,
-            high=self.action_maximums,
-            shape=(self.action_dim,),
-            dtype=np.float64
+            low=self.action_minimums, high=self.action_maximums, shape=(self.action_dim,), dtype=np.float64
         )
 
         # History of states traversed during the current episode
         self.states = []
 
-    def reset(self, state=None, seed: Optional[int]=None, options: Optional[dict]=None):
+    def reset(self, state=None, seed: Optional[int] = None, options: Optional[dict] = None):
         # We need the following line to seed self.np_random
         # Not sure if this will work for any environments that depend on PyTorch
         super().reset(seed=seed)
@@ -144,15 +133,15 @@ class FluidFlow(gym.Env):
 
             x, y, z = input
 
-            x_dot = self.mu*x - self.omega*y + self.A*x*z
-            y_dot = self.omega*x + self.mu*y + self.A*y*z
-            z_dot = -self.lamb * ( z - np.power(x, 2) - np.power(y, 2) )
+            x_dot = self.mu * x - self.omega * y + self.A * x * z
+            y_dot = self.omega * x + self.mu * y + self.A * y * z
+            z_dot = -self.lamb * (z - np.power(x, 2) - np.power(y, 2))
 
             u = action
             if u is None:
                 u = np.zeros(self.action_dim)
 
-            return [ x_dot, y_dot + u[0], z_dot ]
+            return [x_dot, y_dot + u[0], z_dot]
 
         return f_u
 
@@ -172,7 +161,7 @@ class FluidFlow(gym.Env):
             State array pushed forward in time.
         """
 
-        soln = solve_ivp(fun=self.continuous_f(action), t_span=[0, dt], y0=state, method='RK45')
+        soln = solve_ivp(fun=self.continuous_f(action), t_span=[0, dt], y0=state, method="RK45")
 
         return soln.y[:, -1]
 

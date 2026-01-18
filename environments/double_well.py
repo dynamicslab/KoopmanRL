@@ -1,19 +1,16 @@
+from typing import Optional
+
 import gym
 import numpy as np
 import torch
-
 from gym import spaces
 from gym.envs.registration import register
-from typing import Optional
 
 dt = 0.01
 max_episode_steps = int(20 / dt)
 
-register(
-    id='DoubleWell-v0',
-    entry_point='custom_envs.double_well:DoubleWell',
-    max_episode_steps=max_episode_steps
-)
+register(id="DoubleWell-v0", entry_point="custom_envs.double_well:DoubleWell", max_episode_steps=max_episode_steps)
+
 
 class DoubleWell(gym.Env):
     def __init__(self):
@@ -29,14 +26,8 @@ class DoubleWell(gym.Env):
         self.max_episode_steps = max_episode_steps
 
         # For LQR
-        self.continuous_A = np.array([
-            [-8, 0],
-            [0, -2]
-        ])
-        self.continuous_B = np.array([
-            [1],
-            [1]
-        ])
+        self.continuous_A = np.array([[-8, 0], [0, -2]])
+        self.continuous_B = np.array([[1], [1]])
 
         # Define cost/reward
         self.Q = np.eye(self.state_dim)
@@ -48,10 +39,7 @@ class DoubleWell(gym.Env):
         self.state_minimums = np.ones(self.state_dim) * self.state_range[0]
         self.state_maximums = np.ones(self.state_dim) * self.state_range[1]
         self.observation_space = spaces.Box(
-            low=self.state_minimums,
-            high=self.state_maximums,
-            shape=(self.state_dim,),
-            dtype=np.float64
+            low=self.state_minimums, high=self.state_maximums, shape=(self.state_dim,), dtype=np.float64
         )
 
         # We have a continuous action space. In this case, there is only 1 dimension per action
@@ -59,7 +47,7 @@ class DoubleWell(gym.Env):
             low=np.ones(self.action_dim) * self.action_range[0],
             high=np.ones(self.action_dim) * self.action_range[1],
             shape=(self.action_dim,),
-            dtype=np.float64
+            dtype=np.float64,
         )
 
         # History of states traversed during the current episode
@@ -67,26 +55,22 @@ class DoubleWell(gym.Env):
 
     def potential(self, X=None, Y=None, U=0):
         if X is not None and Y is not None:
-            return (X**2 - 1)**2 + Y**2 + U*X + U*Y
+            return (X**2 - 1) ** 2 + Y**2 + U * X + U * Y
 
-        return (self.state[0]**2 - 1)**2 + self.state[1]**2 + U*self.state[0] + U*self.state[1]
+        return (self.state[0] ** 2 - 1) ** 2 + self.state[1] ** 2 + U * self.state[0] + U * self.state[1]
 
-    def reset(self, seed: Optional[int]=None, options: Optional[dict]=None):
+    def reset(self, seed: Optional[int] = None, options: Optional[dict] = None):
         # We need the following line to seed self.np_random
         # Not sure if this will work for any environments that depend on PyTorch
         super().reset(seed=seed)
 
         # Choose the initial state uniformly at random
-        self.state = np.random.uniform(
-            low=self.state_minimums,
-            high=self.state_maximums,
-            size=(self.state_dim,)
-        )
+        self.state = np.random.uniform(low=self.state_minimums, high=self.state_maximums, size=(self.state_dim,))
         self.states = [self.state]
         self.potentials = [self.potential()]
 
         # Generating randomness up front with a lot of buffer room
-        self.random_draws = np.random.normal(loc=0, scale=1, size=(self.max_episode_steps*10, 2, 1))
+        self.random_draws = np.random.normal(loc=0, scale=1, size=(self.max_episode_steps * 10, 2, 1))
 
         # Track number of steps taken
         self.step_count = 0
@@ -139,16 +123,13 @@ class DoubleWell(gym.Env):
             if u is None:
                 u = np.zeros(self.action_dim)
 
-            b_x = np.array([
-                [4*x - 4*(x**3)],
-                [-2*y]
-            ])
+            b_x = np.array([[4 * x - 4 * (x**3)], [-2 * y]])
 
             column_output = b_x + u[0]
-            x_dot = column_output[0,0]
-            y_dot = column_output[1,0]
+            x_dot = column_output[0, 0]
+            y_dot = column_output[1, 0]
 
-            return np.array([ x_dot, y_dot ])
+            return np.array([x_dot, y_dot])
 
         return f_u
 
@@ -168,10 +149,7 @@ class DoubleWell(gym.Env):
             State array vector pushed forward in time.
         """
 
-        sigma_x = np.array([
-            [0.7, state[0]],
-            [0, 0.5]
-        ])
+        sigma_x = np.array([[0.7, state[0]], [0, 0.5]])
 
         drift = self.continuous_f(action)(0, state) * dt
         diffusion = (sigma_x @ self.random_draws[self.step_count] * np.sqrt(dt))[:, 0]

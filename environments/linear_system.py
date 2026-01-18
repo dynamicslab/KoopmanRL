@@ -1,18 +1,17 @@
+from typing import Optional
+
 import gym
 import numpy as np
 import torch
-
 from gym import spaces
 from gym.envs.registration import register
-from typing import Optional
 
 max_episode_steps = 200
 
 register(
-    id='LinearSystem-v0',
-    entry_point='custom_envs.linear_system:LinearSystem',
-    max_episode_steps=max_episode_steps
+    id="LinearSystem-v0", entry_point="custom_envs.linear_system:LinearSystem", max_episode_steps=max_episode_steps
 )
+
 
 class LinearSystem(gym.Env):
     def __init__(self):
@@ -50,37 +49,27 @@ class LinearSystem(gym.Env):
         self.state_minimums = np.ones(self.state_dim) * self.state_range[0]
         self.state_maximums = np.ones(self.state_dim) * self.state_range[1]
         self.observation_space = spaces.Box(
-            low=self.state_minimums,
-            high=self.state_maximums,
-            shape=(self.state_dim,),
-            dtype=np.float64
+            low=self.state_minimums, high=self.state_maximums, shape=(self.state_dim,), dtype=np.float64
         )
 
         # We have a continuous action space. In this case, there is only 1 dimension per action
         self.action_minimums = np.ones(self.action_dim) * self.action_range[0]
         self.action_maximums = np.ones(self.action_dim) * self.action_range[1]
         self.action_space = spaces.Box(
-            low=self.action_minimums,
-            high=self.action_maximums,
-            shape=(self.action_dim,),
-            dtype=np.float64
+            low=self.action_minimums, high=self.action_maximums, shape=(self.action_dim,), dtype=np.float64
         )
 
         # History of states traversed during the current episode
         self.states = []
 
-    def reset(self, seed: Optional[int]=None, options: Optional[dict]=None):
+    def reset(self, seed: Optional[int] = None, options: Optional[dict] = None):
         # We need the following line to seed self.np_random
         # Not sure if this will work for any environments that depend on PyTorch
         super().reset(seed=seed)
 
         # Choose the initial state uniformly at random
         # self.state = self.observation_space.sample()
-        self.state = np.random.uniform(
-            low=self.state_minimums,
-            high=self.state_maximums,
-            size=(self.state_dim,)
-        )
+        self.state = np.random.uniform(low=self.state_minimums, high=self.state_maximums, size=(self.state_dim,))
         self.states = [self.state]
 
         # Track number of steps taken

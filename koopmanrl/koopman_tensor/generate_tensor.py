@@ -1,39 +1,59 @@
 import argparse
+from distutils.util import strtobool
+
 import gym
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-
-from environments import *
-from distutils.util import strtobool
-from koopmanrl.koopman_tensor.torch_tensor import KoopmanTensor, Regressor
-from koopmanrl.koopman_tensor.observables import torch_observables as observables
-from koopmanrl.koopman_tensor.utils import save_tensor
 from matplotlib.animation import FuncAnimation
+from tap import Tap
+
+from koopmanrl.koopman_tensor.observables import torch_observables as observables
+from koopmanrl.koopman_tensor.torch_tensor import KoopmanTensor, Regressor
+from koopmanrl.koopman_tensor.utils import save_tensor
 
 torch.set_default_dtype(torch.float64)
 
 
-""" Allow environment specification """
-parser = argparse.ArgumentParser(description='Test Custom Environment')
-parser.add_argument('--env-id', default="LinearSystem-v0",
-                    help='Gym environment (default: LinearSystem-v0)')
-parser.add_argument('--num-paths', type=int, default=100,
-                    help='Number of paths for the dataset (default: 100)')
-parser.add_argument('--num-steps-per-path', type=int, default=300,
-                    help='Number of steps per path for the dataset (default: 300)')
-parser.add_argument('--state-order', type=int, default=2,
-                    help='Order of monomials to use for state dictionary (default: 2)')
-parser.add_argument('--action-order', type=int, default=2,
-                    help='Order of monomials to use for action dictionary (default: 2)')
-parser.add_argument('--seed', type=int, default=123,
-                    help='Seed for reproducibility (default: 123)')
-parser.add_argument('--save-model', type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
-                    help='Whether to store the Koopman tensor model in a pickle file (default: False)')
-parser.add_argument('--animate', type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
-                   help='Whether to show the animated dynamics over time (default: False)')
-parser.add_argument('--regressor', type=str, default='ols', choices=['ols', 'sindy', 'rrr', 'ridge'], nargs="?", const=True,
-                    help='Which regressor to use to build the Koopman tensor (default: \'ols\')')
+""" Allow environment specification """  # ---> Needs to be converted to tap
+parser = argparse.ArgumentParser(description="Test Custom Environment")
+parser.add_argument("--env-id", default="LinearSystem-v0", help="Gym environment (default: LinearSystem-v0)")
+parser.add_argument("--num-paths", type=int, default=100, help="Number of paths for the dataset (default: 100)")
+parser.add_argument(
+    "--num-steps-per-path", type=int, default=300, help="Number of steps per path for the dataset (default: 300)"
+)
+parser.add_argument(
+    "--state-order", type=int, default=2, help="Order of monomials to use for state dictionary (default: 2)"
+)
+parser.add_argument(
+    "--action-order", type=int, default=2, help="Order of monomials to use for action dictionary (default: 2)"
+)
+parser.add_argument("--seed", type=int, default=123, help="Seed for reproducibility (default: 123)")
+parser.add_argument(
+    "--save-model",
+    type=lambda x: bool(strtobool(x)),
+    default=False,
+    nargs="?",
+    const=True,
+    help="Whether to store the Koopman tensor model in a pickle file (default: False)",
+)
+parser.add_argument(
+    "--animate",
+    type=lambda x: bool(strtobool(x)),
+    default=False,
+    nargs="?",
+    const=True,
+    help="Whether to show the animated dynamics over time (default: False)",
+)
+parser.add_argument(
+    "--regressor",
+    type=str,
+    default="ols",
+    choices=["ols", "sindy", "rrr", "ridge"],
+    nargs="?",
+    const=True,
+    help="Which regressor to use to build the Koopman tensor (default: 'ols')",
+)
 args = parser.parse_args()
 
 """ Set seeds and create environment """
@@ -81,7 +101,7 @@ if args.animate:
     # Create a figure and 3D axis
     fig = plt.figure()
     if is_3d_env:
-        ax = fig.add_subplot(111, projection='3d')
+        ax = fig.add_subplot(111, projection="3d")
     else:
         ax = fig.add_subplot(111)
 
@@ -93,16 +113,16 @@ if args.animate:
 
     # Initialize an empty line for the animation
     if is_3d_env:
-        line, = ax.plot([], [], [], lw=2)
+        (line,) = ax.plot([], [], [], lw=2)
     else:
-        line, = ax.plot([], [], lw=2)
+        (line,) = ax.plot([], [], lw=2)
 
     # Function to initialize the plot
     def init():
         line.set_data([], [])
         if is_3d_env:
             line.set_3d_properties([])
-        return line,
+        return (line,)
 
     # Set the number of frames
     num_frames = X.shape[1]
@@ -122,7 +142,7 @@ if args.animate:
             ani.event_source.stop()
             plt.close(fig)
 
-        return line,
+        return (line,)
 
     # Create the animation
     ani = FuncAnimation(fig, animate, init_func=init, frames=num_frames, interval=50, blit=True, repeat=False)
@@ -149,7 +169,7 @@ try:
         regressor=Regressor(args.regressor),
         dt=env.dt,
     )
-except:
+except Exception:
     # Assume the error was because there is no dt for LinearSystem
     path_based_tensor = KoopmanTensor(
         X,
@@ -162,22 +182,30 @@ except:
 
 """ Predict sample points """
 sample_indices = (0, X.shape[1])
-sample_x = X[:, sample_indices[0]:sample_indices[1]]
-sample_u = U[:, sample_indices[0]:sample_indices[1]]
+sample_x = X[:, sample_indices[0] : sample_indices[1]]
+sample_u = U[:, sample_indices[0] : sample_indices[1]]
 
-true_x_prime = Y[:, sample_indices[0]:sample_indices[1]]
+true_x_prime = Y[:, sample_indices[0] : sample_indices[1]]
 estimated_x_prime = path_based_tensor.f(sample_x, sample_u)
 
 single_step_state_estimation_error_norms = np.linalg.norm(true_x_prime - estimated_x_prime, axis=0)
 avg_single_step_state_estimation_error_norm = single_step_state_estimation_error_norms.mean()
 max_single_step_state_estimation_error_norm = single_step_state_estimation_error_norms.max()
 avg_state_norm = np.linalg.norm(X.mean(axis=1))
-avg_single_step_state_estimation_error_norm_per_avg_state_norm = avg_single_step_state_estimation_error_norm / avg_state_norm
-max_single_step_state_estimation_error_norm_per_avg_state_norm = max_single_step_state_estimation_error_norm / avg_state_norm
-print(f"Average single step state estimation error norm per average state norm: {avg_single_step_state_estimation_error_norm_per_avg_state_norm}")
-print(f"Max single step state estimation error norm per average state norm: {max_single_step_state_estimation_error_norm_per_avg_state_norm}")
+avg_single_step_state_estimation_error_norm_per_avg_state_norm = (
+    avg_single_step_state_estimation_error_norm / avg_state_norm
+)
+max_single_step_state_estimation_error_norm_per_avg_state_norm = (
+    max_single_step_state_estimation_error_norm / avg_state_norm
+)
+print(
+    f"Average single step state estimation error norm per average state norm: {avg_single_step_state_estimation_error_norm_per_avg_state_norm}"  # noqa: E501
+)
+print(
+    f"Max single step state estimation error norm per average state norm: {max_single_step_state_estimation_error_norm_per_avg_state_norm}"  # noqa: E501
+)
 
-true_phi_x_prime = path_based_tensor.Phi_Y[:, sample_indices[0]:sample_indices[1]]
+true_phi_x_prime = path_based_tensor.Phi_Y[:, sample_indices[0] : sample_indices[1]]
 estimated_phi_x_prime = path_based_tensor.phi_f(sample_x, sample_u)
 
 single_step_phi_estimation_error_norms = np.linalg.norm(true_phi_x_prime - estimated_phi_x_prime, axis=0)
@@ -186,8 +214,12 @@ max_single_step_phi_estimation_error_norm = single_step_phi_estimation_error_nor
 avg_phi_norm = np.linalg.norm(path_based_tensor.Phi_X.mean(axis=1))
 avg_single_step_phi_estimation_error_norm_per_avg_phi_norm = avg_single_step_phi_estimation_error_norm / avg_phi_norm
 max_single_step_phi_estimation_error_norm_per_avg_phi_norm = max_single_step_phi_estimation_error_norm / avg_phi_norm
-print(f"Average single step phi estimation error norm per average phi norm: {avg_single_step_phi_estimation_error_norm_per_avg_phi_norm}")
-print(f"Max single step phi estimation error norm per average phi norm: {max_single_step_phi_estimation_error_norm_per_avg_phi_norm}")
+print(
+    f"Average single step phi estimation error norm per average phi norm: {avg_single_step_phi_estimation_error_norm_per_avg_phi_norm}"  # noqa: E501
+)
+print(
+    f"Max single step phi estimation error norm per average phi norm: {max_single_step_phi_estimation_error_norm_per_avg_phi_norm}"  # noqa: E501
+)
 
 """ Save Koopman tensor """
 if args.save_model:

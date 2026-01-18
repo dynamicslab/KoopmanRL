@@ -1,10 +1,3 @@
-"""
-Example usage:
-
-python -m cleanrl.soft_actor_koopman_critic --env-id=FluidFlow-v0 --alpha=1
-"""
-
-# docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/sac/#sac_continuous_actionpy
 import argparse
 import os
 import random
@@ -22,20 +15,21 @@ from stable_baselines3.common.buffers import ReplayBuffer
 from tap import Tap
 from torch.utils.tensorboard import SummaryWriter
 
-from koopmanrl.utils import create_folder
-from koopmanrl.koopman_observables import monomials
 from environments import *  # noqa: F403
+from koopmanrl.koopman_observables import monomials
+from koopmanrl.utils import create_folder
 
-torch.set_default_dtype(
-    torch.float64
-)  # Might not strictly be necessary outside of the Koopman calculation
+torch.set_default_dtype(torch.float64)  # Might not strictly be necessary outside of the Koopman calculation
+
 
 class ArgumentParser(Tap):
     exp_name: str = os.path.basename(__file__).rstrip(".py")  # the name of the experiment
     seed: int = 1  # seed of the experiment (default : 1)
     torch_deterministic: bool = True  # if toggled, `torch.backends.cudnn.deterministic=False` (default: True)
     cuda: bool = False  # if toggled, cuda will be enabled by default (default: True)
-    capture_video: bool = False  # whether to capture videos of the agent performances (check out `videos` folder; default: False)
+    capture_video: bool = (
+        False  # whether to capture videos of the agent performances (check out `videos` folder; default: False)
+    )
     env_id: str = "LinearSystem-v0"  # the id of the environment (default: LinearSystem-v0)
     total_timesteps: int = 50000  # total timesteps of the experiments (default: 50000)
     buffer_size: int = int(1e6)  # the replay memory buffer size (default: 1000000)
@@ -56,7 +50,7 @@ class ArgumentParser(Tap):
     num_steps_per_path: int = 300  # Number of steps per path for the dataset (default: 300)
     state_order: int = 2  # Order of monomials to use for state dictionary (default: 2)
     action_order: int = 2  # Order of monomials to use for action dictionary (default: 2)
-    regressor: str = 'ols'  # Which regressor to use to build the Koopman tensor (default: \'ols\')
+    regressor: str = "ols"  # Which regressor to use to build the Koopman tensor (default: \'ols\')
 
 
 def make_env(env_id, seed, idx, capture_video, run_name):
@@ -100,9 +94,7 @@ def OLS(X, Y):
 
 def SINDy(Theta, dXdt, lamb=0.05):
     d = dXdt.shape[1]
-    Xi = torch.linalg.lstsq(
-        Theta, dXdt, rcond=None
-    ).solution  # Initial guess: Least-squares
+    Xi = torch.linalg.lstsq(Theta, dXdt, rcond=None).solution  # Initial guess: Least-squares
 
     for _ in range(10):
         smallinds = torch.abs(Xi) < lamb  # Find small coefficients
@@ -110,9 +102,9 @@ def SINDy(Theta, dXdt, lamb=0.05):
         for ind in range(d):  # n is state dimension
             biginds = smallinds[:, ind] == 0
             # Regress dynamics onto remaining terms to find sparse Xi
-            Xi[biginds, ind] = torch.linalg.lstsq(
-                Theta[:, biginds], dXdt[:, ind].unsqueeze(0).T, rcond=None
-            ).solution[:, 0]
+            Xi[biginds, ind] = torch.linalg.lstsq(Theta[:, biginds], dXdt[:, ind].unsqueeze(0).T, rcond=None).solution[
+                :, 0
+            ]
 
     L = Xi
     return L
@@ -222,17 +214,11 @@ class KoopmanTensor:
             # Update regression target
             finite_differences = self.Y - self.X  # (self.x_dim, self.N)
             phi_derivative = self.phi.diff(self.X)  # (self.phi_dim, self.x_dim, self.N)
-            phi_double_derivative = self.phi.ddiff(
-                self.X
-            )  # (self.phi_dim, self.x_dim, self.x_dim, self.N)
-            self.regression_Y = torch.einsum(
-                "os,pos->ps", finite_differences / self.dt, phi_derivative
-            )
+            phi_double_derivative = self.phi.ddiff(self.X)  # (self.phi_dim, self.x_dim, self.x_dim, self.N)
+            self.regression_Y = torch.einsum("os,pos->ps", finite_differences / self.dt, phi_derivative)
             self.regression_Y += torch.einsum(
                 "ot,pots->ps",
-                0.5
-                * (finite_differences @ finite_differences.T)
-                / self.dt,  # (state_dim, state_dim)
+                0.5 * (finite_differences @ finite_differences.T) / self.dt,  # (state_dim, state_dim)
                 phi_double_derivative,
             )
         else:
@@ -350,9 +336,7 @@ class KoopmanTensor:
         return self.B.T @ self.phi_f(x, u)
 
 
-def generate_koopman_tensor(
-    env_id, seed, num_paths, num_steps_per_path, state_order, action_order, regressor
-):
+def generate_koopman_tensor(env_id, seed, num_paths, num_steps_per_path, state_order, action_order, regressor):
     # Set seeds and create environment
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -416,8 +400,7 @@ class SoftQNetwork(nn.Module):
         super().__init__()
 
         self.fc1 = nn.Linear(
-            np.array(env.single_observation_space.shape).prod()
-            + np.prod(env.single_action_space.shape),
+            np.array(env.single_observation_space.shape).prod() + np.prod(env.single_action_space.shape),
             256,
         )
         self.fc2 = nn.Linear(256, 256)
@@ -499,9 +482,7 @@ class Actor(nn.Module):
         mean = self.fc_mean(x)
         log_std = self.fc_logstd(x)
         log_std = torch.tanh(log_std)
-        log_std = LOG_STD_MIN + 0.5 * (LOG_STD_MAX - LOG_STD_MIN) * (
-            log_std + 1
-        )  # From SpinUp / Denis Yarats
+        log_std = LOG_STD_MIN + 0.5 * (LOG_STD_MAX - LOG_STD_MIN) * (log_std + 1)  # From SpinUp / Denis Yarats
 
         return mean, log_std
 
@@ -527,14 +508,11 @@ def main():
     writer = SummaryWriter(f"runs/SAKC/{run_name}")
     writer.add_text(
         "hyperparameters",
-        "|param|value|\n|-|-|\n%s"
-        % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
+        "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
     )
 
     # Create folder for model checkpoints
-    model_chkpt_path = (
-        f"./saved_models/SAKC/{args.env_id}/sakc_chkpts_{args.seed}_{curr_time}"
-    )
+    model_chkpt_path = f"./saved_models/SAKC/{args.env_id}/sakc_chkpts_{args.seed}_{curr_time}"
     create_folder(model_chkpt_path)
 
     # TRY NOT TO MODIFY: seeding
@@ -547,14 +525,8 @@ def main():
     device = torch.device("cpu")
 
     # env setup
-    envs = gym.vector.SyncVectorEnv(
-        [make_env(args.env_id, args.seed, 0, args.capture_video, run_name)]
-    )
-    assert isinstance(envs.single_action_space, gym.spaces.Box), (
-        "only continuous action space is supported"
-    )
-
-    max_action = float(envs.single_action_space.high[0])
+    envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, args.capture_video, run_name)])
+    assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
 
     actor = Actor(envs).to(device)
 
@@ -577,16 +549,12 @@ def main():
 
     qf1 = SoftQNetwork(envs).to(device)
     qf2 = SoftQNetwork(envs).to(device)
-    q_optimizer = optim.Adam(
-        list(qf1.parameters()) + list(qf2.parameters()), lr=args.q_lr
-    )
+    q_optimizer = optim.Adam(list(qf1.parameters()) + list(qf2.parameters()), lr=args.q_lr)
     actor_optimizer = optim.Adam(list(actor.parameters()), lr=args.policy_lr)
 
     # Automatic entropy tuning
     if args.autotune:
-        target_entropy = -torch.prod(
-            torch.Tensor(envs.single_action_space.shape).to(device)
-        ).item()
+        target_entropy = -torch.prod(torch.Tensor(envs.single_action_space.shape).to(device)).item()
         log_alpha = torch.zeros(1, requires_grad=True, device=device)
         alpha = log_alpha.exp().item()
         a_optimizer = optim.Adam([log_alpha], lr=args.alpha_lr)
@@ -609,9 +577,7 @@ def main():
     for global_step in range(args.total_timesteps):
         # ALGO LOGIC: put action logic here
         if global_step < args.learning_starts:
-            actions = np.array(
-                [envs.single_action_space.sample() for _ in range(envs.num_envs)]
-            )
+            actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
         else:
             actions, log_probs, _ = actor.get_action(torch.Tensor(obs).to(device))
             actions = actions.detach().cpu().numpy()
@@ -622,15 +588,9 @@ def main():
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         for info in infos:
             if "episode" in info.keys():
-                print(
-                    f"global_step={global_step}, episodic_return={info['episode']['r']}"
-                )
-                writer.add_scalar(
-                    "charts/episodic_return", info["episode"]["r"], global_step
-                )
-                writer.add_scalar(
-                    "charts/episodic_length", info["episode"]["l"], global_step
-                )
+                print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
+                writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
+                writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
                 break
 
         # TRY NOT TO MODIFY: save data to reply buffer; handle `terminal_observation`
@@ -664,13 +624,9 @@ def main():
 
             # E_( s_t, a_t )~D [ 1/2 ( Q_theta( s_t, a_t ) - Q_target( s_t, a_t ) )^2 ]
             with torch.no_grad():
-                expected_phi_x_primes = koopman_tensor.phi_f(
-                    data.observations.T, data.actions.T
-                ).T
+                expected_phi_x_primes = koopman_tensor.phi_f(data.observations.T, data.actions.T).T
                 vf_next_target = (
-                    (1 - data.dones.flatten())
-                    * args.gamma
-                    * vf_target.linear(expected_phi_x_primes).view(-1)
+                    (1 - data.dones.flatten()) * args.gamma * vf_target.linear(expected_phi_x_primes).view(-1)
                 )
                 q_target_values = data.rewards.flatten() + vf_next_target
 
@@ -712,39 +668,27 @@ def main():
             # update the target networks
             if global_step % args.target_network_frequency == 0:
                 for param, target_param in zip(vf.parameters(), vf_target.parameters()):
-                    target_param.data.copy_(
-                        args.tau * param.data + (1 - args.tau) * target_param.data
-                    )
+                    target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
 
             if global_step % 100 == 0:
-                writer.add_scalar(
-                    "losses/vf_values", vf_values.mean().item(), global_step
-                )
+                writer.add_scalar("losses/vf_values", vf_values.mean().item(), global_step)
                 writer.add_scalar("losses/vf_loss", vf_loss.item(), global_step)
-                writer.add_scalar(
-                    "losses/qf1_values", qf1_a_values.mean().item(), global_step
-                )
-                writer.add_scalar(
-                    "losses/qf2_values", qf2_a_values.mean().item(), global_step
-                )
+                writer.add_scalar("losses/qf1_values", qf1_a_values.mean().item(), global_step)
+                writer.add_scalar("losses/qf2_values", qf2_a_values.mean().item(), global_step)
                 writer.add_scalar("losses/qf1_loss", qf1_loss.item(), global_step)
                 writer.add_scalar("losses/qf2_loss", qf2_loss.item(), global_step)
                 writer.add_scalar("losses/qf_loss", qf_loss.item() / 2.0, global_step)
                 writer.add_scalar("losses/actor_loss", actor_loss.item(), global_step)
                 writer.add_scalar("losses/alpha", alpha, global_step)
                 if args.autotune:
-                    writer.add_scalar(
-                        "losses/alpha_loss", alpha_loss.item(), global_step
-                    )
+                    writer.add_scalar("losses/alpha_loss", alpha_loss.item(), global_step)
                 sps = int(global_step / (time.time() - start_time))
                 print("Steps per second (SPS):", sps)
                 writer.add_scalar("charts/SPS", sps, global_step)
 
             # Checkpoint policy network every so often
             if global_step == 0 or (global_step + 1) % 1000 == 0:
-                torch.save(
-                    actor.state_dict(), f"{model_chkpt_path}/step_{global_step + 1}.pt"
-                )
+                torch.save(actor.state_dict(), f"{model_chkpt_path}/step_{global_step + 1}.pt")
 
     envs.close()
     writer.close()

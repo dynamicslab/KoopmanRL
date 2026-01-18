@@ -1,20 +1,37 @@
 import argparse
-import gym
-import numpy as np
 import os
 import random
 import time
-import torch
-torch.set_default_dtype(torch.float64)
-
-from analysis.utils import create_folder
-from environments import *
 from distutils.util import strtobool
-from koopmanrl.koopman_tensor.torch_tensor import KoopmanTensor
-from koopmanrl.koopman_tensor.utils import load_tensor
+
+import gym
+import numpy as np
+import torch
+from analysis.utils import create_folder
+from tap import Tap
 from torch.utils.tensorboard import SummaryWriter
 
-delta = torch.finfo(torch.float64).eps # 2.220446049250313e-16
+from koopmanrl.koopman_tensor.torch_tensor import KoopmanTensor
+from koopmanrl.koopman_tensor.utils import load_tensor
+
+torch.set_default_dtype(torch.float64)
+delta = torch.finfo(torch.float64).eps  # 2.220446049250313e-16
+
+
+class ArgumentParser(Tap):
+    exp_name: str = os.path.basename(__file__).rstrip(".py")  # the name of this experiment
+    seed: int = 1  # seed of the experiment (default: 1)
+    cuda: bool = False  # if toggled, cuda will be enabled by default (default: True)
+    env_id: str = "LinearSystem-v0"  # the id of the environment (default: LinearSystem-v0)
+    total_timesteps: int = 50000  # total timesteps of the experiments (default: 50000)
+    gamma: float = 0.99  # the discount factor gamma (default: 0.99)
+    batch_size: int = 2**14  # the batch size of sample from the reply memory (default: 2^14 = 16_384)
+    lr: float = 1e-3  # the learning rate of the Q network network optimizer (default: 0.001)
+    alpha: float = 1.0  # entropy regularization coefficient (default: 1.0)
+    num_actions: int = 101  # number of actions that the policy can pick from (default: 101)
+    num_training_epochs: int = 150  # number of epochs that the model should be trained over (default: 150)
+    batch_scale: int = 1  # increase batch size by this multiple for computing bellman error (default: 1)
+
 
 class DiscreteKoopmanValueIterationPolicy:
     def __init__(
@@ -130,34 +147,34 @@ class DiscreteKoopmanValueIterationPolicy:
         """
 
         # Compute phi(x) for each x
-        phi_xs = self.dynamics_model.phi(xs.T) # (dim_phi, batch_size)
+        phi_xs = self.dynamics_model.phi(xs.T)  # (dim_phi, batch_size)
 
         # Compute phi(x') for all ( phi(x), action ) pairs and compute V(x')s
-        K_us = self.dynamics_model.K_(self.all_actions) # (all_actions.shape[1], phi_dim, phi_dim)
+        K_us = self.dynamics_model.K_(self.all_actions)  # (all_actions.shape[1], phi_dim, phi_dim)
         phi_x_prime_batch = torch.zeros([self.all_actions.shape[1], self.dynamics_model.phi_dim, xs.shape[1]])
         V_x_prime_batch = torch.zeros([self.all_actions.shape[1], xs.shape[1]])
         for action_index in range(K_us.shape[0]):
-            phi_x_prime_hat_batch = K_us[action_index] @ phi_xs # (dim_phi, batch_size)
+            phi_x_prime_hat_batch = K_us[action_index] @ phi_xs  # (dim_phi, batch_size)
             phi_x_prime_batch[action_index] = phi_x_prime_hat_batch
-            V_x_prime_batch[action_index] = self.V_phi_x(phi_x_prime_batch[action_index]) # (1, batch_size)
+            V_x_prime_batch[action_index] = self.V_phi_x(phi_x_prime_batch[action_index])  # (1, batch_size)
             #! Something is wrong here with value_function_continuous_action
 
         # Get costs indexed by the action and the state
-        costs = torch.Tensor(self.cost(xs, self.all_actions.T)) # (all_actions.shape[1], batch_size)
+        costs = torch.Tensor(self.cost(xs, self.all_actions.T))  # (all_actions.shape[1], batch_size)
 
         # Compute policy distribution
-        inner_pi_us_values = -(costs + self.discount_factor*V_x_prime_batch) # (all_actions.shape[1], xs.shape[1])
-        inner_pi_us = inner_pi_us_values / self.alpha # (all_actions.shape[1], xs.shape[1])
-        real_inner_pi_us = torch.real(inner_pi_us) # (all_actions.shape[1], xs.shape[1])
+        inner_pi_us_values = -(costs + self.discount_factor * V_x_prime_batch)  # (all_actions.shape[1], xs.shape[1])
+        inner_pi_us = inner_pi_us_values / self.alpha  # (all_actions.shape[1], xs.shape[1])
+        real_inner_pi_us = torch.real(inner_pi_us)  # (all_actions.shape[1], xs.shape[1])
 
         # Max trick
-        max_inner_pi_u = torch.amax(real_inner_pi_us, axis=0) # xs.shape[1]
+        max_inner_pi_u = torch.amax(real_inner_pi_us, axis=0)  # xs.shape[1]
         diff = real_inner_pi_us - max_inner_pi_u
 
-        pi_us = torch.exp(diff) + delta # (all_actions.shape[1], xs.shape[1])
-        Z_x = torch.sum(pi_us, axis=0) # xs.shape[1]
+        pi_us = torch.exp(diff) + delta  # (all_actions.shape[1], xs.shape[1])
+        Z_x = torch.sum(pi_us, axis=0)  # xs.shape[1]
 
-        return pi_us / Z_x # (all_actions.shape[1], xs.shape[1])
+        return pi_us / Z_x  # (all_actions.shape[1], xs.shape[1])
 
     def V_phi_x(self, phi_x):
         """
@@ -209,59 +226,52 @@ class DiscreteKoopmanValueIterationPolicy:
         """
 
         # Get random sample of xs and phi(x)s from dataset
-        x_batch_indices = torch.from_numpy(np.random.choice(
-            self.dynamics_model.X.shape[1],
-            batch_size,
-            replace=False
-        ))
-        x_batch = self.dynamics_model.X[:, x_batch_indices.long()] # (X.shape[0], batch_size)
-        phi_x_batch = self.dynamics_model.Phi_X[:, x_batch_indices.long()] # (dim_phi, batch_size)
+        x_batch_indices = torch.from_numpy(np.random.choice(self.dynamics_model.X.shape[1], batch_size, replace=False))
+        x_batch = self.dynamics_model.X[:, x_batch_indices.long()]  # (X.shape[0], batch_size)
+        phi_x_batch = self.dynamics_model.Phi_X[:, x_batch_indices.long()]  # (dim_phi, batch_size)
 
         # Compute V(x) for all phi(x)s
-        V_xs = self.V_phi_x(phi_x_batch) # (1, batch_size)
+        V_xs = self.V_phi_x(phi_x_batch)  # (1, batch_size)
 
         # Get costs indexed by the action and the state
-        costs = torch.Tensor(self.cost(x_batch.T, self.all_actions.T)) # (all_actions.shape[1], batch_size)
+        costs = torch.Tensor(self.cost(x_batch.T, self.all_actions.T))  # (all_actions.shape[1], batch_size)
 
         # Compute phi(x') for all ( phi(x), action ) pairs and compute V(x')s
-        K_us = self.dynamics_model.K_(self.all_actions) # (all_actions.shape[1], phi_dim, phi_dim)
+        K_us = self.dynamics_model.K_(self.all_actions)  # (all_actions.shape[1], phi_dim, phi_dim)
         phi_x_prime_batch = torch.zeros([self.all_actions.shape[1], self.dynamics_model.phi_dim, batch_size])
         V_x_prime_batch = torch.zeros([self.all_actions.shape[1], batch_size])
         for action_index in range(K_us.shape[0]):
-            phi_x_prime_hat_batch = K_us[action_index] @ phi_x_batch # (dim_phi, batch_size)
+            phi_x_prime_hat_batch = K_us[action_index] @ phi_x_batch  # (dim_phi, batch_size)
             # x_prime_hat_batch = self.dynamics_model.B.T @ phi_x_prime_hat_batch # (X.shape[0], batch_size)
             phi_x_prime_batch[action_index] = phi_x_prime_hat_batch
             # phi_x_prime_batch[action_index] = self.dynamics_model.phi(x_primes_hat) # (dim_phi, batch_size)
-            V_x_prime_batch[action_index] = self.V_phi_x(phi_x_prime_batch[action_index]) # (1, batch_size)
+            V_x_prime_batch[action_index] = self.V_phi_x(phi_x_prime_batch[action_index])  # (1, batch_size)
 
         # Compute policy distribution
-        inner_pi_us_values = -(costs + self.discount_factor*V_x_prime_batch) # (all_actions.shape[1], batch_size)
-        inner_pi_us = inner_pi_us_values / self.alpha # (all_actions.shape[1], batch_size)
-        real_inner_pi_us = torch.real(inner_pi_us) # (all_actions.shape[1], batch_size)
+        inner_pi_us_values = -(costs + self.discount_factor * V_x_prime_batch)  # (all_actions.shape[1], batch_size)
+        inner_pi_us = inner_pi_us_values / self.alpha  # (all_actions.shape[1], batch_size)
+        real_inner_pi_us = torch.real(inner_pi_us)  # (all_actions.shape[1], batch_size)
 
         # Max trick
-        max_inner_pi_u = torch.amax(real_inner_pi_us, axis=0) # (batch_size,)
-        diff = real_inner_pi_us - max_inner_pi_u # (all_actions.shape[1], batch_size)
+        max_inner_pi_u = torch.amax(real_inner_pi_us, axis=0)  # (batch_size,)
+        diff = real_inner_pi_us - max_inner_pi_u  # (all_actions.shape[1], batch_size)
 
         # Softmax distribution
-        pi_us = torch.exp(diff) + delta # (all_actions.shape[1], batch_size)
-        Z_x = torch.sum(pi_us, axis=0) # (batch_size,)
-        pis_response = pi_us / Z_x # (all_actions.shape[1], batch_size)
+        pi_us = torch.exp(diff) + delta  # (all_actions.shape[1], batch_size)
+        Z_x = torch.sum(pi_us, axis=0)  # (batch_size,)
+        pis_response = pi_us / Z_x  # (all_actions.shape[1], batch_size)
 
         # Compute log probabilities
-        log_pis = torch.log(pis_response) # (all_actions.shape[1], batch_size)
+        log_pis = torch.log(pis_response)  # (all_actions.shape[1], batch_size)
 
         # Compute expectation
         expectation_u = torch.sum(
-            (costs + \
-                self.alpha*log_pis + \
-                    self.discount_factor*V_x_prime_batch) * pis_response,
-            axis=0
-        ).reshape(1, -1) # (1, batch_size)
+            (costs + self.alpha * log_pis + self.discount_factor * V_x_prime_batch) * pis_response, axis=0
+        ).reshape(1, -1)  # (1, batch_size)
 
         # Compute mean squared error
-        squared_error = torch.pow(V_xs - expectation_u, 2) # (1, batch_size)
-        mean_squared_error = torch.mean(squared_error) # scalar
+        squared_error = torch.pow(V_xs - expectation_u, 2)  # (1, batch_size)
+        mean_squared_error = torch.mean(squared_error)  # scalar
 
         return mean_squared_error
 
@@ -303,16 +313,11 @@ class DiscreteKoopmanValueIterationPolicy:
         if is_greedy:
             selected_indices = torch.ones(sample_size, dtype=torch.int8) * torch.argmax(pis_response)
         else:
-            selected_indices = torch.from_numpy(np.random.choice(
-                np.arange(len(pis_response)),
-                size=sample_size,
-                p=pis_response
-            ))
+            selected_indices = torch.from_numpy(
+                np.random.choice(np.arange(len(pis_response)), size=sample_size, p=pis_response)
+            )
 
-        return (
-            self.all_actions[0][selected_indices.long()],
-            torch.log(pis_response[selected_indices.long()])
-        )
+        return (self.all_actions[0][selected_indices.long()], torch.log(pis_response[selected_indices.long()]))
 
     def get_action(self, x, sample_size=None, is_greedy=False):
         """
@@ -352,7 +357,7 @@ class DiscreteKoopmanValueIterationPolicy:
         epsilon=1e-2,
         gammas=[],
         gamma_increment_amount=0.0,
-        how_often_to_chkpt=250
+        how_often_to_chkpt=250,
     ):
         """
         Train the value iteration model.
@@ -390,70 +395,64 @@ class DiscreteKoopmanValueIterationPolicy:
         self.discount_factor = self.gamma**self.dt
 
         # Compute initial Bellman error
-        BE = self.discrete_bellman_error(batch_size = batch_size * batch_scale).detach().numpy()
+        BE = self.discrete_bellman_error(batch_size=batch_size * batch_scale).detach().numpy()
         bellman_errors = [BE]
         print(f"Initial Bellman error: {BE}")
 
         step = 0
         gamma_iteration_condition = self.gamma <= 0.99 or self.gamma == 1
         while gamma_iteration_condition:
-            print(f"gamma for iteration #{step+1}: {self.gamma}")
+            print(f"gamma for iteration #{step + 1}: {self.gamma}")
             self.discount_factor = self.gamma**self.dt
 
             for epoch in range(training_epochs):
                 # Get random batch of X and Phi_X from tensor training data
-                x_batch_indices = torch.from_numpy(np.random.choice(
-                    self.dynamics_model.X.shape[1],
-                    batch_size,
-                    replace=False
-                ))
-                x_batch = self.dynamics_model.X[:, x_batch_indices.long()] # (X.shape[0], batch_size)
-                phi_x_batch = self.dynamics_model.Phi_X[:, x_batch_indices.long()] # (dim_phi, batch_size)
+                x_batch_indices = torch.from_numpy(
+                    np.random.choice(self.dynamics_model.X.shape[1], batch_size, replace=False)
+                )
+                x_batch = self.dynamics_model.X[:, x_batch_indices.long()]  # (X.shape[0], batch_size)
+                phi_x_batch = self.dynamics_model.Phi_X[:, x_batch_indices.long()]  # (dim_phi, batch_size)
 
                 # Compute costs indexed by the action and the state
-                costs = torch.Tensor(self.cost(x_batch.T, self.all_actions.T)) # (all_actions.shape[1], batch_size)
+                costs = torch.Tensor(self.cost(x_batch.T, self.all_actions.T))  # (all_actions.shape[1], batch_size)
 
                 # Compute V(x')s
-                K_us = self.dynamics_model.K_(self.all_actions) # (all_actions.shape[1], phi_dim, phi_dim)
+                K_us = self.dynamics_model.K_(self.all_actions)  # (all_actions.shape[1], phi_dim, phi_dim)
                 phi_x_prime_batch = torch.zeros((self.all_actions.shape[1], self.dynamics_model.phi_dim, batch_size))
                 V_x_prime_batch = torch.zeros((self.all_actions.shape[1], batch_size))
                 for action_index in range(phi_x_prime_batch.shape[0]):
-                    phi_x_prime_hat_batch = K_us[action_index] @ phi_x_batch # (phi_dim, batch_size)
+                    phi_x_prime_hat_batch = K_us[action_index] @ phi_x_batch  # (phi_dim, batch_size)
                     phi_x_prime_batch[action_index] = phi_x_prime_hat_batch
-                    V_x_prime_batch[action_index] = self.V_phi_x(phi_x_prime_batch[action_index]) # (1, batch_size)
+                    V_x_prime_batch[action_index] = self.V_phi_x(phi_x_prime_batch[action_index])  # (1, batch_size)
 
                 # Compute policy distribution
-                inner_pi_us_values = -(costs + self.discount_factor*V_x_prime_batch) # (all_actions.shape[1], batch_size)
-                inner_pi_us = inner_pi_us_values / self.alpha # (all_actions.shape[1], batch_size)
-                real_inner_pi_us = torch.real(inner_pi_us) # (all_actions.shape[1], batch_size)
+                inner_pi_us_values = -(
+                    costs + self.discount_factor * V_x_prime_batch
+                )  # (all_actions.shape[1], batch_size)
+                inner_pi_us = inner_pi_us_values / self.alpha  # (all_actions.shape[1], batch_size)
+                real_inner_pi_us = torch.real(inner_pi_us)  # (all_actions.shape[1], batch_size)
 
                 # Max trick
-                max_inner_pi_u = torch.amax(real_inner_pi_us, axis=0) # (batch_size,)
-                diff = real_inner_pi_us - max_inner_pi_u # (all_actions.shape[1], batch_size)
+                max_inner_pi_u = torch.amax(real_inner_pi_us, axis=0)  # (batch_size,)
+                diff = real_inner_pi_us - max_inner_pi_u  # (all_actions.shape[1], batch_size)
 
                 # Softmax distribution
-                pi_us = torch.exp(diff) + delta # (all_actions.shape[1], batch_size)
-                Z_x = torch.sum(pi_us, axis=0) # (batch_size,)
-                pis_response = pi_us / Z_x # (all_actions.shape[1], batch_size)
+                pi_us = torch.exp(diff) + delta  # (all_actions.shape[1], batch_size)
+                Z_x = torch.sum(pi_us, axis=0)  # (batch_size,)
+                pis_response = pi_us / Z_x  # (all_actions.shape[1], batch_size)
 
                 # Compute log pi
-                log_pis = torch.log(pis_response) # (all_actions.shape[1], batch_size)
+                log_pis = torch.log(pis_response)  # (all_actions.shape[1], batch_size)
 
                 # Compute expectations
                 expectation_term_1 = torch.sum(
-                    (costs + \
-                        self.alpha*log_pis + \
-                            self.discount_factor*V_x_prime_batch) * pis_response,
-                    dim=0
-                ).reshape(1, -1) # (1, batch_size)
+                    (costs + self.alpha * log_pis + self.discount_factor * V_x_prime_batch) * pis_response, dim=0
+                ).reshape(1, -1)  # (1, batch_size)
 
                 # Optimize value function weights
                 if self.use_ols:
                     # OLS as in Lewis
-                    self.value_function_weights = torch.linalg.lstsq(
-                        phi_x_batch.T,
-                        expectation_term_1.T
-                    ).solution
+                    self.value_function_weights = torch.linalg.lstsq(phi_x_batch.T, expectation_term_1.T).solution
                 else:
                     # Compute loss
                     loss = torch.pow(V_x_prime_batch - expectation_term_1, 2).mean()
@@ -464,17 +463,17 @@ class DiscreteKoopmanValueIterationPolicy:
                     self.value_function_optimizer.step()
 
                 # Recompute Bellman error
-                BE = self.discrete_bellman_error(batch_size = batch_size * batch_scale).detach().numpy()
+                BE = self.discrete_bellman_error(batch_size=batch_size * batch_scale).detach().numpy()
                 bellman_errors.append(BE)
 
                 # Print epoch number
-                print(f"Epoch number: {epoch+1}")
+                print(f"Epoch number: {epoch + 1}")
 
                 # Every so often, print out and save the model weights and bellman errors
-                if (epoch+1) % how_often_to_chkpt == 0:
+                if (epoch + 1) % how_often_to_chkpt == 0:
                     torch.save(self.value_function_weights, f"{self.save_data_path}/policy.pt")
                     torch.save(bellman_errors, f"{self.save_data_path}/training_data/bellman_errors.pt")
-                    print(f"Bellman error at epoch {epoch+1}: {BE}")
+                    print(f"Bellman error at epoch {epoch + 1}: {BE}")
 
                     if BE <= epsilon:
                         break
@@ -485,54 +484,22 @@ class DiscreteKoopmanValueIterationPolicy:
                 gamma_iteration_condition = False
                 break
 
-            if self.gamma == 0.99: break
+            if self.gamma == 0.99:
+                break
 
             if len(gammas) > 0:
                 self.gamma = gammas[step]
             else:
                 self.gamma += gamma_increment_amount
 
-            if self.gamma > 0.99: self.gamma = 0.99
+            if self.gamma > 0.99:
+                self.gamma = 0.99
 
             gamma_iteration_condition = self.gamma <= 0.99
 
         self.gamma = original_gamma
         self.discount_factor = self.gamma**self.dt
 
-def parse_args():
-    # fmt: off
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--exp-name", type=str, default=os.path.basename(__file__).rstrip(".py"),
-        help="the name of this experiment")
-    parser.add_argument("--seed", type=int, default=1,
-        help="seed of the experiment (default: 1)")
-    parser.add_argument("--torch-deterministic", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="if toggled, `torch.backends.cudnn.deterministic=False` (default: True)")
-    parser.add_argument("--cuda", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="if toggled, cuda will be enabled (default: True)")
-
-    # Algorithm specific arguments
-    parser.add_argument("--env-id", type=str, default="LinearSystem-v0",
-        help="the id of the environment (default: LinearSystem-v0)")
-    parser.add_argument("--total-timesteps", type=int, default=100_000,
-        help="total timesteps of the experiments (default: 100_000)")
-    parser.add_argument("--gamma", type=float, default=0.99,
-        help="the discount factor gamma (default: 0.99)")
-    parser.add_argument("--batch-size", type=int, default=2**14,
-        help="the batch size of sample from the reply memory (default: 2^14 = 16_384)")
-    parser.add_argument("--lr", type=float, default=1e-3,
-        help="the learning rate of the Q network network optimizer (default: 0.001)")
-    parser.add_argument("--alpha", type=float, default=1.0,
-        help="entropy regularization coefficient (default: 1.0)")
-    parser.add_argument("--num-actions", type=int, default=101,
-        help="number of actions that the policy can pick from (default: 101)")
-    parser.add_argument("--num-training-epochs", type=int, default=150,
-        help="number of epochs that the model should be trained over (default: 150)")
-    parser.add_argument("--batch-scale", type=int, default=1,
-        help="increase batch size by this multiple for computing bellman error (default: 1)")
-    args = parser.parse_args()
-    # fmt: on
-    return args
 
 def make_env(env_id, seed, idx, capture_video, run_name):
     def thunk():
@@ -548,8 +515,9 @@ def make_env(env_id, seed, idx, capture_video, run_name):
 
     return thunk
 
-if __name__ == "__main__":
-    args = parse_args()
+
+def main():
+    args = ArgumentParser().parse_args()
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
 
     writer = SummaryWriter(f"runs/{run_name}")
@@ -572,256 +540,28 @@ if __name__ == "__main__":
 
     try:
         dt = envs.envs[0].dt
-    except:
+    except Exception:
         dt = None
 
     # Construct set of all possible actions
-    all_actions = torch.from_numpy(np.linspace(
-        start=envs.single_action_space.low,
-        stop=envs.single_action_space.high,
-        num=args.num_actions
-    )).T
+    all_actions = torch.from_numpy(
+        np.linspace(start=envs.single_action_space.low, stop=envs.single_action_space.high, num=args.num_actions)
+    ).T
 
-    # Construct value iteration policy
-    # value_iteration_policy = DiscreteKoopmanValueIterationPolicy(
-    # .   args=args
-    #     gamma=args.gamma,
-    #     alpha=args.alpha,
-    #     dynamics_model=koopman_tensor,
-    #     all_actions=all_actions,
-    #     cost=envs.envs[0].vectorized_cost_fn,
-    #     use_ols=True,
-    #     learning_rate=args.lr,
-    #     dt=dt,
-    # )
-    # value_function_weights = torch.tensor([
-    #     -0.12562814, # 1
-    #     -0.01005025, # x
-    #     -0.00502513, # y
-    #     -0.20603015, # z
-    #     -0.10552764, # x*x
-    #      0.01005025, # x*y
-    #     -0.0201005,  # x*z
-    #     -0.11055276, # y*y
-    #     -0.0201005,  # y*z
-    #     -0.40703518, # z*z
-    # ]).reshape(-1,1)
-    value_function_weights = torch.tensor([
-        [-333.7974], # 1
-        [  22.5883], # x
-        [  -8.0066], # y
-        [-157.5718], # z
-        [ 267.9301], # x*x
-        [ -80.5217], # x*y
-        [ -27.1598], # x*z
-        [ 173.2158], # y*y
-        [   6.2852], # y*z
-        [ 149.4211]  # z*z
-    ])
-    # value_function_weights = torch.tensor([
-    #     [-26.9559], # 1
-    #     [  1.8241], # x
-    #     [ -0.6466], # y
-    #     [-12.7247], # z
-    #     [ 21.6367], # x*x
-    #     [ -6.5025], # x*y
-    #     [ -2.1933], # x*z
-    #     [ 13.9881], # y*y
-    #     [  0.5076], # y*z
-    #     [ 12.0665]  # z*z
-    # ])
-    # value_function_weights = torch.tensor([
-    #     [-333.7974], # 1
-    #     [  22.5883], # x
-    #     [   0.0   ], # y
-    #     [-157.5718], # z
-    #     [ 267.9301], # x*x
-    #     [ -80.5217], # x*y
-    #     [ -27.1598], # x*z
-    #     [ 173.2158], # y*y
-    #     [   0.0   ], # y*z
-    #     [   0.0   ]  # z*z
-    # ])
-    # value_function_weights = torch.tensor([
-    #     [   0.0   ], # 1
-    #     [  22.5883], # x
-    #     [   0.0   ], # y
-    #     [-157.5718], # z
-    #     [ 267.9301], # x*x
-    #     [ -80.5217], # x*y
-    #     [ -27.1598], # x*z
-    #     [ 173.2158], # y*y
-    #     [   0.0   ], # y*z
-    #     [   0.0   ]  # z*z
-    # ])
-    # value_function_weights = torch.tensor([
-    #     [   0.0   ], # 1
-    #     [  22.5883], # x
-    #     [   0.0   ], # y
-    #     [-157.5718], # z
-    #     [   0.0   ], # x*x
-    #     [ -80.5217], # x*y
-    #     [ -27.1598], # x*z
-    #     [ 173.2158], # y*y
-    #     [   0.0   ], # y*z
-    #     [   0.0   ]  # z*z
-    # ])
-    # value_function_weights = torch.tensor([
-    #     [   0.0   ], # 1
-    #     [  22.5883], # x
-    #     [   0.0   ], # y
-    #     [-157.5718], # z
-    #     [   0.0   ], # x*x
-    #     [ -80.5217], # x*y
-    #     [   0.0   ], # x*z
-    #     [ 173.2158], # y*y
-    #     [   0.0   ], # y*z
-    #     [   0.0   ]  # z*z
-    # ])
-    # value_function_weights = torch.tensor([
-    #     [   0.0   ], # 1
-    #     [  22.5883], # x
-    #     [   0.0   ], # y
-    #     [-157.5718], # z
-    #     [   0.0   ], # x*x
-    #     [   0.0   ], # x*y
-    #     [   0.0   ], # x*z
-    #     [ 173.2158], # y*y
-    #     [   0.0   ], # y*z
-    #     [   0.0   ]  # z*z
-    # ])
-    # value_function_weights = torch.tensor([
-    #     [   0.0   ], # 1
-    #     [   0.0   ], # x
-    #     [   0.0   ], # y
-    #     [-157.5718], # z
-    #     [   0.0   ], # x*x
-    #     [   0.0   ], # x*y
-    #     [   0.0   ], # x*z
-    #     [ 173.2158], # y*y
-    #     [   0.0   ], # y*z
-    #     [   0.0   ]  # z*z
-    # ])
-    # value_function_weights = torch.tensor([
-    #     [   0.0   ], # 1
-    #     [   0.0   ], # x
-    #     [   0.0   ], # y
-    #     [ -10.0723], # z
-    #     [   0.0   ], # x*x
-    #     [   0.0   ], # x*y
-    #     [   0.0   ], # x*z
-    #     [  11.0723], # y*y
-    #     [   0.0   ], # y*z
-    #     [   0.0   ]  # z*z
-    # ])
-    # value_function_weights = torch.tensor([
-    #     [   0.0   ], # 1
-    #     [   0.0   ], # x
-    #     [   0.0   ], # y
-    #     [-15.75718], # z
-    #     [   0.0   ], # x*x
-    #     [   0.0   ], # x*y
-    #     [   0.0   ], # x*z
-    #     [ 17.32158], # y*y
-    #     [   0.0   ], # y*z
-    #     [   0.0   ]  # z*z
-    # ])
-    # value_function_weights = torch.tensor([
-    #     [-333.7974], # 1
-    #     [   0.0   ], # x
-    #     [   0.0   ], # y
-    #     [   0.0   ], # z
-    #     [ 267.9301], # x*x
-    #     [ -80.5217], # x*y
-    #     [   0.0   ], # x*z
-    #     [ 173.2158], # y*y
-    #     [   0.0   ], # y*z
-    #     [ 149.4211]  # z*z
-    # ])
-    # value_function_weights = torch.tensor([
-    #     [-333.7974], # 1
-    #     [   0.0   ], # x
-    #     [   0.0   ], # y
-    #     [   0.0   ], # z
-    #     [ 267.9301], # x*x
-    #     [   0.0   ], # x*y
-    #     [   0.0   ], # x*z
-    #     [ 173.2158], # y*y
-    #     [   0.0   ], # y*z
-    #     [ 149.4211]  # z*z
-    # ])
-    # value_function_weights = torch.tensor([
-    #     [-333.7974], # 1
-    #     [   0.0   ], # x
-    #     [   0.0   ], # y
-    #     [   0.0   ], # z
-    #     [ 267.9301], # x*x
-    #     [   0.0   ], # x*y
-    #     [   0.0   ], # x*z
-    #     [ 173.2158], # y*y
-    #     [   0.0   ], # y*z
-    #     [ 149.4211]  # z*z
-    # ])
-    # value_function_weights = torch.tensor([
-    #     [-300.0   ], # 1
-    #     [   0.0   ], # x
-    #     [   0.0   ], # y
-    #     [   0.0   ], # z
-    #     [ 300.0   ], # x*x
-    #     [   0.0   ], # x*y
-    #     [   0.0   ], # x*z
-    #     [ 200.0   ], # y*y
-    #     [   0.0   ], # y*z
-    #     [   0.0   ]  # z*z
-    # ])
-    # value_function_weights = torch.tensor([
-    #     [-300.0   ], # 1
-    #     [   0.0   ], # x
-    #     [   0.0   ], # y
-    #     [   0.0   ], # z
-    #     [   0.0   ], # x*x
-    #     [   0.0   ], # x*y
-    #     [   0.0   ], # x*z
-    #     [ 200.0   ], # y*y
-    #     [   0.0   ], # y*z
-    #     [ 150.0   ]  # z*z
-    # ])
-    # value_function_weights = torch.tensor([
-    #     [-300.0   ], # 1
-    #     [   0.0   ], # x
-    #     [   0.0   ], # y
-    #     [   0.0   ], # z
-    #     [   0.0   ], # x*x
-    #     [   0.0   ], # x*y
-    #     [   0.0   ], # x*z
-    #     [ 200.0   ], # y*y
-    #     [   0.0   ], # y*z
-    #     [ 150.0   ]  # z*z
-    # ])
-    # value_function_weights = torch.tensor([
-    #     [-300.0   ], # 1
-    #     [   0.0   ], # x
-    #     [   0.0   ], # y
-    #     [   0.0   ], # z
-    #     [   0.0   ], # x*x
-    #     [   0.0   ], # x*y
-    #     [   0.0   ], # x*z
-    #     [ 200.0   ], # y*y
-    #     [   0.0   ], # y*z
-    #     [ 150.0   ]  # z*z
-    # ])
-    # value_function_weights = torch.tensor([
-    #     [   0.0   ], # 1
-    #     [   0.0   ], # x
-    #     [   0.0   ], # y
-    #     [   0.0   ], # z
-    #     [   0.0   ], # x*x
-    #     [   0.0   ], # x*y
-    #     [   0.0   ], # x*z
-    #     [ 200.0   ], # y*y
-    #     [   0.0   ], # y*z
-    #     [   0.0   ]  # z*z
-    # ])
+    value_function_weights = torch.tensor(
+        [
+            [-333.7974],  # 1
+            [22.5883],  # x
+            [-8.0066],  # y
+            [-157.5718],  # z
+            [267.9301],  # x*x
+            [-80.5217],  # x*y
+            [-27.1598],  # x*z
+            [173.2158],  # y*y
+            [6.2852],  # y*z
+            [149.4211],  # z*z
+        ]
+    )
     value_iteration_policy = DiscreteKoopmanValueIterationPolicy(
         args=args,
         gamma=args.gamma,
@@ -834,18 +574,8 @@ if __name__ == "__main__":
         dt=dt,
     )
     value_iteration_policy.load_model(
-        value_function_weights=value_function_weights,
-        trained_model_start_timestamp=None,
-        chkpt_epoch_number=None
+        value_function_weights=value_function_weights, trained_model_start_timestamp=None, chkpt_epoch_number=None
     )
-
-    # Use Koopman tensor training data to train policy
-    # value_iteration_policy.train(
-    #     args.num_training_epochs,
-    #     args.batch_size,
-    #     args.batch_scale,
-    #     how_often_to_chkpt=10
-    # )
 
     envs.single_observation_space.dtype = np.float64
     start_time = time.time()
@@ -879,3 +609,7 @@ if __name__ == "__main__":
 
     envs.close()
     writer.close()
+
+
+if __name__ == "__main__":
+    main()

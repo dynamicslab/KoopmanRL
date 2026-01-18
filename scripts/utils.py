@@ -1,5 +1,6 @@
 import os
 
+
 def create_folder(folder_path: str):
     """
     Create a folder at the specified path if it does not already exist.

@@ -1,21 +1,18 @@
+from typing import Optional
+
 import gym
 import numpy as np
 import torch
-
 from gym import spaces
 from gym.envs.registration import register
 from scipy.integrate import solve_ivp
-from typing import Optional
 
 dt = 0.01
 max_episode_steps = int(20 / dt)
 # max_episode_steps = int(2 / dt)
 
-register(
-    id='Lorenz-v0',
-    entry_point='custom_envs.lorenz:Lorenz',
-    max_episode_steps=max_episode_steps
-)
+register(id="Lorenz-v0", entry_point="custom_envs.lorenz:Lorenz", max_episode_steps=max_episode_steps)
+
 
 class Lorenz(gym.Env):
     def __init__(self):
@@ -36,26 +33,20 @@ class Lorenz(gym.Env):
         # Dynamics
         self.sigma = 10
         self.rho = 28
-        self.beta = 8/3
+        self.beta = 8 / 3
 
-        self.x_e = np.sqrt( self.beta * ( self.rho - 1 ) )
-        self.y_e = np.sqrt( self.beta * ( self.rho - 1 ) )
+        self.x_e = np.sqrt(self.beta * (self.rho - 1))
+        self.y_e = np.sqrt(self.beta * (self.rho - 1))
         self.z_e = self.rho - 1
 
         # For LQR
         x_bar = self.x_e
         y_bar = self.y_e
         z_bar = self.z_e
-        self.continuous_A = np.array([
-            [-self.sigma, self.sigma, 0],
-            [self.rho - z_bar, -1, 0],
-            [y_bar, x_bar, -self.beta]
-        ])
-        self.continuous_B = np.array([
-            [1],
-            [0],
-            [0]
-        ])
+        self.continuous_A = np.array(
+            [[-self.sigma, self.sigma, 0], [self.rho - z_bar, -1, 0], [y_bar, x_bar, -self.beta]]
+        )
+        self.continuous_B = np.array([[1], [0], [0]])
 
         # Define cost/reward values
         self.Q = np.eye(self.state_dim)
@@ -67,36 +58,26 @@ class Lorenz(gym.Env):
         self.state_minimums = np.array([-20.0, -50.0, 0.0])
         self.state_maximums = np.array([20.0, 50.0, 50.0])
         self.observation_space = spaces.Box(
-            low=self.state_minimums,
-            high=self.state_maximums,
-            shape=(self.state_dim,),
-            dtype=np.float64
+            low=self.state_minimums, high=self.state_maximums, shape=(self.state_dim,), dtype=np.float64
         )
 
         # We have a continuous action space. In this case, there is only 1 dimension per action
         self.action_minimums = np.ones(self.action_dim) * self.action_range[0]
         self.action_maximums = np.ones(self.action_dim) * self.action_range[1]
         self.action_space = spaces.Box(
-            low=self.action_minimums,
-            high=self.action_maximums,
-            shape=(self.action_dim,),
-            dtype=np.float64
+            low=self.action_minimums, high=self.action_maximums, shape=(self.action_dim,), dtype=np.float64
         )
 
         # History of states traversed during the current episode
         self.states = []
 
-    def reset(self, seed: Optional[int]=None, options: Optional[dict]=None):
+    def reset(self, seed: Optional[int] = None, options: Optional[dict] = None):
         # We need the following line to seed self.np_random
         super().reset(seed=seed)
 
         # Choose the initial state uniformly at random
         # self.state = self.observation_space.sample() if options['state'] is None else options['state']
-        self.state = np.random.uniform(
-            low=self.state_minimums,
-            high=self.state_maximums,
-            size=(self.state_dim,)
-        )
+        self.state = np.random.uniform(low=self.state_minimums, high=self.state_maximums, size=(self.state_dim,))
         self.states = [self.state]
 
         # Track number of steps taken
@@ -146,15 +127,15 @@ class Lorenz(gym.Env):
 
             x, y, z = input
 
-            x_dot = self.sigma * ( y - x )   # sigma*y - sigma*x
-            y_dot = ( self.rho - z ) * x - y # rho*x - x*z - y
-            z_dot = x * y - self.beta * z    # x*y - beta*z
+            x_dot = self.sigma * (y - x)  # sigma*y - sigma*x
+            y_dot = (self.rho - z) * x - y  # rho*x - x*z - y
+            z_dot = x * y - self.beta * z  # x*y - beta*z
 
             u = action
             if u is None:
                 u = np.zeros(self.action_dim)
 
-            return [ x_dot + u[0], y_dot, z_dot ]
+            return [x_dot + u[0], y_dot, z_dot]
 
         return f_u
 
@@ -174,7 +155,7 @@ class Lorenz(gym.Env):
             State array pushed forward in time.
         """
 
-        soln = solve_ivp(fun=self.continuous_f(action), t_span=[0, dt], y0=state, method='RK45')
+        soln = solve_ivp(fun=self.continuous_f(action), t_span=[0, dt], y0=state, method="RK45")
 
         return soln.y[:, -1]
 

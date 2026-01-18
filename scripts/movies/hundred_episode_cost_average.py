@@ -1,18 +1,13 @@
-"""
-Example usage:
-python -m movies.hundred_episode_cost_average
-"""
-
 import matplotlib.pyplot as plt
 import numpy as np
 
-from movies.env_enum import EnvEnum
+from scripts.movies.env_enum import EnvEnum
 
 # Set the style for a more modern look
-plt.style.use('seaborn')
+plt.style.use("seaborn")
 
 # Define a professional color palette
-colors = ['#2ecc71', '#3498db', '#9b59b6', '#e74c3c', '#f1c40f']
+colors = ["#2ecc71", "#3498db", "#9b59b6", "#e74c3c", "#f1c40f"]
 
 timestamp_map = {
     EnvEnum.LinearSystem: {
@@ -68,7 +63,7 @@ for env, policy_timestamps in timestamp_map.items():
 
             average_episodic_costs.append(average_episodic_cost)
             std_episodic_costs.append(std_episodic_cost)
-        except:
+        except Exception:
             print(f"\t{policy} policy costs not found in {folder_name}\n")
 
     # Create bar plot with enhanced styling
@@ -80,13 +75,13 @@ for env, policy_timestamps in timestamp_map.items():
         color=colors,
         alpha=0.8,
         width=0.6,
-        edgecolor='black',
+        edgecolor="black",
         linewidth=1,
         error_kw={
-            'elinewidth': 1,     # Thinner error bars
-            'capthick': 1,       # Thinner caps
-            'alpha': 0.5         # More transparent error bars
-        }
+            "elinewidth": 1,  # Thinner error bars
+            "capthick": 1,  # Thinner caps
+            "alpha": 0.5,  # More transparent error bars
+        },
     )
 
     # Customize the plot
@@ -98,25 +93,22 @@ for env, policy_timestamps in timestamp_map.items():
     for i, bar in enumerate(bars):
         height = bar.get_height()
         # Calculate label position considering error bars
-        label_height = height + std_episodic_costs[i] + (max(average_episodic_costs) * 0.02)  # Add 2% of max height as padding
+        label_height = (
+            height + std_episodic_costs[i] + (max(average_episodic_costs) * 0.02)
+        )  # Add 2% of max height as padding
         plt.text(
-            bar.get_x() + bar.get_width()/2.,
-            label_height,
-            f'{height:.1f}',
-            ha='center',
-            va='bottom',
-            fontsize=10
+            bar.get_x() + bar.get_width() / 2.0, label_height, f"{height:.1f}", ha="center", va="bottom", fontsize=10
         )
 
     # Customize grid
-    plt.grid(True, axis='y', linestyle='--', alpha=0.7)
+    plt.grid(True, axis="y", linestyle="--", alpha=0.7)
 
     # Customize spines
     for spine in plt.gca().spines.values():
         spine.set_linewidth(0.5)
 
     # Rotate x-axis labels for better readability
-    plt.xticks(rotation=45, ha='right')
+    plt.xticks(rotation=45, ha="right")
 
     # Adjust y-axis limits to accommodate labels
     ymax = plt.gca().get_ylim()[1]

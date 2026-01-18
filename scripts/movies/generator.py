@@ -1,8 +1,10 @@
-import numpy as np
 import random
+
+import numpy as np
 import torch
 
-from movies.env_enum import EnvEnum
+from scripts.movies.env_enum import EnvEnum
+
 
 class Generator:
     def __init__(self, args, envs, policy):
@@ -44,9 +46,7 @@ class Generator:
                 potential = self.envs.envs[0].potential()
 
                 # Add initial state to trajectory
-                trajectory.append(
-                    np.concatenate((state[0], [potential]), axis=0)
-                )
+                trajectory.append(np.concatenate((state[0], [potential]), axis=0))
             else:
                 # Add initial state to trajectory
                 trajectory.append(state[0])
@@ -60,6 +60,7 @@ class Generator:
             # Set up our loop condition
             # Using a function so the boolean value is not hardcoded and can be recomputed
             step_num = 1  # Start at 1 because we already added the initial state
+
             def check_loop_condition():
                 if num_steps_per_trajectory is not None:
                     return step_num < num_steps_per_trajectory
@@ -82,8 +83,8 @@ class Generator:
                 new_state, reward, dones, _ = self.envs.step(action)
 
                 # Print progress
-                if (step_num+1) % 100 == 0:
-                    print(f"Finished generating step {step_num+1}")
+                if (step_num + 1) % 100 == 0:
+                    print(f"Finished generating step {step_num + 1}")
 
                 # Update state
                 state = new_state
@@ -94,9 +95,7 @@ class Generator:
 
                 # Append new state, action, and cost to respective local lists
                 if self.env_id == EnvEnum.DoubleWell:
-                    trajectory.append(
-                        np.concatenate((state[0], [potential]), axis=0)
-                    )
+                    trajectory.append(np.concatenate((state[0], [potential]), axis=0))
                 else:
                     trajectory.append(state[0])
                 actions_per_trajectory.append(action[0])

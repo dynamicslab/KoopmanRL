@@ -1,14 +1,3 @@
-"""
-Example usage:
-
-Without Koopman Tensor:
-python -m cleanrl.value_based_sac_continuous_action --env-id=FluidFlow-v0 --alpha=1 --autotune=false --total-timesteps=50000
-
-With Koopman Tensor:
-python -m cleanrl.value_based_sac_continuous_action --env-id=FluidFlow-v0 --alpha=1 --autotune=false --total-timesteps=50000 --koopman
-"""
-
-# docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/sac/#sac_continuous_actionpy
 import argparse
 import os
 import random
@@ -18,7 +7,6 @@ from distutils.util import strtobool
 import gym
 import numpy as np
 import torch
-torch.set_default_dtype(torch.float64)
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
@@ -26,8 +14,10 @@ from analysis.utils import create_folder
 from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
 
-from environments import *
-from koopmanrl.koopman_tensor.utils import load_tensor
+from koopmanrl.koopman_tensor.utils import load_tensor  # --> needs to be cleaned up
+
+torch.set_default_dtype(torch.float64)
+
 
 def parse_args():
     # fmt: off
@@ -76,7 +66,7 @@ def parse_args():
         help="the learning rate of the Q network optimizer (default: 0.001)")
     parser.add_argument("--policy-frequency", type=int, default=2,
         help="the frequency of training policy (delayed; default: 2)")
-    parser.add_argument("--target-network-frequency", type=int, default=1, # Denis Yarats' implementation delays this by 2.
+    parser.add_argument("--target-network-frequency", type=int, default=1, # Denis' implementation delays this by 2.
         help="the frequency of updates for the target nerworks (default: 1)")
     parser.add_argument("--noise-clip", type=float, default=0.5,
         help="noise clip parameter of the Target Policy Smoothing Regularization (default: 0.5)")
@@ -113,7 +103,9 @@ class SoftQNetwork(nn.Module):
     def __init__(self, env):
         super().__init__()
 
-        self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod() + np.prod(env.single_action_space.shape), 256)
+        self.fc1 = nn.Linear(
+            np.array(env.single_observation_space.shape).prod() + np.prod(env.single_action_space.shape), 256
+        )
         self.fc2 = nn.Linear(256, 256)
         self.fc3 = nn.Linear(256, 1)
 
@@ -125,6 +117,7 @@ class SoftQNetwork(nn.Module):
         x = self.fc3(x)
 
         return x
+
 
 class SoftVNetwork(nn.Module):
     def __init__(self, env):
@@ -141,6 +134,7 @@ class SoftVNetwork(nn.Module):
 
         return x
 
+
 class SoftKoopmanVNetwork(nn.Module):
     def __init__(self, koopman_tensor):
         super().__init__()
@@ -151,7 +145,7 @@ class SoftKoopmanVNetwork(nn.Module):
         self.linear = nn.Linear(self.phi_state_dim, 1, bias=False)
 
     def forward(self, state):
-        """ Linear in the phi(x)s """
+        """Linear in the phi(x)s"""
 
         phi_xs = self.koopman_tensor.phi(state.T).T
 
@@ -334,7 +328,9 @@ if __name__ == "__main__":
             vf_values = vf(data.observations).view(-1)
             with torch.no_grad():
                 state_actions, state_log_pis, _ = actor.get_action(data.observations)
-                q_values = torch.min(qf1(data.observations, state_actions), qf2(data.observations, state_actions)).view(-1)
+                q_values = torch.min(qf1(data.observations, state_actions), qf2(data.observations, state_actions)).view(
+                    -1
+                )
             vf_loss = F.mse_loss(vf_values, q_values - alpha * state_log_pis.view(-1))
             # vf_loss = F.l1_loss(vf_values, q_values - alpha * state_log_pis.view(-1))
             # Calculate L1 regularization term
@@ -352,9 +348,13 @@ if __name__ == "__main__":
             with torch.no_grad():
                 if args.koopman:
                     expected_phi_x_primes = koopman_tensor.phi_f(data.observations.T, data.actions.T).T
-                    vf_next_target = (1 - data.dones.flatten()) * args.gamma * vf_target.linear(expected_phi_x_primes).view(-1)
+                    vf_next_target = (
+                        (1 - data.dones.flatten()) * args.gamma * vf_target.linear(expected_phi_x_primes).view(-1)
+                    )
                 else:
-                    vf_next_target = (1 - data.dones.flatten()) * args.gamma * vf_target(data.next_observations).view(-1)
+                    vf_next_target = (
+                        (1 - data.dones.flatten()) * args.gamma * vf_target(data.next_observations).view(-1)
+                    )
                 q_target_values = data.rewards.flatten() + vf_next_target
 
             qf1_a_values = qf1(data.observations, data.actions).view(-1)
@@ -414,11 +414,8 @@ if __name__ == "__main__":
                 writer.add_scalar("charts/SPS", sps, global_step)
 
             # Checkpoint policy network every so often
-            if global_step == 0 or (global_step+1) % 1000 == 0:
-                torch.save(
-                    actor.state_dict(),
-                    f"{model_chkpt_path}/step_{global_step+1}.pt"
-                )
+            if global_step == 0 or (global_step + 1) % 1000 == 0:
+                torch.save(actor.state_dict(), f"{model_chkpt_path}/step_{global_step + 1}.pt")
 
     envs.close()
     writer.close()

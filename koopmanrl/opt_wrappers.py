@@ -7,9 +7,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torch.distributions.categorical import Categorical
-
-from cleanrl.ppo import Agent, make_env
 
 from koopmanrl.soft_actor_koopman_critic import (
     Actor,
@@ -23,256 +20,19 @@ from koopmanrl.soft_koopman_value_iteration import (
 )
 
 
-def ppo_tuning_wrapper(
-    seed=1,
-    is_torch_deterministic=True,
-    use_cuda=True,
-    to_capture_video=False,
-    env_id="CartPole-v1",
-    number_of_environments=4,
-    learning_rate=2.5e-4,
-    total_timesteps=500000,
-    number_of_steps=128,
-    annealing_learning_rate=True,
-    update_epochs=4,
-    gamma=0.99,
-    gae_lambda=0.95,
-    num_minibatches=4,
-    clip_coefficient=0.2,
-    normalization_advantages=True,
-    clipped_loss_vfunc=True,
-    entropy_coefficient=0.01,
-    vfunc_coefficient=0.5,
-    max_gradient_norm=0.5,
-    target_kl_divergence=None,
-):
-    """
-    Special version of CleanRL's PPO implementation just for the use with Ray Tune.
+def make_env(env_id, seed, idx, capture_video, run_name):
+    def thunk():
+        env = gym.make(env_id)
+        env = gym.wrappers.RecordEpisodeStatistics(env)
+        if capture_video:
+            if idx == 0:
+                env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
+        env.seed(seed)
+        env.action_space.seed(seed)
+        env.observation_space.seed(seed)
+        return env
 
-    The major differences are twofold:
-    - No argparsing, instead inputs are direct to the function
-    - No storage to Tensorboard files, instead the files live in a buffer.
-    """
-
-    batch_size = number_of_environments * number_of_steps
-    minibatch_size = int(batch_size // num_minibatches)
-    run_name = f"ppo__{env_id}__{seed}__{learning_rate}__{vfunc_coefficient}__{max_gradient_norm}"
-
-    # Initialize the lists to store results into
-    episodic_returns = []
-    episodic_lengths = []
-    learning_rates = []
-    value_losses = []
-    policy_gradient_losses = []
-    entropy_losses = []
-    old_approx_kullbackleibler = []
-    approx_kullbackleibler = []
-    mean_clipfracs = []
-    explained_variances = []
-    steps_per_seconds = []
-
-    # TRY NOT TO MODIFY: seeding
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.backends.cudnn.deterministic = is_torch_deterministic
-
-    device = torch.device("cuda" if torch.cuda.is_available() and use_cuda else "cpu")
-
-    # env setup
-    envs = gym.vector.SyncVectorEnv(
-        [
-            make_env(env_id, seed + i, i, to_capture_video, run_name)
-            for i in range(number_of_environments)
-        ]
-    )
-    assert isinstance(envs.single_action_space, gym.spaces.Discrete), (
-        "only discrete action space is supported"
-    )
-
-    agent = Agent(envs).to(device)
-    optimizer = optim.Adam(agent.parameters(), lr=learning_rate, eps=1e-5)
-
-    # ALGO Logic: Storage setup
-    obs = torch.zeros(
-        (number_of_steps, number_of_environments) + envs.single_observation_space.shape
-    ).to(device)
-    actions = torch.zeros(
-        (number_of_steps, number_of_environments) + envs.single_action_space.shape
-    ).to(device)
-    logprobs = torch.zeros((number_of_steps, number_of_environments)).to(device)
-    rewards = torch.zeros((number_of_steps, number_of_environments)).to(device)
-    dones = torch.zeros((number_of_steps, number_of_environments)).to(device)
-    values = torch.zeros((number_of_steps, number_of_environments)).to(device)
-
-    # TRY NOT TO MODIFY: start the game
-    global_step = 0
-    start_time = time.time()
-    next_obs = torch.Tensor(envs.reset()).to(device)
-    next_done = torch.zeros(number_of_environments).to(device)
-    num_updates = total_timesteps // batch_size
-
-    for update in range(1, num_updates + 1):
-        # Annealing the rate if instructed to do so.
-        if annealing_learning_rate:
-            frac = 1.0 - (update - 1.0) / num_updates
-            lrnow = frac * learning_rate
-            optimizer.param_groups[0]["lr"] = lrnow
-
-        for step in range(0, number_of_steps):
-            global_step += 1 * number_of_environments
-            obs[step] = next_obs
-            dones[step] = next_done
-
-            # ALGO LOGIC: action logic
-            with torch.no_grad():
-                action, logprob, _, value = agent.get_action_and_value(next_obs)
-                values[step] = value.flatten()
-            actions[step] = action
-            logprobs[step] = logprob
-
-            # TRY NOT TO MODIFY: execute the game and log data.
-            next_obs, reward, done, info = envs.step(action.cpu().numpy())
-            rewards[step] = torch.tensor(reward).to(device).view(-1)
-            next_obs, next_done = (
-                torch.Tensor(next_obs).to(device),
-                torch.Tensor(done).to(device),
-            )
-
-            # Writing action
-            for item in info:
-                if "episode" in item.keys():
-                    episodic_returns.append([item["episode"]["r"], global_step])
-                    episodic_lengths.append([item["episode"]["l"], global_step])
-                    break
-
-        # bootstrap value if not done
-        with torch.no_grad():
-            next_value = agent.get_value(next_obs).reshape(1, -1)
-            advantages = torch.zeros_like(rewards).to(device)
-            lastgaelam = 0
-            for t in reversed(range(number_of_steps)):
-                if t == number_of_steps - 1:
-                    nextnonterminal = 1.0 - next_done
-                    nextvalues = next_value
-                else:
-                    nextnonterminal = 1.0 - dones[t + 1]
-                    nextvalues = values[t + 1]
-                delta = rewards[t] + gamma * nextvalues * nextnonterminal - values[t]
-                advantages[t] = lastgaelam = (
-                    delta + gamma * gae_lambda * nextnonterminal * lastgaelam
-                )
-            returns = advantages + values
-
-        # flatten the batch
-        b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
-        b_logprobs = logprobs.reshape(-1)
-        b_actions = actions.reshape((-1,) + envs.single_action_space.shape)
-        b_advantages = advantages.reshape(-1)
-        b_returns = returns.reshape(-1)
-        b_values = values.reshape(-1)
-
-        # Optimizing the policy and value network
-        b_inds = np.arange(batch_size)
-        clipfracs = []
-        for epoch in range(update_epochs):
-            np.random.shuffle(b_inds)
-            for start in range(0, batch_size, minibatch_size):
-                end = start + minibatch_size
-                mb_inds = b_inds[start:end]
-
-                _, newlogprob, entropy, newvalue = agent.get_action_and_value(
-                    b_obs[mb_inds], b_actions.long()[mb_inds]
-                )
-                logratio = newlogprob - b_logprobs[mb_inds]
-                ratio = logratio.exp()
-
-                with torch.no_grad():
-                    # calculate approx_kl http://joschu.net/blog/kl-approx.html
-                    old_approx_kl = (-logratio).mean()
-                    approx_kl = ((ratio - 1) - logratio).mean()
-                    clipfracs += [
-                        ((ratio - 1.0).abs() > clip_coefficient).float().mean().item()
-                    ]
-
-                mb_advantages = b_advantages[mb_inds]
-                if normalization_advantages:
-                    mb_advantages = (mb_advantages - mb_advantages.mean()) / (
-                        mb_advantages.std() + 1e-8
-                    )
-
-                # Policy loss
-                pg_loss1 = -mb_advantages * ratio
-                pg_loss2 = -mb_advantages * torch.clamp(
-                    ratio, 1 - clip_coefficient, 1 + clip_coefficient
-                )
-                pg_loss = torch.max(pg_loss1, pg_loss2).mean()
-
-                # Value loss
-                newvalue = newvalue.view(-1)
-                if clipped_loss_vfunc:
-                    v_loss_unclipped = (newvalue - b_returns[mb_inds]) ** 2
-                    v_clipped = b_values[mb_inds] + torch.clamp(
-                        newvalue - b_values[mb_inds],
-                        -clip_coefficient,
-                        clip_coefficient,
-                    )
-                    v_loss_clipped = (v_clipped - b_returns[mb_inds]) ** 2
-                    v_loss_max = torch.max(v_loss_unclipped, v_loss_clipped)
-                    v_loss = 0.5 * v_loss_max.mean()
-                else:
-                    v_loss = 0.5 * ((newvalue - b_returns[mb_inds]) ** 2).mean()
-
-                entropy_loss = entropy.mean()
-                loss = (
-                    pg_loss
-                    - entropy_coefficient * entropy_loss
-                    + v_loss * vfunc_coefficient
-                )
-
-                optimizer.zero_grad()
-                loss.backward()
-                nn.utils.clip_grad_norm_(agent.parameters(), max_gradient_norm)
-                optimizer.step()
-
-            if target_kl_divergence is not None:
-                if approx_kl > target_kl_divergence:
-                    break
-
-        y_pred, y_true = b_values.cpu().numpy(), b_returns.cpu().numpy()
-        var_y = np.var(y_true)
-        explained_var = np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
-
-        # Record the results
-        learning_rates.append([optimizer.param_groups[0]["lr"], global_step])
-        value_losses.append([v_loss.item(), global_step])
-        policy_gradient_losses.append([pg_loss.item(), global_step])
-        entropy_losses.append([entropy_loss.item(), global_step])
-        old_approx_kullbackleibler.append([old_approx_kl.item(), global_step])
-        approx_kullbackleibler.append([approx_kl.item(), global_step])
-        mean_clipfracs.append([np.mean(clipfracs), global_step])
-        explained_variances.append([explained_var, global_step])
-        steps_per_seconds.append(
-            [int(global_step / (time.time() - start_time)), global_step]
-        )
-
-    # Close the gym environment
-    envs.close()
-
-    # Return outputs relevant to hyperparameter optimization
-    return {
-        "charts/episodic_return": episodic_returns,
-        "charts/episodic_length": episodic_lengths,
-        "charts/learning_rate": learning_rates,
-        "losses/value_loss": value_losses,
-        "losses/policy_loss": policy_gradient_losses,
-        "losses/entropy": entropy_losses,
-        "losses/old_approx_kl": old_approx_kullbackleibler,
-        "losses/approx_kl": approx_kullbackleibler,
-        "losses/clipfrac": mean_clipfracs,
-        "losses/explained_variance": explained_variances,
-        "charts/SPS": steps_per_seconds,
-    }
+    return thunk
 
 
 def skvi_tuning_wrapper(
@@ -301,7 +61,7 @@ def skvi_tuning_wrapper(
     - No storage to Tensorboard files, instead the files live in a dictionary buffer.
     """
 
-    run_name = f"skvi__{env_id}__{seed}__{learning_rate}__{number_of_paths}__{number_of_steps_per_path}__{state_order}__{action_order}"
+    run_name = f"skvi__{env_id}__{seed}__{learning_rate}__{number_of_paths}__{number_of_steps_per_path}__{state_order}__{action_order}"  # noqa: E501
 
     # Initialize the lists to store results into
     episodic_returns_list = []
@@ -332,7 +92,7 @@ def skvi_tuning_wrapper(
 
     try:
         dt = envs.envs[0].dt
-    except:
+    except Exception:
         dt = None
 
     # Construct set of all possible actions
@@ -354,6 +114,7 @@ def skvi_tuning_wrapper(
         cost=envs.envs[0].vectorized_cost_fn,
         use_ols=True,
         learning_rate=learning_rate,
+        seed=seed,
         dt=dt,
     )
 
@@ -390,9 +151,7 @@ def skvi_tuning_wrapper(
 
         # Write data
         if global_step % 100 == 0:
-            steps_per_seconds_list.append(
-                [int(global_step / (time.time() - start_time)), global_step]
-            )
+            steps_per_seconds_list.append([int(global_step / (time.time() - start_time)), global_step])
 
     # Close the gym environment
     envs.close()
@@ -421,7 +180,6 @@ def sakc_tuning_wrapper(
     q_lr=1e-3,
     policy_frequency=2,
     target_network_frequency=1,
-    noise_clip=0.5,
     alpha=0.2,
     autotune=True,
     alpha_lr=1e-3,
@@ -439,7 +197,7 @@ def sakc_tuning_wrapper(
     - No storage to Tensorboard files, instead the files live in a dictionary buffer.
     """
 
-    run_name = f"sakc__{env_id}__{policy_lr}__{seed}__{v_lr}__{q_lr}__{number_of_paths}__{number_of_steps_per_path}__{state_order}__{action_order}"
+    run_name = f"sakc__{env_id}__{policy_lr}__{seed}__{v_lr}__{q_lr}__{number_of_paths}__{number_of_steps_per_path}__{state_order}__{action_order}"  # noqa: E501
 
     # Initialization of the lists to store results into
     episodic_returns_list = []
@@ -467,14 +225,8 @@ def sakc_tuning_wrapper(
     device = torch.device("cpu")
 
     # env setup
-    envs = gym.vector.SyncVectorEnv(
-        [make_env(env_id, seed, 0, to_capture_video, run_name)]
-    )
-    assert isinstance(envs.single_action_space, gym.spaces.Box), (
-        "only continuous action space is supported"
-    )
-
-    max_action = float(envs.single_action_space.high[0])
+    envs = gym.vector.SyncVectorEnv([make_env(env_id, seed, 0, to_capture_video, run_name)])
+    assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
 
     actor = Actor(envs).to(device)
 
@@ -502,9 +254,7 @@ def sakc_tuning_wrapper(
 
     # Automatic entropy tuning
     if autotune:
-        target_entropy = -torch.prod(
-            torch.Tensor(envs.single_action_space.shape).to(device)
-        ).item()
+        target_entropy = -torch.prod(torch.Tensor(envs.single_action_space.shape).to(device)).item()
         log_alpha = torch.zeros(1, requires_grad=True, device=device)
         alpha = log_alpha.exp().item()
         a_optimizer = optim.Adam([log_alpha], lr=alpha_lr)
@@ -527,9 +277,7 @@ def sakc_tuning_wrapper(
     for global_step in range(total_timesteps):
         # ALGO LOGIC: put action logic here
         if global_step < learning_starts:
-            actions = np.array(
-                [envs.single_action_space.sample() for _ in range(envs.num_envs)]
-            )
+            actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
         else:
             actions, log_probs, _ = actor.get_action(torch.Tensor(obs).to(device))
             actions = actions.detach().cpu().numpy()
@@ -584,14 +332,8 @@ def sakc_tuning_wrapper(
 
             # E_( s_t, a_t )~D [ 1/2 ( Q_theta( s_t, a_t ) - Q_target( s_t, a_t ) )^2 ]
             with torch.no_grad():
-                expected_phi_x_primes = koopman_tensor.phi_f(
-                    data.observations.T, data.actions.T
-                ).T
-                vf_next_target = (
-                    (1 - data.dones.flatten())
-                    * gamma
-                    * vf_target.linear(expected_phi_x_primes).view(-1)
-                )
+                expected_phi_x_primes = koopman_tensor.phi_f(data.observations.T, data.actions.T).T
+                vf_next_target = (1 - data.dones.flatten()) * gamma * vf_target.linear(expected_phi_x_primes).view(-1)
                 q_target_values = data.rewards.flatten() + vf_next_target
 
             qf1_a_values = qf1(data.observations, data.actions).view(-1)
@@ -632,9 +374,7 @@ def sakc_tuning_wrapper(
             # update the target networks
             if global_step % target_network_frequency == 0:
                 for param, target_param in zip(vf.parameters(), vf_target.parameters()):
-                    target_param.data.copy_(
-                        tau * param.data + (1 - tau) * target_param.data
-                    )
+                    target_param.data.copy_(tau * param.data + (1 - tau) * target_param.data)
 
             if global_step % 100 == 0:
                 vf_values_list.append([vf_values.mean().item(), global_step])
@@ -648,9 +388,7 @@ def sakc_tuning_wrapper(
                 alpha_list.append([alpha, global_step])
                 if autotune:
                     alpha_loss_list.append([alpha_loss.item(), global_step])
-                sps_list.append(
-                    [int(global_step / (time.time() - start_time)), global_step]
-                )
+                sps_list.append([int(global_step / (time.time() - start_time)), global_step])
 
     envs.close()
 

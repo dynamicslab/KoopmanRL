@@ -1,16 +1,6 @@
-"""
-Example usage:
-
-python -m analysis.tsne_koopman_tensor --env-id=DoubleWell-v0
-python -m analysis.tsne_koopman_tensor --env-id=DoubleWell-v0 --transpose
-
-First command passes the M matrix to t-SNE algo as is
-Second command passes the transpose of the M matrix to t-SNE algo
-"""
-
 import argparse
-import matplotlib.pyplot as plt
 
+import matplotlib.pyplot as plt
 from koopman_tensor.torch_tensor import KoopmanTensor
 from koopman_tensor.utils import load_tensor
 from sklearn.manifold import TSNE
@@ -19,21 +9,27 @@ from sklearn.manifold import TSNE
 def str2bool(v):
     if isinstance(v, bool):
         return v
-    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+    if v.lower() in ("yes", "true", "t", "y", "1"):
         return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+    elif v.lower() in ("no", "false", "f", "n", "0"):
         return False
     else:
-        raise argparse.ArgumentTypeError('Boolean value expected.')
+        raise argparse.ArgumentTypeError("Boolean value expected.")
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--env-id", type=str, default="LinearSystem-v0",
-        help="the id of the environment (default: LinearSystem-v0)")
-parser.add_argument("--transpose", type=str2bool, nargs='?', const=True, default=False,
-        help="if the matrix M should be transposed before passing through tSNE (default: False)")
-parser.add_argument("--perplexity", type=int, default=9,
-        help="t-SNE perplexity (default: 9)")
+parser.add_argument(
+    "--env-id", type=str, default="LinearSystem-v0", help="the id of the environment (default: LinearSystem-v0)"
+)
+parser.add_argument(
+    "--transpose",
+    type=str2bool,
+    nargs="?",
+    const=True,
+    default=False,
+    help="if the matrix M should be transposed before passing through tSNE (default: False)",
+)
+parser.add_argument("--perplexity", type=int, default=9, help="t-SNE perplexity (default: 9)")
 args = parser.parse_args()
 
 

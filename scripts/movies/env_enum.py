@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class EnvEnum(str, Enum):
     LinearSystem = "LinearSystem-v0"
     FluidFlow = "FluidFlow-v0"

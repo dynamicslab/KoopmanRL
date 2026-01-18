@@ -22,10 +22,8 @@ class ArgumentParser(Tap):
     average_window: int = 5  # Number of time-steps the eval metrics is averaged over
     total_timesteps: int = 50000  # Number of total timesteps
     cpu_cores_per_trial: int = 28  # Number of CPU cores per trial
-    storage_dir: str = "/home/lpaehler/Work/ReinforcementLearning/KoopmanRLLaptop/KoopmanRL/BayesianOptimization/koopman-rl/tuning"  # Directory into which to store the result
-    output_file: str = (
-        "skvi_linear_system_params"  # Name of the json with the best configuration
-    )
+    storage_dir: str = "/home/lpaehler/Work/ReinforcementLearning/KoopmanRLLaptop/KoopmanRL/BayesianOptimization/koopman-rl/tuning"  # Directory into which to store the result  # noqa: E501
+    output_file: str = "skvi_linear_system_params"  # Name of the json with the best configuration
 
 
 def evaluate(config):
@@ -60,10 +58,7 @@ def objective(config):
 
     # Extract the metrics from the experiment
     metric_values = [
-        scalar_event[0]
-        for scalar_event in _experiment[config["metric"]][
-            -config["metric-last-n-average-window"] :
-        ]
+        scalar_event[0] for scalar_event in _experiment[config["metric"]][-config["metric-last-n-average-window"] :]
     ]
     if config["target-score"] is not None:
         normalized_score = (np.average(metric_values) - config["target-score"][0]) / (
@@ -96,9 +91,7 @@ def main():
         "learning-rate": tune.loguniform(0.0003, 0.003),
         "number-of-train-epochs": tune.choice([100, 125, 150, 175]),
         "num-paths": tune.choice([50, 75, 100, 125, 150, 175, 200]),
-        "num-steps-per-path": tune.choice(
-            [75, 100, 125, 150, 175, 200, 225, 250, 275, 300]
-        ),
+        "num-steps-per-path": tune.choice([75, 100, 125, 150, 175, 200, 225, 250, 275, 300]),
         "state-order": tune.choice([1, 2, 3, 4]),
         "action-order": tune.choice([1, 2, 3, 4]),
         "target-score": None,
@@ -113,9 +106,7 @@ def main():
     algo = ConcurrencyLimiter(algo, max_concurrent=args.max_concurrent)
 
     # Limit each trial itself to a set of CPU cores
-    trainable_with_resources = tune.with_resources(
-        objective, {"cpu": args.cpu_cores_per_trial}
-    )
+    trainable_with_resources = tune.with_resources(objective, {"cpu": args.cpu_cores_per_trial})
 
     # Define the Tune trial & run it
     tuner = tune.Tuner(

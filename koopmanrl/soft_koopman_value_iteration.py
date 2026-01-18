@@ -1,8 +1,3 @@
-"""
-Example usage:
-python -m cleanrl.discrete_value_iteration --env-id=FluidFlow-v0 --alpha=1 --num-training-epochs=150 --total-timesteps=50000
-"""
-
 import argparse
 import os
 import random
@@ -13,62 +8,36 @@ from enum import Enum
 import gym
 import numpy as np
 import torch
+from tap import Tap
 from torch.utils.tensorboard import SummaryWriter
 
-from koopmanrl.utils import create_folder
-from koopmanrl.koopman_observables import monomials
 from environments import *  # noqa: F403
+from koopmanrl.koopman_observables import monomials
+from koopmanrl.utils import create_folder
 
 torch.set_default_dtype(torch.float64)
 delta = torch.finfo(torch.float64).eps  # 2.220446049250313e-16
 
 
-def parse_args():
-    # fmt: off
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--exp-name", type=str, default=os.path.basename(__file__).rstrip(".py"),
-        help="the name of this experiment")
-    parser.add_argument("--seed", type=int, default=1,
-        help="seed of the experiment (default: 1)")
-    parser.add_argument("--torch-deterministic", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="if toggled, `torch.backends.cudnn.deterministic=False` (default: True)")
-    parser.add_argument("--cuda", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=False,
-        help="if toggled, cuda will be enabled (default: True)")
-
-    # Algorithm specific arguments
-    parser.add_argument("--env-id", type=str, default="LinearSystem-v0",
-        help="the id of the environment (default: LinearSystem-v0)")
-    parser.add_argument("--total-timesteps", type=int, default=50000,
-        help="total timesteps of the experiments (default: 50000)")
-    parser.add_argument("--gamma", type=float, default=0.99,
-        help="the discount factor gamma (default: 0.99)")
-    parser.add_argument("--batch-size", type=int, default=2**14,
-        help="the batch size of sample from the reply memory (default: 2^14 = 16_384)")
-    parser.add_argument("--lr", type=float, default=1e-3,
-        help="the learning rate of the Q network network optimizer (default: 0.001)")
-    parser.add_argument("--alpha", type=float, default=1.0,
-        help="entropy regularization coefficient (default: 1.0)")
-    parser.add_argument("--num-actions", type=int, default=101,
-        help="number of actions that the policy can pick from (default: 101)")
-    parser.add_argument("--num-training-epochs", type=int, default=150,
-        help="number of epochs that the model should be trained over (default: 150)")
-    parser.add_argument("--batch-scale", type=int, default=1,
-        help="increase batch size by this multiple for computing bellman error (default: 1)")
-
-    # Koopman tensor specific arguments
-    parser.add_argument('--num-paths', type=int, default=100,
-        help='Number of paths for the dataset (default: 100)')
-    parser.add_argument('--num-steps-per-path', type=int, default=300,
-        help='Number of steps per path for the dataset (default: 300)')
-    parser.add_argument('--state-order', type=int, default=2,
-        help='Order of monomials to use for state dictionary (default: 2)')
-    parser.add_argument('--action-order', type=int, default=2,
-        help='Order of monomials to use for action dictionary (default: 2)')
-    parser.add_argument('--regressor', type=str, default='ols', choices=['ols', 'sindy', 'rrr', 'ridge'], nargs="?", const=True,
-        help='Which regressor to use to build the Koopman tensor (default: \'ols\')')
-    args = parser.parse_args()
-    # fmt: on
-    return args
+class ArgumentParser(Tap):
+    exp_name: str = os.path.basename(__file__).rstrip(".py")  # the name of this experiment
+    seed: int = 1  # seed of the experiment (default: 1)
+    torch_deterministic: bool = True  # if toggled, `torch.backends.cudnn.deterministic=False` (default: True)
+    cuda: bool = False  # if toggled, cuda will be enabled by default (default: True)
+    env_id: str = "LinearSystem-v0"  # the id of the environment (default: LinearSystem-v0)
+    total_timesteps: int = 50000  # total timesteps of the experiments (default: 50000)
+    gamma: float = 0.99  # the discount factor gamma (default: 0.99)
+    batch_size: int = 2**14  # the batch size of sample from the reply memory (default: 2^14 = 16_384)
+    lr: float = 1e-3  # the learning rate of the Q network network optimizer (default: 0.001)
+    alpha: float = 1.0  # entropy regularization coefficient (default: 1.0)
+    num_actions: int = 101  # number of actions that the policy can pick from (default: 101)
+    num_training_epochs: int = 150  # number of epochs that the model should be trained over (default: 150)
+    batch_scale: int = 1  # increase batch size by this multiple for computing bellman error (default: 1)
+    num_paths: int = 100  # Number of paths for the dataset (default: 100)
+    num_steps_per_path: int = 300  # Number of steps per path for the dataset (default: 300)
+    state_order: int = 2  # Order of monomials to use for state dictionary (default: 2)
+    action_order: int = 2  # Order of monomials to use for action dictionary (default: 2)
+    regressor: str = "ols"  # Which regressor to use to build the Koopman tensor (default: \'ols\')
 
 
 def make_env(env_id, seed, idx, capture_video, run_name):
@@ -112,9 +81,7 @@ def OLS(X, Y):
 
 def SINDy(Theta, dXdt, lamb=0.05):
     d = dXdt.shape[1]
-    Xi = torch.linalg.lstsq(
-        Theta, dXdt, rcond=None
-    ).solution  # Initial guess: Least-squares
+    Xi = torch.linalg.lstsq(Theta, dXdt, rcond=None).solution  # Initial guess: Least-squares
 
     for _ in range(10):
         smallinds = torch.abs(Xi) < lamb  # Find small coefficients
@@ -122,9 +89,9 @@ def SINDy(Theta, dXdt, lamb=0.05):
         for ind in range(d):  # n is state dimension
             biginds = smallinds[:, ind] == 0
             # Regress dynamics onto remaining terms to find sparse Xi
-            Xi[biginds, ind] = torch.linalg.lstsq(
-                Theta[:, biginds], dXdt[:, ind].unsqueeze(0).T, rcond=None
-            ).solution[:, 0]
+            Xi[biginds, ind] = torch.linalg.lstsq(Theta[:, biginds], dXdt[:, ind].unsqueeze(0).T, rcond=None).solution[
+                :, 0
+            ]
 
     L = Xi
     return L
@@ -234,17 +201,11 @@ class KoopmanTensor:
             # Update regression target
             finite_differences = self.Y - self.X  # (self.x_dim, self.N)
             phi_derivative = self.phi.diff(self.X)  # (self.phi_dim, self.x_dim, self.N)
-            phi_double_derivative = self.phi.ddiff(
-                self.X
-            )  # (self.phi_dim, self.x_dim, self.x_dim, self.N)
-            self.regression_Y = torch.einsum(
-                "os,pos->ps", finite_differences / self.dt, phi_derivative
-            )
+            phi_double_derivative = self.phi.ddiff(self.X)  # (self.phi_dim, self.x_dim, self.x_dim, self.N)
+            self.regression_Y = torch.einsum("os,pos->ps", finite_differences / self.dt, phi_derivative)
             self.regression_Y += torch.einsum(
                 "ot,pots->ps",
-                0.5
-                * (finite_differences @ finite_differences.T)
-                / self.dt,  # (state_dim, state_dim)
+                0.5 * (finite_differences @ finite_differences.T) / self.dt,  # (state_dim, state_dim)
                 phi_double_derivative,
             )
         else:
@@ -362,9 +323,7 @@ class KoopmanTensor:
         return self.B.T @ self.phi_f(x, u)
 
 
-def generate_koopman_tensor(
-    env_id, seed, num_paths, num_steps_per_path, state_order, action_order, regressor
-):
+def generate_koopman_tensor(env_id, seed, num_paths, num_steps_per_path, state_order, action_order, regressor):
     # Set seeds and create environment
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -499,12 +458,8 @@ class DiscreteKoopmanValueIterationPolicy:
         if self.use_ols:
             self.value_function_weights = torch.zeros((self.dynamics_model.phi_dim, 1))
         else:
-            self.value_function_weights = torch.zeros(
-                (self.dynamics_model.phi_dim, 1), requires_grad=True
-            )
-            self.value_function_optimizer = torch.optim.Adam(
-                [self.value_function_weights], lr=self.learning_rate
-            )
+            self.value_function_weights = torch.zeros((self.dynamics_model.phi_dim, 1), requires_grad=True)
+            self.value_function_optimizer = torch.optim.Adam([self.value_function_weights], lr=self.learning_rate)
 
     def load_model(
         self,
@@ -519,9 +474,7 @@ class DiscreteKoopmanValueIterationPolicy:
             if self.use_ols:
                 self.value_function_weights = torch.tensor(value_function_weights)
             else:
-                self.value_function_weights = torch.tensor(
-                    value_function_weights, requires_grad=True
-                )
+                self.value_function_weights = torch.tensor(value_function_weights, requires_grad=True)
         else:
             self.value_function_weights = torch.load(
                 f"./saved_models/{self.env_id}/skvi_chkpts_{trained_model_start_timestamp}/epoch_{chkpt_epoch_number}.pt"
@@ -546,36 +499,22 @@ class DiscreteKoopmanValueIterationPolicy:
         phi_xs = self.dynamics_model.phi(xs.T)  # (dim_phi, batch_size)
 
         # Compute phi(x') for all ( phi(x), action ) pairs and compute V(x')s
-        K_us = self.dynamics_model.K_(
-            self.all_actions
-        )  # (all_actions.shape[1], phi_dim, phi_dim)
-        phi_x_prime_batch = torch.zeros(
-            [self.all_actions.shape[1], self.dynamics_model.phi_dim, xs.shape[1]]
-        )
+        K_us = self.dynamics_model.K_(self.all_actions)  # (all_actions.shape[1], phi_dim, phi_dim)
+        phi_x_prime_batch = torch.zeros([self.all_actions.shape[1], self.dynamics_model.phi_dim, xs.shape[1]])
         V_x_prime_batch = torch.zeros([self.all_actions.shape[1], xs.shape[1]])
         for action_index in range(K_us.shape[0]):
             phi_x_prime_hat_batch = K_us[action_index] @ phi_xs  # (dim_phi, batch_size)
             phi_x_prime_batch[action_index] = phi_x_prime_hat_batch
-            V_x_prime_batch[action_index] = self.V_phi_x(
-                phi_x_prime_batch[action_index]
-            )  # (1, batch_size)
+            V_x_prime_batch[action_index] = self.V_phi_x(phi_x_prime_batch[action_index])  # (1, batch_size)
             #! Something is wrong here with value_function_continuous_action
 
         # Get costs indexed by the action and the state
-        costs = torch.Tensor(
-            self.cost(xs, self.all_actions.T)
-        )  # (all_actions.shape[1], batch_size)
+        costs = torch.Tensor(self.cost(xs, self.all_actions.T))  # (all_actions.shape[1], batch_size)
 
         # Compute policy distribution
-        inner_pi_us_values = -(
-            costs + self.discount_factor * V_x_prime_batch
-        )  # (all_actions.shape[1], xs.shape[1])
-        inner_pi_us = (
-            inner_pi_us_values / self.alpha
-        )  # (all_actions.shape[1], xs.shape[1])
-        real_inner_pi_us = torch.real(
-            inner_pi_us
-        )  # (all_actions.shape[1], xs.shape[1])
+        inner_pi_us_values = -(costs + self.discount_factor * V_x_prime_batch)  # (all_actions.shape[1], xs.shape[1])
+        inner_pi_us = inner_pi_us_values / self.alpha  # (all_actions.shape[1], xs.shape[1])
+        real_inner_pi_us = torch.real(inner_pi_us)  # (all_actions.shape[1], xs.shape[1])
 
         # Max trick
         max_inner_pi_u = torch.amax(real_inner_pi_us, axis=0)  # xs.shape[1]
@@ -636,50 +575,30 @@ class DiscreteKoopmanValueIterationPolicy:
         """
 
         # Get random sample of xs and phi(x)s from dataset
-        x_batch_indices = torch.from_numpy(
-            np.random.choice(self.dynamics_model.X.shape[1], batch_size, replace=False)
-        )
-        x_batch = self.dynamics_model.X[
-            :, x_batch_indices.long()
-        ]  # (X.shape[0], batch_size)
-        phi_x_batch = self.dynamics_model.Phi_X[
-            :, x_batch_indices.long()
-        ]  # (dim_phi, batch_size)
+        x_batch_indices = torch.from_numpy(np.random.choice(self.dynamics_model.X.shape[1], batch_size, replace=False))
+        x_batch = self.dynamics_model.X[:, x_batch_indices.long()]  # (X.shape[0], batch_size)
+        phi_x_batch = self.dynamics_model.Phi_X[:, x_batch_indices.long()]  # (dim_phi, batch_size)
 
         # Compute V(x) for all phi(x)s
         V_xs = self.V_phi_x(phi_x_batch)  # (1, batch_size)
 
         # Get costs indexed by the action and the state
-        costs = torch.Tensor(
-            self.cost(x_batch.T, self.all_actions.T)
-        )  # (all_actions.shape[1], batch_size)
+        costs = torch.Tensor(self.cost(x_batch.T, self.all_actions.T))  # (all_actions.shape[1], batch_size)
 
         # Compute phi(x') for all ( phi(x), action ) pairs and compute V(x')s
-        K_us = self.dynamics_model.K_(
-            self.all_actions
-        )  # (all_actions.shape[1], phi_dim, phi_dim)
-        phi_x_prime_batch = torch.zeros(
-            [self.all_actions.shape[1], self.dynamics_model.phi_dim, batch_size]
-        )
+        K_us = self.dynamics_model.K_(self.all_actions)  # (all_actions.shape[1], phi_dim, phi_dim)
+        phi_x_prime_batch = torch.zeros([self.all_actions.shape[1], self.dynamics_model.phi_dim, batch_size])
         V_x_prime_batch = torch.zeros([self.all_actions.shape[1], batch_size])
         for action_index in range(K_us.shape[0]):
-            phi_x_prime_hat_batch = (
-                K_us[action_index] @ phi_x_batch
-            )  # (dim_phi, batch_size)
+            phi_x_prime_hat_batch = K_us[action_index] @ phi_x_batch  # (dim_phi, batch_size)
             # x_prime_hat_batch = self.dynamics_model.B.T @ phi_x_prime_hat_batch # (X.shape[0], batch_size)
             phi_x_prime_batch[action_index] = phi_x_prime_hat_batch
             # phi_x_prime_batch[action_index] = self.dynamics_model.phi(x_primes_hat) # (dim_phi, batch_size)
-            V_x_prime_batch[action_index] = self.V_phi_x(
-                phi_x_prime_batch[action_index]
-            )  # (1, batch_size)
+            V_x_prime_batch[action_index] = self.V_phi_x(phi_x_prime_batch[action_index])  # (1, batch_size)
 
         # Compute policy distribution
-        inner_pi_us_values = -(
-            costs + self.discount_factor * V_x_prime_batch
-        )  # (all_actions.shape[1], batch_size)
-        inner_pi_us = (
-            inner_pi_us_values / self.alpha
-        )  # (all_actions.shape[1], batch_size)
+        inner_pi_us_values = -(costs + self.discount_factor * V_x_prime_batch)  # (all_actions.shape[1], batch_size)
+        inner_pi_us = inner_pi_us_values / self.alpha  # (all_actions.shape[1], batch_size)
         real_inner_pi_us = torch.real(inner_pi_us)  # (all_actions.shape[1], batch_size)
 
         # Max trick
@@ -696,8 +615,7 @@ class DiscreteKoopmanValueIterationPolicy:
 
         # Compute expectation
         expectation_u = torch.sum(
-            (costs + self.alpha * log_pis + self.discount_factor * V_x_prime_batch)
-            * pis_response,
+            (costs + self.alpha * log_pis + self.discount_factor * V_x_prime_batch) * pis_response,
             axis=0,
         ).reshape(1, -1)  # (1, batch_size)
 
@@ -743,14 +661,10 @@ class DiscreteKoopmanValueIterationPolicy:
         pis_response = self.pis(x)[:, 0]
 
         if is_greedy:
-            selected_indices = torch.ones(sample_size, dtype=torch.int8) * torch.argmax(
-                pis_response
-            )
+            selected_indices = torch.ones(sample_size, dtype=torch.int8) * torch.argmax(pis_response)
         else:
             selected_indices = torch.from_numpy(
-                np.random.choice(
-                    np.arange(len(pis_response)), size=sample_size, p=pis_response
-                )
+                np.random.choice(np.arange(len(pis_response)), size=sample_size, p=pis_response)
             )
 
         return (
@@ -834,11 +748,7 @@ class DiscreteKoopmanValueIterationPolicy:
         self.discount_factor = self.gamma**self.dt
 
         # Compute initial Bellman error
-        BE = (
-            self.discrete_bellman_error(batch_size=batch_size * batch_scale)
-            .detach()
-            .numpy()
-        )
+        BE = self.discrete_bellman_error(batch_size=batch_size * batch_scale).detach().numpy()
         bellman_errors = [BE]
         print(f"Initial Bellman error: {BE}")
 
@@ -851,55 +761,33 @@ class DiscreteKoopmanValueIterationPolicy:
             for epoch in range(training_epochs):
                 # Get random batch of X and Phi_X from tensor training data
                 x_batch_indices = torch.from_numpy(
-                    np.random.choice(
-                        self.dynamics_model.X.shape[1], batch_size, replace=False
-                    )
+                    np.random.choice(self.dynamics_model.X.shape[1], batch_size, replace=False)
                 )
-                x_batch = self.dynamics_model.X[
-                    :, x_batch_indices.long()
-                ]  # (X.shape[0], batch_size)
-                phi_x_batch = self.dynamics_model.Phi_X[
-                    :, x_batch_indices.long()
-                ]  # (dim_phi, batch_size)
+                x_batch = self.dynamics_model.X[:, x_batch_indices.long()]  # (X.shape[0], batch_size)
+                phi_x_batch = self.dynamics_model.Phi_X[:, x_batch_indices.long()]  # (dim_phi, batch_size)
 
                 # Compute costs indexed by the action and the state
-                costs = torch.Tensor(
-                    self.cost(x_batch.T, self.all_actions.T)
-                )  # (all_actions.shape[1], batch_size)
+                costs = torch.Tensor(self.cost(x_batch.T, self.all_actions.T))  # (all_actions.shape[1], batch_size)
 
                 # Compute V(x')s
-                K_us = self.dynamics_model.K_(
-                    self.all_actions
-                )  # (all_actions.shape[1], phi_dim, phi_dim)
-                phi_x_prime_batch = torch.zeros(
-                    (self.all_actions.shape[1], self.dynamics_model.phi_dim, batch_size)
-                )
+                K_us = self.dynamics_model.K_(self.all_actions)  # (all_actions.shape[1], phi_dim, phi_dim)
+                phi_x_prime_batch = torch.zeros((self.all_actions.shape[1], self.dynamics_model.phi_dim, batch_size))
                 V_x_prime_batch = torch.zeros((self.all_actions.shape[1], batch_size))
                 for action_index in range(phi_x_prime_batch.shape[0]):
-                    phi_x_prime_hat_batch = (
-                        K_us[action_index] @ phi_x_batch
-                    )  # (phi_dim, batch_size)
+                    phi_x_prime_hat_batch = K_us[action_index] @ phi_x_batch  # (phi_dim, batch_size)
                     phi_x_prime_batch[action_index] = phi_x_prime_hat_batch
-                    V_x_prime_batch[action_index] = self.V_phi_x(
-                        phi_x_prime_batch[action_index]
-                    )  # (1, batch_size)
+                    V_x_prime_batch[action_index] = self.V_phi_x(phi_x_prime_batch[action_index])  # (1, batch_size)
 
                 # Compute policy distribution
                 inner_pi_us_values = -(
                     costs + self.discount_factor * V_x_prime_batch
                 )  # (all_actions.shape[1], batch_size)
-                inner_pi_us = (
-                    inner_pi_us_values / self.alpha
-                )  # (all_actions.shape[1], batch_size)
-                real_inner_pi_us = torch.real(
-                    inner_pi_us
-                )  # (all_actions.shape[1], batch_size)
+                inner_pi_us = inner_pi_us_values / self.alpha  # (all_actions.shape[1], batch_size)
+                real_inner_pi_us = torch.real(inner_pi_us)  # (all_actions.shape[1], batch_size)
 
                 # Max trick
                 max_inner_pi_u = torch.amax(real_inner_pi_us, axis=0)  # (batch_size,)
-                diff = (
-                    real_inner_pi_us - max_inner_pi_u
-                )  # (all_actions.shape[1], batch_size)
+                diff = real_inner_pi_us - max_inner_pi_u  # (all_actions.shape[1], batch_size)
 
                 # Softmax distribution
                 pi_us = torch.exp(diff) + delta  # (all_actions.shape[1], batch_size)
@@ -911,21 +799,14 @@ class DiscreteKoopmanValueIterationPolicy:
 
                 # Compute expectations
                 expectation_term_1 = torch.sum(
-                    (
-                        costs
-                        + self.alpha * log_pis
-                        + self.discount_factor * V_x_prime_batch
-                    )
-                    * pis_response,
+                    (costs + self.alpha * log_pis + self.discount_factor * V_x_prime_batch) * pis_response,
                     dim=0,
                 ).reshape(1, -1)  # (1, batch_size)
 
                 # Optimize value function weights
                 if self.use_ols:
                     # OLS as in Lewis
-                    self.value_function_weights = torch.linalg.lstsq(
-                        phi_x_batch.T, expectation_term_1.T
-                    ).solution
+                    self.value_function_weights = torch.linalg.lstsq(phi_x_batch.T, expectation_term_1.T).solution
                 else:
                     # Compute loss
                     loss = torch.pow(V_x_prime_batch - expectation_term_1, 2).mean()
@@ -936,11 +817,7 @@ class DiscreteKoopmanValueIterationPolicy:
                     self.value_function_optimizer.step()
 
                 # Recompute Bellman error
-                BE = (
-                    self.discrete_bellman_error(batch_size=batch_size * batch_scale)
-                    .detach()
-                    .numpy()
-                )
+                BE = self.discrete_bellman_error(batch_size=batch_size * batch_scale).detach().numpy()
                 bellman_errors.append(BE)
 
                 # Print epoch number
@@ -984,15 +861,14 @@ class DiscreteKoopmanValueIterationPolicy:
         self.discount_factor = self.gamma**self.dt
 
 
-if __name__ == "__main__":
-    args = parse_args()
-    run_name = f"{args.env_id}__{args.exp_name}__{args.num_actions}__{args.num_training_epochs}__{args.seed}__{int(time.time())}"
+def main():
+    args = ArgumentParser().parse_args()
+    run_name = f"{args.env_id}__{args.exp_name}__{args.num_actions}__{args.num_training_epochs}__{args.seed}__{int(time.time())}"  # noqa: E501
 
     writer = SummaryWriter(f"runs/SKVI/{run_name}")
     writer.add_text(
         "hyperparameters",
-        "|param|value|\n|-|-|\n%s"
-        % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
+        "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
     )
 
     # CPU-only execution
@@ -1004,9 +880,7 @@ if __name__ == "__main__":
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = args.torch_deterministic
 
-    envs = gym.vector.SyncVectorEnv(
-        [make_env(args.env_id, args.seed, 0, False, run_name)]
-    )
+    envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, False, run_name)])
 
     # Koopman tensor generation logic
     koopman_tensor = generate_koopman_tensor(
@@ -1021,7 +895,7 @@ if __name__ == "__main__":
 
     try:
         dt = envs.envs[0].dt
-    except:
+    except Exception:
         dt = None
 
     # Construct set of all possible actions
@@ -1071,15 +945,9 @@ if __name__ == "__main__":
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         for info in infos:
             if "episode" in info.keys():
-                print(
-                    f"global_step={global_step}, episodic_return={info['episode']['r']}"
-                )
-                writer.add_scalar(
-                    "charts/episodic_return", info["episode"]["r"], global_step
-                )
-                writer.add_scalar(
-                    "charts/episodic_length", info["episode"]["l"], global_step
-                )
+                print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
+                writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
+                writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
                 break
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
@@ -1093,3 +961,7 @@ if __name__ == "__main__":
 
     envs.close()
     writer.close()
+
+
+if __name__ == "__main__":
+    main()

@@ -1,11 +1,11 @@
 import numpy as np
 import torch
-
-from cleanrl.discrete_value_iteration import DiscreteKoopmanValueIterationPolicy
-from cleanrl.linear_quadratic_regulator import LQRPolicy
-from cleanrl.sac_continuous_action import Actor
-from koopman_tensor.utils import load_tensor
 from movies import Policy
+
+from koopmanrl.koopman_tensor.utils import load_tensor
+from koopmanrl.linear_quadratic_regulator import LQRPolicy
+from koopmanrl.sac_continuous_action import Actor
+from koopmanrl.soft_koopman_value_iteration import DiscreteKoopmanValueIterationPolicy
 
 
 class LQR(Policy):
@@ -13,11 +13,11 @@ class LQR(Policy):
         # Recover dt from environment
         try:
             dt = envs.envs[0].dt
-        except:
+        except Exception:
             dt = None
 
         # Construct LQR policy
-        discrete_systems = ('LinearSystem-v0')
+        discrete_systems = "LinearSystem-v0"
         is_continuous = False if args.env_id in discrete_systems else True
         try:
             self.policy = LQRPolicy(
@@ -30,9 +30,9 @@ class LQR(Policy):
                 alpha=args.alpha,
                 dt=dt,
                 is_continuous=is_continuous,
-                seed=args.seed
+                seed=args.seed,
             )
-        except:
+        except Exception:
             self.policy = LQRPolicy(
                 A=envs.envs[0].A,
                 B=envs.envs[0].B,
@@ -43,7 +43,7 @@ class LQR(Policy):
                 alpha=args.alpha,
                 dt=dt,
                 is_continuous=is_continuous,
-                seed=args.seed
+                seed=args.seed,
             )
 
         self._name = name
@@ -77,16 +77,14 @@ class SKVI(Policy):
         self.koopman_tensor = load_tensor(env_id=args.env_id, saved_model_name=saved_koopman_model_name)
 
         # Construct set of all possible actions
-        all_actions = torch.from_numpy(np.linspace(
-            start=envs.single_action_space.low,
-            stop=envs.single_action_space.high,
-            num=args.num_actions
-        )).T
+        all_actions = torch.from_numpy(
+            np.linspace(start=envs.single_action_space.low, stop=envs.single_action_space.high, num=args.num_actions)
+        ).T
 
         # Get dt from the environment
         try:
             dt = envs.envs[0].dt
-        except:
+        except Exception:
             dt = None
 
         # Load SKVI policy
@@ -134,9 +132,11 @@ class SAKC(Policy):
         self.device = device
         self.policy = Actor(envs).to(device)
         if is_value_based:
-            path_to_state_dict = f"./saved_models/{args.env_id}/value_based_sa{'k' if is_koopman else ''}c_chkpts_{chkpt_timestamp}/step_{chkpt_step_number}.pt"
+            path_to_state_dict = f"./saved_models/{args.env_id}/value_based_sa{'k' if is_koopman else ''}c_chkpts_{chkpt_timestamp}/step_{chkpt_step_number}.pt"  # noqa: E501
         else:
-            path_to_state_dict = f"./saved_models/{args.env_id}/sac_chkpts_{chkpt_timestamp}/step_{chkpt_step_number}.pt"
+            path_to_state_dict = (
+                f"./saved_models/{args.env_id}/sac_chkpts_{chkpt_timestamp}/step_{chkpt_step_number}.pt"
+            )
         self.policy.load_state_dict(torch.load(path_to_state_dict))
         self._name = name
 
