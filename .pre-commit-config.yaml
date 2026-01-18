@@ -21,7 +21,7 @@ repos:
       rev: v2.14
       hooks:
           - id: vulture
-            args: [--min-confidence, "80", src]
+            args: [--min-confidence, "80", koopmanrl]
     - repo: https://github.com/pycqa/isort
       rev: 7.0.0
       hooks:
