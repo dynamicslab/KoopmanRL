@@ -2,3 +2,7 @@
 koopmanrl/__pycache__/
 environments/__pycache__/
 tuning/__pycache__/
+
+# Ignore simulation results
+runs/
+saved_models/
