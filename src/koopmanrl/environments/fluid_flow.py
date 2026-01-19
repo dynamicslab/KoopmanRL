@@ -5,39 +5,48 @@ import numpy as np
 import torch
 from gym import spaces
 from gym.envs.registration import register
+from scipy.integrate import solve_ivp
 
-max_episode_steps = 200
+dt = 0.01
+max_episode_steps = int(20 / dt)
+# max_episode_steps = int(2 / dt)
 
 register(
-    id="LinearSystem-v0", entry_point="custom_envs.linear_system:LinearSystem", max_episode_steps=max_episode_steps
+    id="FluidFlow-v0", entry_point="koopmanrl.environments.fluid_flow:FluidFlow", max_episode_steps=max_episode_steps
 )
 
 
-class LinearSystem(gym.Env):
+class FluidFlow(gym.Env):
     def __init__(self):
         # Configuration with hardcoded values
         self.state_dim = 3
         self.action_dim = 1
 
-        self.state_range = [-25.0, 25.0]
+        self.state_range = [-1.0, 1.0]
 
         self.action_range = [-10.0, 10.0]
 
+        # Dynamics
+        self.omega = 1.0
+        self.mu = 0.1
+        self.A = -0.1
+        self.lamb = 1
+
+        self.dt = dt
         self.max_episode_steps = max_episode_steps
 
-        # Dynamics
-        max_eigen_factor = np.random.uniform(0.7, 1)
-        print(f"max eigen factor: {max_eigen_factor}")
-        Z = np.random.rand(self.state_dim, self.state_dim)
-        _, sigma, _ = np.linalg.svd(Z)
-        Z = Z * np.sqrt(max_eigen_factor) / np.max(sigma)
-        self.A = Z.T @ Z
-        W, _ = np.linalg.eig(self.A)
-        max_abs_real_eigen_val = np.max(np.abs(np.real(W)))
-
-        print(f"A:\n{self.A}")
-        print(f"A's max absolute real eigenvalue: {max_abs_real_eigen_val}")
-        self.B = np.ones([self.state_dim, self.action_dim])
+        # For LQR
+        x_bar = 0
+        y_bar = 0
+        z_bar = 0
+        self.continuous_A = np.array(
+            [
+                [self.mu + self.A * z_bar, -self.omega, self.A * x_bar],
+                [self.omega, self.mu + self.A * z_bar, self.A * y_bar],
+                [2 * self.lamb * x_bar, 2 * self.lamb * y_bar, -self.lamb],
+            ]
+        )
+        self.continuous_B = np.array([[0], [1], [0]])
 
         # Define cost/reward values
         self.Q = np.eye(self.state_dim)
@@ -46,8 +55,8 @@ class LinearSystem(gym.Env):
         self.reference_point = np.zeros(self.state_dim)
 
         # Observations are 3-dimensional vectors indicating spatial location.
-        self.state_minimums = np.ones(self.state_dim) * self.state_range[0]
-        self.state_maximums = np.ones(self.state_dim) * self.state_range[1]
+        self.state_minimums = np.array([-1.0, -1.0, 0.0])
+        self.state_maximums = np.array([1.0, 1.0, 1.0])
         self.observation_space = spaces.Box(
             low=self.state_minimums, high=self.state_maximums, shape=(self.state_dim,), dtype=np.float64
         )
@@ -62,14 +71,21 @@ class LinearSystem(gym.Env):
         # History of states traversed during the current episode
         self.states = []
 
-    def reset(self, seed: Optional[int] = None, options: Optional[dict] = None):
+    def reset(self, state=None, seed: Optional[int] = None):
         # We need the following line to seed self.np_random
         # Not sure if this will work for any environments that depend on PyTorch
         super().reset(seed=seed)
 
         # Choose the initial state uniformly at random
-        # self.state = self.observation_space.sample()
-        self.state = np.random.uniform(low=self.state_minimums, high=self.state_maximums, size=(self.state_dim,))
+        if state is None:
+            # self.state = self.observation_space.sample()
+            self.state = np.random.uniform(
+                low=self.state_minimums,
+                high=self.state_maximums,
+                size=(self.state_dim,),
+            )
+        else:
+            self.state = state
         self.states = [self.state]
 
         # Track number of steps taken
@@ -97,24 +113,59 @@ class LinearSystem(gym.Env):
     def vectorized_reward_fn(self, states, actions):
         return -self.vectorized_cost_fn(states, actions)
 
+    def continuous_f(self, action=None):
+        """
+        Ground-truth, continuous dynamics of the system.
+
+        Parameters
+        ----------
+        action : np.ndarray
+            Action vector. If left as None, then random policy is used.
+        """
+
+        def f_u(t, input):
+            """
+            Parameters
+            ----------
+            t : float
+                Timestep.
+            input : np.ndarray
+                State vector.
+            """
+
+            x, y, z = input
+
+            x_dot = self.mu * x - self.omega * y + self.A * x * z
+            y_dot = self.omega * x + self.mu * y + self.A * y * z
+            z_dot = -self.lamb * (z - np.power(x, 2) - np.power(y, 2))
+
+            u = action
+            if u is None:
+                u = np.zeros(self.action_dim)
+
+            return [x_dot, y_dot + u[0], z_dot]
+
+        return f_u
+
     def f(self, state, action):
         """
-        Ground-truth dynamics of linear system.
+        Ground-truth, discretized dynamics of the system. Pushes forward from (t) to (t + dt) using a constant action.
 
         Parameters
         ----------
         state : any
-            State as an array.
+            State array.
         action : any
-            Action as an array.
+            Action array.
 
         Returns
         -------
-        state : any
-            Next state as an array.
+            State array pushed forward in time.
         """
 
-        return self.A @ state + self.B @ action
+        soln = solve_ivp(fun=self.continuous_f(action), t_span=[0, dt], y0=state, method="RK45")
+
+        return soln.y[:, -1]
 
     def step(self, action):
         # Compute reward of system

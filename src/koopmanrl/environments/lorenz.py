@@ -11,7 +11,7 @@ dt = 0.01
 max_episode_steps = int(20 / dt)
 # max_episode_steps = int(2 / dt)
 
-register(id="Lorenz-v0", entry_point="custom_envs.lorenz:Lorenz", max_episode_steps=max_episode_steps)
+register(id="Lorenz-v0", entry_point="koopmanrl.environments.lorenz:Lorenz", max_episode_steps=max_episode_steps)
 
 
 class Lorenz(gym.Env):
@@ -71,7 +71,7 @@ class Lorenz(gym.Env):
         # History of states traversed during the current episode
         self.states = []
 
-    def reset(self, seed: Optional[int] = None, options: Optional[dict] = None):
+    def reset(self, seed: Optional[int] = None):
         # We need the following line to seed self.np_random
         super().reset(seed=seed)
 
