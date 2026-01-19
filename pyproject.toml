@@ -43,7 +43,8 @@ dependencies = [
     "optuna>=3.0.0",
     "ray[tune]>=2.53.0",
     "scipy>=1.15.3",
-    "stable-baselines3>=2.7.1",
+    "stable-baselines3==1.2.0",
+    "tensorboard>=2.20.0",
     "torch>=2.9.1",
     "typed-argument-parser>=1.11.0",
 ]
