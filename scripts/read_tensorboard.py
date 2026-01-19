@@ -7,7 +7,7 @@ from tensorboard.backend.event_processing.event_accumulator import EventAccumula
 plt.style.use("ggplot")
 
 
-def tabulate_events(dpath):
+def tabulate_events(dpath, _scalar_name):
     summary_iterators = [EventAccumulator(os.path.join(dpath, dname)).Reload() for dname in sorted(os.listdir(dpath))]
 
     for summary_iterator in summary_iterators:
@@ -15,10 +15,8 @@ def tabulate_events(dpath):
         hyperparams = str(summary_iterator.Tensors("hyperparameters/text_summary")[0]).split("|")
         env_id = hyperparams[hyperparams.index("env_id") + 1]
 
-        scalar_name = "charts/episodic_return"
-
-        steps = [e.step for e in summary_iterator.Scalars(scalar_name)]
-        data = [e.value for e in summary_iterator.Scalars(scalar_name)]
+        steps = [e.step for e in summary_iterator.Scalars(_scalar_name)]
+        data = [e.value for e in summary_iterator.Scalars(_scalar_name)]
 
         df = pd.DataFrame()
         df["steps"] = steps
@@ -33,8 +31,6 @@ def tabulate_events(dpath):
                 continue
 
             folder_name = summary_iterator.path.split("\\")[-1]
-            # if 'quadratic' in folder_name:
-            #     continue
             hyperparams = str(summary_iterator.Tensors("hyperparameters/text_summary")[0]).split("|")
             env_id = hyperparams[hyperparams.index("env_id") + 1]
 
@@ -45,17 +41,14 @@ def tabulate_events(dpath):
 
             data[env_id][folder_name][scalar_name]["steps"] = [e.step for e in summary_iterator.Scalars(scalar_name)]
             data[env_id][folder_name][scalar_name]["data"] = [e.value for e in summary_iterator.Scalars(scalar_name)]
-
     return data
 
 
-if __name__ == "__main__":
+def main():
     path = "./final_tensorboard_runs"
-    data = tabulate_events(path)
     scalar_name = "charts/episodic_return"
+    data = tabulate_events(path, _scalar_name=scalar_name)
     env_ids = ("LinearSystem-v0", "FluidFlow-v0", "Lorenz-v0", "DoubleWell-v0")
-    # env_ids = ('DoubleWell-v0',)
-    # fig = plt.figure()
     fig = plt.figure(figsize=(8, 4.5))
     colors = ["b", "g", "r", "c", "m", "y", "k", "w"]
     for env_id in env_ids:
@@ -67,15 +60,13 @@ if __name__ == "__main__":
                 plot_data[i]["charts/episodic_return"]["data"],
                 color=colors[i],
             )
-            # ax.plot(
-            #     plot_data[i]['charts/episodic_return']['steps'][4:],
-            #     plot_data[i]['charts/episodic_return']['data'][4:],
-            #     color=colors[i]
-            # )
         ax.set_title(env_id)
         ax.set_xlabel("Steps In Environment")
         ax.set_ylabel("Episodic Return")
         ax.legend(["Value Iteration", "LQR", "SAC (Q)", "SAC (V)", "SAKC (V)"])
-        # ax.legend(['Value Iteration', 'SAC (Q)', 'SAC (V)', 'SAKC (V)'])
         plt.savefig(f"./analysis/{env_id}.png")
         fig.clf()
+
+
+if __name__ == "__main__":
+    main()

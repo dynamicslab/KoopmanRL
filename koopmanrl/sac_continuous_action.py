@@ -1,8 +1,6 @@
-import argparse
 import os
 import random
 import time
-from distutils.util import strtobool
 
 import gym
 import numpy as np
@@ -13,63 +11,36 @@ import torch.optim as optim
 from analysis.utils import create_folder
 from koopman_tensor.utils import load_tensor
 from stable_baselines3.common.buffers import ReplayBuffer
+from tap import Tap
 from torch.utils.tensorboard import SummaryWriter
 
 torch.set_default_dtype(torch.float64)
+LOG_STD_MAX = 2
+LOG_STD_MIN = -5
 
 
-def parse_args():
-    # fmt: off
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--exp-name", type=str, default=os.path.basename(__file__).rstrip(".py"),
-        help="the name of this experiment")
-    parser.add_argument("--seed", type=int, default=1,
-        help="seed of the experiment (default: 1)")
-    parser.add_argument("--torch-deterministic", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="if toggled, `torch.backends.cudnn.deterministic=False` (default: True)")
-    parser.add_argument("--cuda", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="if toggled, cuda will be enabled by default (default: True)")
-    parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="if toggled, this experiment will be tracked with Weights and Biases (default: False)")
-    parser.add_argument("--wandb-project-name", type=str, default="cleanRL",
-        help="the wandb's project name (default: \"cleanRL\")")
-    parser.add_argument("--wandb-entity", type=str, default=None,
-        help="the entity (team) of wandb's project (default: None)")
-    parser.add_argument("--capture-video", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="whether to capture videos of the agent performances (check out `videos` folder; default: False)")
-    parser.add_argument("--env-id", type=str, default="LinearSystem-v0",
-        help="the id of the environment (default: LinearSystem-v0)")
-    parser.add_argument("--total-timesteps", type=int, default=1000000,
-        help="total timesteps of the experiments (default: 1000000)")
-    parser.add_argument("--buffer-size", type=int, default=int(1e6),
-        help="the replay memory buffer size (default: 1000000)")
-    parser.add_argument("--gamma", type=float, default=0.99,
-        help="the discount factor gamma (default: 0.99)")
-    parser.add_argument("--tau", type=float, default=0.005,
-        help="target smoothing coefficient (default: 0.005)")
-    parser.add_argument("--batch-size", type=int, default=256,
-        help="the batch size of sample from the reply memory (default: 256)")
-    parser.add_argument("--learning-starts", type=int, default=5e3,
-        help="timestep to start learning (default: 5000)")
-    parser.add_argument("--policy-lr", type=float, default=3e-4,
-        help="the learning rate of the policy network optimizer (default: 0.0003)")
-    parser.add_argument("--q-lr", type=float, default=1e-3,
-        help="the learning rate of the Q network network optimizer (default: 0.001)")
-    parser.add_argument("--policy-frequency", type=int, default=2,
-        help="the frequency of training policy (delayed; default: 2)")
-    parser.add_argument("--target-network-frequency", type=int, default=1, # Denis' implementation delays this by 2.
-        help="the frequency of updates for the target nerworks (default: 1)")
-    parser.add_argument("--noise-clip", type=float, default=0.5,
-        help="noise clip parameter of the Target Policy Smoothing Regularization (default: 0.5)")
-    parser.add_argument("--alpha", type=float, default=0.2,
-        help="Entropy regularization coefficient (default: 0.2)")
-    parser.add_argument("--autotune", type=lambda x:bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="automatic tuning of the entropy coefficient (default: True)")
-    parser.add_argument("--koopman", type=lambda x:bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="use Koopman Q function (default: False)")
-    args = parser.parse_args()
-    # fmt: on
-    return args
+class ArgumentParser(Tap):
+    exp_name: str = os.path.basename(__file__).rstrip(".py")  # the name of this experiment
+    seed: int = 1  # seed of the experiment (default: 1)
+    torch_deterministic: bool = True  # if toggled, `torch.backends.cudnn.deterministic=False` (default: True)
+    cuda: bool = False  # if toggled, cuda will be enabled by default (default: False)
+    capture_video: bool = (
+        False  # whether to capture videos of the agent performances (check out `videos` folder; default: False)
+    )
+    env_id: str = "LinearSystem-v0"  # the id of the environment (default: LinearSystem-v0)
+    total_timesteps: int = 50000  # total timesteps of the experiments (default: 50000)
+    buffer_size: int = int(1e6)  # the replay memory buffer size (default: 1000000)
+    gamma: float = 0.99  # the discount factor gamma (default: 0.99)
+    tau: float = 0.005  # target smoothing coefficient (default: 0.005)
+    batch_size: int = 256  # the batch size of sample from the reply memory (default: 256)
+    learning_starts: int = int(5e3)  # timestep to start learning (default: 5000)
+    policy_lr: float = 3e-4  # the learning rate of the policy network optimizer (default: 0.0003)
+    q_lr: float = 1e-3  # the learning rate of the Q network optimizer (default: 0.001)
+    policy_frequency: int = 2  # the frequency of training policy (delayed; default: 2)
+    target_network_frequency: int = 1  # the frequency of updates for the target nerworks (default: 1)
+    noise_clip: float = 0.5  # noise clip parameter of the Target Policy Smoothing Regularization (default: 0.5)
+    alpha: float = 0.2  # Entropy regularization coefficient (default: 0.2)
+    autotune: bool = True  # automatic tuning of the entropy coefficient (default: True)
 
 
 def make_env(env_id, seed, idx, capture_video, run_name):
@@ -146,10 +117,6 @@ class SoftKoopmanQNetwork(nn.Module):
         return output
 
 
-LOG_STD_MAX = 2
-LOG_STD_MIN = -5
-
-
 class Actor(nn.Module):
     def __init__(self, env):
         super().__init__()
@@ -196,8 +163,8 @@ class Actor(nn.Module):
         return action, log_prob, mean
 
 
-if __name__ == "__main__":
-    args = parse_args()
+def main():
+    args = ArgumentParser().parse_args()
     curr_time = int(time.time())
 
     # Generate a random seed
@@ -238,8 +205,6 @@ if __name__ == "__main__":
     # env setup
     envs = gym.vector.SyncVectorEnv([make_env(args.env_id, sampled_seed, 0, args.capture_video, run_name)])
     assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
-
-    max_action = float(envs.single_action_space.high[0])
 
     actor = Actor(envs).to(device)
 
@@ -383,3 +348,7 @@ if __name__ == "__main__":
 
     envs.close()
     writer.close()
+
+
+if __name__ == "__main__":
+    main()

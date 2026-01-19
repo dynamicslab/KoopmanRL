@@ -13,7 +13,6 @@ from tap import Tap
 from koopmanrl.opt_wrappers import skvi_tuning_wrapper
 
 
-# Argument ingestion
 class ArgumentParser(Tap):
     env_id: str = "LinearSystem-v0"  # Environment which is to be optimized
     num_samples: int = 50  # Number of samples permitted to the optimization

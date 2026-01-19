@@ -1,8 +1,6 @@
-import argparse
 import os
 import random
 import time
-from distutils.util import strtobool
 from enum import Enum
 
 import gym
@@ -26,7 +24,7 @@ class ArgumentParser(Tap):
     exp_name: str = os.path.basename(__file__).rstrip(".py")  # the name of the experiment
     seed: int = 1  # seed of the experiment (default : 1)
     torch_deterministic: bool = True  # if toggled, `torch.backends.cudnn.deterministic=False` (default: True)
-    cuda: bool = False  # if toggled, cuda will be enabled by default (default: True)
+    cuda: bool = False  # if toggled, cuda will be enabled by default (default: False)
     capture_video: bool = (
         False  # whether to capture videos of the agent performances (check out `videos` folder; default: False)
     )

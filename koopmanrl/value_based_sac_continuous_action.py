@@ -1,8 +1,6 @@
-import argparse
 import os
 import random
 import time
-from distutils.util import strtobool
 
 import gym
 import numpy as np
@@ -12,75 +10,38 @@ import torch.nn.functional as F
 import torch.optim as optim
 from analysis.utils import create_folder
 from stable_baselines3.common.buffers import ReplayBuffer
+from tap import Tap
 from torch.utils.tensorboard import SummaryWriter
 
-from koopmanrl.koopman_tensor.utils import load_tensor  # --> needs to be cleaned up
-
 torch.set_default_dtype(torch.float64)
+LOG_STD_MAX = 2
+LOG_STD_MIN = -5
 
 
-def parse_args():
-    # fmt: off
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--exp-name", type=str, default=os.path.basename(__file__).rstrip(".py"),
-        help="the name of this experiment")
-    parser.add_argument("--seed", type=int, default=1,
-        help="seed of the experiment (default: 1)")
-    parser.add_argument("--torch-deterministic", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="if toggled, `torch.backends.cudnn.deterministic=False` (default: True)")
-    parser.add_argument("--cuda", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="if toggled, cuda will be enabled by default (default: True)")
-    parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="if toggled, this experiment will be tracked with Weights and Biases (default: False)")
-    parser.add_argument("--wandb-project-name", type=str, default="cleanRL",
-        help="the wandb's project name (default: \"cleanRL\")")
-    parser.add_argument("--wandb-entity", type=str, default=None,
-        help="the entity (team) of wandb's project (default: None)")
-    parser.add_argument("--capture-video", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="whether to capture videos of the agent performances (check out `videos` folder; default: False)")
-
-    # Algorithm specific arguments
-    # parser.add_argument("--env-id", type=str, default="Hopper-v4",
-    #     help="the id of the environment")
-    # parser.add_argument("--env-id", type=str, default="Hopper-v3",
-    #     help="the id of the environment")
-    parser.add_argument("--env-id", type=str, default="LinearSystem-v0",
-        help="the id of the environment (default: LinearSystem-v0)")
-    parser.add_argument("--total-timesteps", type=int, default=1000000,
-        help="total timesteps of the experiments (default: 1000000)")
-    parser.add_argument("--buffer-size", type=int, default=int(1e6),
-        help="the replay memory buffer size (default: 1000000)")
-    parser.add_argument("--gamma", type=float, default=0.99,
-        help="the discount factor gamma (default: 0.99)")
-    parser.add_argument("--tau", type=float, default=0.005,
-        help="target smoothing coefficient (default: 0.005)")
-    parser.add_argument("--batch-size", type=int, default=256,
-        help="the batch size of sample from the reply memory (default: 256)")
-    parser.add_argument("--learning-starts", type=int, default=5e3,
-        help="timestep to start learning (default: 5000)")
-    parser.add_argument("--policy-lr", type=float, default=3e-4,
-        help="the learning rate of the policy network optimizer (default: 0.0003)")
-    parser.add_argument("--v-lr", type=float, default=1e-3,
-        help="the learning rate of the V network optimizer (default: 0.001)")
-    parser.add_argument("--q-lr", type=float, default=1e-3,
-        help="the learning rate of the Q network optimizer (default: 0.001)")
-    parser.add_argument("--policy-frequency", type=int, default=2,
-        help="the frequency of training policy (delayed; default: 2)")
-    parser.add_argument("--target-network-frequency", type=int, default=1, # Denis' implementation delays this by 2.
-        help="the frequency of updates for the target nerworks (default: 1)")
-    parser.add_argument("--noise-clip", type=float, default=0.5,
-        help="noise clip parameter of the Target Policy Smoothing Regularization (default: 0.5)")
-    parser.add_argument("--alpha", type=float, default=0.2,
-        help="Entropy regularization coefficient (default: 0.2)")
-    parser.add_argument("--autotune", type=lambda x:bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="automatic tuning of the entropy coefficient (default: True)")
-    parser.add_argument("--alpha-lr", type=float, default=1e-3,
-        help="the learning rate of the alpha network optimizer (default: 0.001)")
-    parser.add_argument("--koopman", type=lambda x:bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="use Koopman V function (default: False)")
-    args = parser.parse_args()
-    # fmt: on
-    return args
+class ArgumentParser(Tap):
+    exp_name: str = os.path.basename(__file__).rstrip(".py")  # the name of this experiment
+    seed: int = 1  # seed of the experiment (default: 1)
+    torch_deterministic: bool = True  # if toggled, `torch.backends.cudnn.deterministic=False` (default: True)
+    cuda: bool = False  # if toggled, cuda will be enabled by default (default: True)
+    capture_video: bool = (
+        False  # whether to capture videos of the agent performances (check out `videos` folder; default: False)
+    )
+    env_id: str = "LinearSystem-v0"  # the id of the environment (default: LinearSystem-v0)
+    total_timesteps: int = 50000  # total timesteps of the experiments (default: 50000)
+    buffer_size: int = int(1e6)  # the replay memory buffer size (default: 1000000)
+    gamma: float = 0.99  # the discount factor gamma (default: 0.99)
+    tau: float = 0.005  # target smoothing coefficient (default: 0.005)
+    batch_size: int = 256  # the batch size of sample from the reply memory (default: 256)
+    learning_starts: int = int(5e3)  # timestep to start learning (default: 5000)
+    policy_lr: float = 3e-4  # the learning rate of the policy network optimizer (default: 0.0003)
+    v_lr: float = 1e-3  # the learning rate of the V network optimizer (default: 0.001)
+    q_lr: float = 1e-3  # the learning rate of the Q network optimizer (default: 0.001)
+    policy_frequency: int = 2  # the frequency of training policy (delayed; default: 2)
+    target_network_frequency: int = 1  # the frequency of updates for the target nerworks (default: 1)
+    noise_clip: float = 0.5  # noise clip parameter of the Target Policy Smoothing Regularization (default: 0.5)
+    alpha: float = 0.2  # Entropy regularization coefficient (default: 0.2)
+    autotune: bool = True  # automatic tuning of the entropy coefficient (default: True)
+    alpha_lr: float = 1e-3  # the learning rate of the alpha network optimizer (default: 0.001)
 
 
 def make_env(env_id, seed, idx, capture_video, run_name):
@@ -154,10 +115,6 @@ class SoftKoopmanVNetwork(nn.Module):
         return output
 
 
-LOG_STD_MAX = 2
-LOG_STD_MIN = -5
-
-
 class Actor(nn.Module):
     def __init__(self, env):
         super().__init__()
@@ -204,26 +161,14 @@ class Actor(nn.Module):
         return action, log_prob, mean
 
 
-if __name__ == "__main__":
-    args = parse_args()
+def main():
+    args = ArgumentParser().parse_args()
     curr_time = int(time.time())
 
     # Generate a random seed
     sampled_seed = np.random.randint(1000)
 
     run_name = f"{args.env_id}__{args.exp_name}__{sampled_seed}__{curr_time}"
-    if args.track:
-        import wandb
-
-        wandb.init(
-            project=args.wandb_project_name,
-            entity=args.wandb_entity,
-            sync_tensorboard=True,
-            config=vars(args),
-            name=run_name,
-            monitor_gym=True,
-            save_code=True,
-        )
     writer = SummaryWriter(f"runs/{run_name}")
     writer.add_text(
         "hyperparameters",
@@ -247,21 +192,12 @@ if __name__ == "__main__":
     envs = gym.vector.SyncVectorEnv([make_env(args.env_id, sampled_seed, 0, args.capture_video, run_name)])
     assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
 
-    max_action = float(envs.single_action_space.high[0])
-
     actor = Actor(envs).to(device)
 
-    if args.koopman:
-        koopman_tensor = load_tensor(args.env_id, "path_based_tensor")
-        vf = SoftKoopmanVNetwork(koopman_tensor).to(device)
-        vf_target = SoftKoopmanVNetwork(koopman_tensor).to(device)
-    else:
-        vf = SoftVNetwork(envs).to(device)
-        vf_target = SoftVNetwork(envs).to(device)
+    vf = SoftVNetwork(envs).to(device)
+    vf_target = SoftVNetwork(envs).to(device)
     vf_target.load_state_dict(vf.state_dict())
     v_optimizer = optim.Adam(list(vf.parameters()), lr=args.v_lr)
-    # v_optimizer = optim.Adam(list(vf.parameters()), lr=args.v_lr, weight_decay=1e-5)
-    # v_optimizer = optim.Adam(list(vf.parameters()), lr=args.v_lr, weight_decay=1e3)
 
     qf1 = SoftQNetwork(envs).to(device)
     qf2 = SoftQNetwork(envs).to(device)
@@ -332,13 +268,6 @@ if __name__ == "__main__":
                     -1
                 )
             vf_loss = F.mse_loss(vf_values, q_values - alpha * state_log_pis.view(-1))
-            # vf_loss = F.l1_loss(vf_values, q_values - alpha * state_log_pis.view(-1))
-            # Calculate L1 regularization term
-            # with torch.no_grad():
-            #     l1_regularization = torch.tensor(0., requires_grad=True)
-            #     for param in vf.parameters():
-            #         l1_regularization += torch.norm(param, p=1)
-            # total_vf_loss = vf_loss + l1_regularization
 
             v_optimizer.zero_grad()
             vf_loss.backward()
@@ -346,15 +275,7 @@ if __name__ == "__main__":
 
             # E_( s_t, a_t )~D [ 1/2 ( Q_theta( s_t, a_t ) - Q_target( s_t, a_t ) )^2 ]
             with torch.no_grad():
-                if args.koopman:
-                    expected_phi_x_primes = koopman_tensor.phi_f(data.observations.T, data.actions.T).T
-                    vf_next_target = (
-                        (1 - data.dones.flatten()) * args.gamma * vf_target.linear(expected_phi_x_primes).view(-1)
-                    )
-                else:
-                    vf_next_target = (
-                        (1 - data.dones.flatten()) * args.gamma * vf_target(data.next_observations).view(-1)
-                    )
+                vf_next_target = (1 - data.dones.flatten()) * args.gamma * vf_target(data.next_observations).view(-1)
                 q_target_values = data.rewards.flatten() + vf_next_target
 
             qf1_a_values = qf1(data.observations, data.actions).view(-1)
@@ -426,3 +347,7 @@ if __name__ == "__main__":
         target_value_function_weights = list(vf_target.parameters())
         print(f"Value function weights: {value_function_weights}")
         print(f"Target value function weights: {target_value_function_weights}")
+
+
+if __name__ == "__main__":
+    main()

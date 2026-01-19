@@ -1,8 +1,6 @@
-import argparse
 import os
 import random
 import time
-from distutils.util import strtobool
 
 import gym
 import numpy as np

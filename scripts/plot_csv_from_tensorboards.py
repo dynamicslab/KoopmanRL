@@ -4,9 +4,20 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from analysis.utils import create_folder
+from tap import Tap
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
 plt.style.use("ggplot")
+
+
+class ArgumentParser(Tap):
+    path: str = "./runs"  # Directory in which the files are
+    files: list[str] = [
+        "FluidFlow-v0__interpretability_discrete_value_iteration__1__1707412846",
+        "FluidFlow-v0__interpretability_discrete_value_iteration__1__1707413302",
+        "FluidFlow-v0__interpretability_discrete_value_iteration__1__1707413512",
+        "FluidFlow-v0__interpretability_discrete_value_iteration__1__1707413673",
+    ]  # List of file names which are to be plotted
 
 
 def collect_episodic_returns(tensorboard_file_directory: str, tensorboard_file_name: str):
@@ -38,15 +49,8 @@ def collect_episodic_returns(tensorboard_file_directory: str, tensorboard_file_n
     return episodic_returns, steps
 
 
-if __name__ == "__main__":
-    # Going to collect the episodic return data for the following files
-    path = "./runs"
-    file_names = [
-        "FluidFlow-v0__interpretability_discrete_value_iteration__1__1707412846",
-        "FluidFlow-v0__interpretability_discrete_value_iteration__1__1707413302",
-        "FluidFlow-v0__interpretability_discrete_value_iteration__1__1707413512",
-        "FluidFlow-v0__interpretability_discrete_value_iteration__1__1707413673",
-    ]
+def main():
+    args = ArgumentParser().parse_args()
 
     # Initialize Pandas dataframe
     df = pd.DataFrame()
@@ -55,9 +59,9 @@ if __name__ == "__main__":
     file_seeds = []
 
     # For each tensorboard file in the pre-defined list above,
-    for i, file_name in enumerate(file_names):
+    for i, file_name in enumerate(args.files):
         # Collect seed number and environment id
-        summary_iterator = EventAccumulator(os.path.join(path, file_name)).Reload()
+        summary_iterator = EventAccumulator(os.path.join(args.path, file_name)).Reload()
         hyperparams = str(summary_iterator.Tensors("hyperparameters/text_summary")[0]).split("|")
         # file_seed = i+1 #! Hardcoded seed value for testing
         file_seed = hyperparams[hyperparams.index("seed") + 1]
@@ -66,7 +70,7 @@ if __name__ == "__main__":
 
         # Collect the episodic returns and environment steps
         # and save the data into numpy files for use in other places
-        episodic_returns, steps = collect_episodic_returns(path, file_name)
+        episodic_returns, steps = collect_episodic_returns(args.path, file_name)
         create_folder(f"./analysis/{file_name}")
         np.save(f"./analysis/{file_name}/episodic_returns.npy", episodic_returns)
         np.save(f"./analysis/{file_name}/steps.npy", steps)
@@ -115,3 +119,7 @@ if __name__ == "__main__":
     plt.ylabel("Episodic Return")
     plt.legend()
     plt.show()
+
+
+if __name__ == "__main__":
+    main()

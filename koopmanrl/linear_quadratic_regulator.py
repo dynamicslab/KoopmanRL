@@ -1,38 +1,25 @@
-import argparse
 import os
 import time
-from distutils.util import strtobool
 
 import gym
 import numpy as np
 import torch
 from control import dlqr, lqr
 from scipy.stats import norm
+from tap import Tap
 from torch.utils.tensorboard import SummaryWriter
 
 torch.set_default_dtype(torch.float64)
 
 
-def parse_args():
-    # fmt: off
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--exp-name", type=str, default=os.path.basename(__file__).rstrip(".py"),
-        help="the name of this experiment")
-    parser.add_argument("--torch-deterministic", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="if toggled, `torch.backends.cudnn.deterministic=False` (default: True)")
-    parser.add_argument("--cuda", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="if toggled, cuda will be enabled (default: True)")
-    parser.add_argument("--env-id", type=str, default="LinearSystem-v0",
-        help="the id of the environment (default: LinearSystem-v0)")
-    parser.add_argument("--total-timesteps", type=int, default=100_000,
-        help="total timesteps of the experiments (default: 100_000)")
-    parser.add_argument("--gamma", type=float, default=0.99,
-        help="the discount factor gamma (default: 0.99)")
-    parser.add_argument("--alpha", type=float, default=1.0,
-        help="entropy regularization coefficient (default: 1.0)")
-    args = parser.parse_args()
-    # fmt: on
-    return args
+class ArgumentParser(Tap):
+    exp_name: str = os.path.basename(__file__).rstrip(".py")  # the name of this experiment
+    torch_deterministic: bool = True  # if toggled, `torch.backends.cudnn.deterministic=False` (default: True)
+    cuda: bool = False  # if toggled, cuda will be enabled by default (default: False)
+    env_id: str = "LinearSystem-v0"  # the id of the environment (default: LinearSystem-v0)
+    total_timesteps: int = 50000  # total timesteps of the experiments (default: 50000)
+    gamma: float = 0.99  # the discount factor gamma (default: 0.99)
+    alpha: float = 1.0  # entropy regularization coefficient (default: 1.0)
 
 
 class LQRPolicy:
@@ -193,8 +180,8 @@ def make_env(env_id, seed, idx, capture_video, run_name):
     return thunk
 
 
-if __name__ == "__main__":
-    args = parse_args()
+def main():
+    args = ArgumentParser().parse_args()
 
     # Generate a random seed
     sampled_seed = np.random.randint(1000)
@@ -283,3 +270,7 @@ if __name__ == "__main__":
 
     envs.close()
     writer.close()
+
+
+if __name__ == "__main__":
+    main()

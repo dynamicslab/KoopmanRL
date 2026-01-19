@@ -318,13 +318,6 @@ def sakc_tuning_wrapper(
                     qf2(data.observations, state_actions),
                 ).view(-1)
             vf_loss = F.mse_loss(vf_values, q_values - alpha * state_log_pis.view(-1))
-            # vf_loss = F.l1_loss(vf_values, q_values - alpha * state_log_pis.view(-1))
-            # Calculate L1 regularization term
-            # with torch.no_grad():
-            #     l1_regularization = torch.tensor(0., requires_grad=True)
-            #     for param in vf.parameters():
-            #         l1_regularization += torch.norm(param, p=1)
-            # total_vf_loss = vf_loss + l1_regularization
 
             v_optimizer.zero_grad()
             vf_loss.backward()
