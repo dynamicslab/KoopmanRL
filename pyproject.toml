@@ -1,10 +1,52 @@
-# --> Can export SAKC & SKVI as scripts, see tokenization package.
-
-
-
-
-
-
+[project]
+name = "koopmanrl"
+description = "KoopmanRL is a reinforcement learning (RL) package designed around the two Koopman-Assisted RL (KARL) algorithms, Soft Koopman Value Iteration, and Soft Koopman Actor-Critic. It provides the utilities to build upon parts of its algorithms by either using only the Koopman tensor itself, or only components of the two KARL algorithms. In addition it provides utilities for automatic hyperparameter tuning of KARL algorithms, as well as 4 environments rooted in the control literature. v.1.0.0 is the accompanying repository to 'KARL: Koopman-Assisted Reinforcement Learning'."
+authors = [
+  {name = "Ludger Paehler", email = "paehlerludger@gmail.com"},
+  {name = "Preston Rozwood", email = "pwr36@cornell.edu"},
+  {name = "Edward J. Mehrez", email = "ejm322@cornell.edu"},
+]
+requires-python = "==3.10.*"
+version = "0.1.0"
+license = "MIT"
+readme = "README.md"
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Science/Research",
+    "Operating System :: MacOS",
+    "Operating System :: Unix",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Software Development :: Libraries",
+]
+repository = "https://github.com/dynamicslab/KoopmanRL"
+keywords = [
+    "Reinforcement Learning",
+    "Koopman Operator",
+    "Scientific Machine Learning",
+    "Dynamical Systems",
+]
+include = [
+    { path = "koopmanrl"},
+    { path = "environments" }
+]
+dependencies = [
+    "control>=0.10.2",
+    "gym==0.23.1",
+    "matplotlib>=3.10.8",
+    "numpy>=2.2.6",
+    "optuna>=3.0.0",
+    "ray[tune]>=2.53.0",
+    "scipy>=1.15.3",
+    "stable-baselines3>=2.7.1",
+    "torch>=2.9.1",
+    "typed-argument-parser>=1.11.0",
+]
 
 [project.scripts]
 soft_koopman_value_iteration = "koopmanrl.soft_koopman_value_iteration:main"
@@ -14,12 +56,15 @@ sakc_optimization = "koopmanrl.sakc_optuna_opt:main"
 
 [tool.ruff]
 line-length = 120
-target-version = "py312"
+target-version = "py310"
+
+[dependency-groups]
+dev = ["pre-commit>=4.5.1"]
 
 [tool.ruff.lint]
 select = ["E", "F"]
 ignore = ["F401", "E731"]
 
 [build-system]
-build-backend = "hatchling.build"
-requires = ["hatchling"]
+requires = ["uv_build>=0.9.26,<0.10.0"]
+build-backend = "uv_build"
