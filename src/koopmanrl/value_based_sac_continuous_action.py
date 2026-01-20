@@ -8,10 +8,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from analysis.utils import create_folder
 from stable_baselines3.common.buffers import ReplayBuffer
 from tap import Tap
 from torch.utils.tensorboard import SummaryWriter
+
+from koopmanrl.environments import DoubleWell, FluidFlow, LinearSystem, Lorenz
+from koopmanrl.utils import create_folder
 
 torch.set_default_dtype(torch.float64)
 LOG_STD_MAX = 2
@@ -96,25 +98,6 @@ class SoftVNetwork(nn.Module):
         return x
 
 
-class SoftKoopmanVNetwork(nn.Module):
-    def __init__(self, koopman_tensor):
-        super().__init__()
-
-        self.koopman_tensor = koopman_tensor
-        self.phi_state_dim = self.koopman_tensor.Phi_X.shape[0]
-
-        self.linear = nn.Linear(self.phi_state_dim, 1, bias=False)
-
-    def forward(self, state):
-        """Linear in the phi(x)s"""
-
-        phi_xs = self.koopman_tensor.phi(state.T).T
-
-        output = self.linear(phi_xs)
-
-        return output
-
-
 class Actor(nn.Module):
     def __init__(self, env):
         super().__init__()
@@ -176,7 +159,7 @@ def main():
     )
 
     # Create folder for model checkpoints
-    model_chkpt_path = f"./saved_models/{args.env_id}/value_based_sa{'k' if args.koopman else ''}c_chkpts_{curr_time}"
+    model_chkpt_path = f"./saved_models/{args.env_id}/value_based_sac_chkpts_{curr_time}"
     create_folder(model_chkpt_path)
 
     # TRY NOT TO MODIFY: seeding
@@ -340,13 +323,6 @@ def main():
 
     envs.close()
     writer.close()
-
-    # Get optimal value function weights from Koopman model
-    if args.koopman:
-        value_function_weights = list(vf.parameters())
-        target_value_function_weights = list(vf_target.parameters())
-        print(f"Value function weights: {value_function_weights}")
-        print(f"Target value function weights: {target_value_function_weights}")
 
 
 if __name__ == "__main__":

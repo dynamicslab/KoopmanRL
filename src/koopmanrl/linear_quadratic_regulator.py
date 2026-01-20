@@ -9,6 +9,8 @@ from scipy.stats import norm
 from tap import Tap
 from torch.utils.tensorboard import SummaryWriter
 
+from koopmanrl.environments import DoubleWell, FluidFlow, LinearSystem, Lorenz
+
 torch.set_default_dtype(torch.float64)
 
 

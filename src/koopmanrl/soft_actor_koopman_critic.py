@@ -13,7 +13,7 @@ from stable_baselines3.common.buffers import ReplayBuffer
 from tap import Tap
 from torch.utils.tensorboard import SummaryWriter
 
-from environments import *  # noqa: F403
+from koopmanrl.environments import DoubleWell, FluidFlow, LinearSystem, Lorenz
 from koopmanrl.koopman_observables import monomials
 from koopmanrl.utils import create_folder
 

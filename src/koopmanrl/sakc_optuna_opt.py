@@ -9,6 +9,7 @@ from ray.tune.search import ConcurrencyLimiter
 from ray.tune.search.optuna import OptunaSearch
 from tap import Tap
 
+from koopmanrl.environments import DoubleWell, FluidFlow, LinearSystem, Lorenz
 from koopmanrl.opt_wrappers import sakc_tuning_wrapper
 
 
