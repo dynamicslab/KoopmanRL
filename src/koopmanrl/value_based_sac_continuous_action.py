@@ -13,7 +13,7 @@ from tap import Tap
 from torch.utils.tensorboard import SummaryWriter
 
 from koopmanrl.environments import DoubleWell, FluidFlow, LinearSystem, Lorenz
-from koopmanrl.utils import create_folder
+from koopmanrl.utils import create_folder, make_env
 
 torch.set_default_dtype(torch.float64)
 LOG_STD_MAX = 2
@@ -44,21 +44,6 @@ class ArgumentParser(Tap):
     alpha: float = 0.2  # Entropy regularization coefficient (default: 0.2)
     autotune: bool = True  # automatic tuning of the entropy coefficient (default: True)
     alpha_lr: float = 1e-3  # the learning rate of the alpha network optimizer (default: 0.001)
-
-
-def make_env(env_id, seed, idx, capture_video, run_name):
-    def thunk():
-        env = gym.make(env_id)
-        env = gym.wrappers.RecordEpisodeStatistics(env)
-        if capture_video:
-            if idx == 0:
-                env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
-        env.seed(seed)
-        env.action_space.seed(seed)
-        env.observation_space.seed(seed)
-        return env
-
-    return thunk
 
 
 # ALGO LOGIC: initialize agent here:

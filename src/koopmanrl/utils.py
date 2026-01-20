@@ -1,5 +1,7 @@
 import os
 
+import gym
+
 
 def create_folder(folder_path: str):
     """
@@ -32,3 +34,18 @@ def create_folder(folder_path: str):
         print(f"Folder '{folder_path}' created.")
     else:
         print(f"Folder '{folder_path}' already exists.")
+
+
+def make_env(env_id, seed, idx, capture_video, run_name):
+    def thunk():
+        env = gym.make(env_id)
+        env = gym.wrappers.RecordEpisodeStatistics(env)
+        if capture_video:
+            if idx == 0:
+                env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
+        env.seed(seed)
+        env.action_space.seed(seed)
+        env.observation_space.seed(seed)
+        return env
+
+    return thunk

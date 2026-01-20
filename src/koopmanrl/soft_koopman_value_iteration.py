@@ -11,7 +11,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from koopmanrl.environments import DoubleWell, FluidFlow, LinearSystem, Lorenz
 from koopmanrl.koopman_observables import monomials
-from koopmanrl.utils import create_folder
+from koopmanrl.utils import create_folder, make_env
 
 torch.set_default_dtype(torch.float64)
 delta = torch.finfo(torch.float64).eps  # 2.220446049250313e-16
@@ -36,21 +36,6 @@ class ArgumentParser(Tap):
     state_order: int = 2  # Order of monomials to use for state dictionary (default: 2)
     action_order: int = 2  # Order of monomials to use for action dictionary (default: 2)
     regressor: str = "ols"  # Which regressor to use to build the Koopman tensor (default: \'ols\')
-
-
-def make_env(env_id, seed, idx, capture_video, run_name):
-    def thunk():
-        env = gym.make(env_id)
-        env = gym.wrappers.RecordEpisodeStatistics(env)
-        if capture_video:
-            if idx == 0:
-                env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
-        env.seed(seed)
-        env.action_space.seed(seed)
-        env.observation_space.seed(seed)
-        return env
-
-    return thunk
 
 
 def checkMatrixRank(X, name):
