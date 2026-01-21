@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from cleanrl.sac_continuous_action import SoftQNetwork
 from stable_baselines3.common.buffers import ReplayBuffer
 from tap import Tap
 from torch.utils.tensorboard import SummaryWriter
@@ -46,31 +47,9 @@ class ArgumentParser(Tap):
     alpha_lr: float = 1e-3  # the learning rate of the alpha network optimizer (default: 0.001)
 
 
-# ALGO LOGIC: initialize agent here:
-class SoftQNetwork(nn.Module):
-    def __init__(self, env):
-        super().__init__()
-
-        self.fc1 = nn.Linear(
-            np.array(env.single_observation_space.shape).prod() + np.prod(env.single_action_space.shape), 256
-        )
-        self.fc2 = nn.Linear(256, 256)
-        self.fc3 = nn.Linear(256, 1)
-
-    def forward(self, x, a):
-        x = torch.cat([x, a], 1)
-
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
-
-        return x
-
-
 class SoftVNetwork(nn.Module):
     def __init__(self, env):
         super().__init__()
-
         self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod(), 256)
         self.fc2 = nn.Linear(256, 256)
         self.fc3 = nn.Linear(256, 1)
@@ -79,14 +58,12 @@ class SoftVNetwork(nn.Module):
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
-
         return x
 
 
 class Actor(nn.Module):
     def __init__(self, env):
         super().__init__()
-
         self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod(), 256)
         self.fc2 = nn.Linear(256, 256)
         self.fc_mean = nn.Linear(256, np.prod(env.single_action_space.shape))
