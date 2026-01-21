@@ -33,9 +33,9 @@ keywords = [
 ]
 include = [
     { path = "koopmanrl"},
-    { path = "environments" }
 ]
 dependencies = [
+    "cleanrl>=1.2.0",
     "control>=0.10.2",
     "gym==0.23.1",
     "matplotlib>=3.10.8",
