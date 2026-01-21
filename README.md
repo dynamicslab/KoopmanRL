@@ -1,4 +1,6 @@
-# Koopman-Assisted Reinforcement Learning
+<h1 align='center'>Koopman-Assisted Reinforcement Learning</h1>
+
+## About
 
 KoopmanRL is a reinforcement learning (RL) package designed around the two Koopman-Assisted RL (KARL) algorithms, Soft Koopman Value Iteration, and Soft Koopman Actor-Critic. It provides the utilities to build upon parts of its algorithms by either using only the Koopman tensor itself, or only components of the two KARL algorithms. In addition it provides utilities for automatic hyperparameter tuning of KARL algorithms, as well as 4 environments rooted in the control literature.
 
