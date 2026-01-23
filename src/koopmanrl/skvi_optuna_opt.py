@@ -10,6 +10,7 @@ from ray.tune.search import ConcurrencyLimiter
 from ray.tune.search.optuna import OptunaSearch
 from tap import Tap
 
+from koopmanrl.environments import DoubleWell, FluidFlow, LinearSystem, Lorenz
 from koopmanrl.opt_wrappers import skvi_tuning_wrapper
 
 
@@ -21,7 +22,7 @@ class ArgumentParser(Tap):
     average_window: int = 5  # Number of time-steps the eval metrics is averaged over
     total_timesteps: int = 50000  # Number of total timesteps
     cpu_cores_per_trial: int = 28  # Number of CPU cores per trial
-    storage_dir: str = "/home/lpaehler/Work/ReinforcementLearning/KoopmanRLLaptop/KoopmanRL/BayesianOptimization/koopman-rl/tuning"  # Directory into which to store the result  # noqa: E501
+    storage_dir: str = "/home/lpaehler/Work/ReinforcementLearning/KoopmanRLLaptop/KoopmanRL/BayesianOptimization/koopman-rl"  # Directory into which to store the result  # noqa: E501
     output_file: str = "skvi_linear_system_params"  # Name of the json with the best configuration
 
 

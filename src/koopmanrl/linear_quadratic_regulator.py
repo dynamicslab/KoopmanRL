@@ -9,6 +9,9 @@ from scipy.stats import norm
 from tap import Tap
 from torch.utils.tensorboard import SummaryWriter
 
+from koopmanrl.environments import DoubleWell, FluidFlow, LinearSystem, Lorenz
+from koopmanrl.utils import make_env
+
 torch.set_default_dtype(torch.float64)
 
 
@@ -163,21 +166,6 @@ class LQRPolicy:
             return np.random.normal(loc=-self.C @ (x - self.reference_point), scale=self.sigma_t)
         else:
             return -self.C @ (x - self.reference_point)
-
-
-def make_env(env_id, seed, idx, capture_video, run_name):
-    def thunk():
-        env = gym.make(env_id)
-        env = gym.wrappers.RecordEpisodeStatistics(env)
-        if capture_video:
-            if idx == 0:
-                env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
-        env.seed(seed)
-        env.action_space.seed(seed)
-        env.observation_space.seed(seed)
-        return env
-
-    return thunk
 
 
 def main():
