@@ -1,13 +1,29 @@
+# /// script
+# requires-python = "== 3.10"
+# dependencies = [
+#   "os",
+#   "numpy",
+#   "pandas",
+#   "koopmanrl",
+#   "matplotlib",
+#   "typed-argument-parser",
+#   "tensorboard"
+# ]
+# ///
+
 import os
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from analysis.utils import create_folder
 from tap import Tap
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
+from koopmanrl.utils import create_folder
+
 plt.style.use("ggplot")
+
+# TODO: Debug, and make sure it runs as intended.
 
 
 class ArgumentParser(Tap):
@@ -32,11 +48,6 @@ def collect_episodic_returns(tensorboard_file_directory: str, tensorboard_file_n
     Tuple[List[float], List[int]]: A tuple containing two lists -
     1. episodic_returns (List[float]): List of episodic return values.
     2. steps (List[int]): List of corresponding step values.
-
-    Example:
-    >>> directory = '/path/to/tensorboard/files'
-    >>> file_name = 'experiment_log'
-    >>> returns, steps = collect_episodic_returns(directory, file_name)
     """
 
     summary_iterator = EventAccumulator(os.path.join(tensorboard_file_directory, tensorboard_file_name)).Reload()

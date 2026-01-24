@@ -1,3 +1,10 @@
+# /// script
+# dependencies = [
+#   "requests<3",
+#   "rich",
+# ]
+# ///
+
 import json
 import os
 

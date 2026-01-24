@@ -1,8 +1,19 @@
+# /// script
+# requires-python = "== 3.10"
+# dependencies = [
+#   "koopmanrl",
+#   "matplotlib",
+#   "sklearn",
+#   "typed-argument-parser",
+# ]
+# ///
+
 import matplotlib.pyplot as plt
-from koopman_tensor.torch_tensor import KoopmanTensor
-from koopman_tensor.utils import load_tensor
 from sklearn.manifold import TSNE
 from tap import Tap
+
+from koopmanrl.koopman_tensor.torch_tensor import KoopmanTensor
+from koopmanrl.koopman_tensor.utils import load_tensor
 
 
 class ArgumentParser(Tap):
