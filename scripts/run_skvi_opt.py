@@ -14,9 +14,9 @@ def run_linear_system() -> None:
         [
             "python",
             "-m",
-            "koopmanrl.sakc_optuna_opt",
+            "koopmanrl.skvi_optuna_opt",
             "--env_id=LinearSystem-v0",
-            "--output_file=sakc_linear_system_hparams",
+            "--output_file=skvi_linear_system_hparams",
         ],
         log_file="linear_system_opt.txt",
     )
@@ -27,9 +27,9 @@ def run_fluid_flow() -> None:
         [
             "python",
             "-m",
-            "koopmanrl.sakc_optuna_opt",
+            "koopmanrl.skvi_optuna_opt",
             "--env_id=FluidFlow-v0",
-            "--output_file=sakc_fluid_flow_hparams",
+            "--output_file=skvi_fluid_flow_hparams",
         ],
         log_file="fluid_flow_opt.txt",
     )
@@ -40,9 +40,9 @@ def run_lorenz() -> None:
         [
             "python",
             "-m",
-            "koopmanrl.sakc_optuna_opt",
+            "koopmanrl.skvi_optuna_opt",
             "--env_id=Lorenz-v0",
-            "--output_file=sakc_lorenz_hparams",
+            "--output_file=skvi_lorenz_hparams",
         ],
         log_file="lorenz_opt.txt",
     )
@@ -53,9 +53,9 @@ def run_double_well() -> None:
         [
             "python",
             "-m",
-            "koopmanrl.sakc_optuna_opt",
+            "koopmanrl.skvi_optuna_opt",
             "--env_id=DoubleWell-v0",
-            "--output_file=sakc_double_well_hparams",
+            "--output_file=skvi_double_well_hparams",
         ],
         log_file="double_well_opt.txt",
     )
