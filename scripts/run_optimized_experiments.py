@@ -41,15 +41,16 @@ def run_linear_system() -> None:
         run_command(
             [
                 "python",
-                "cleanrl/soft_koopman_value_iteration.py",
-                "--env-id=LinearSystem-v0",
+                "-m",
+                "koopmanrl.soft_koopman_value_iteration",
+                "--env_id=LinearSystem-v0",
                 f"--seed={seed}",
                 "--lr=0.0010866250292703465",
-                "--num-training-epochs=125",
-                "--num-paths=75",
-                "--num-steps-per-path=250",
-                "--state-order=2",
-                "--action-order=3",
+                "--num_training_epochs=125",
+                "--num_paths=75",
+                "--num_steps_per_path=250",
+                "--state_order=2",
+                "--action_order=3",
             ]
         )
 
@@ -57,15 +58,16 @@ def run_linear_system() -> None:
         run_command(
             [
                 "python",
-                "cleanrl/soft_actor_koopman_critic.py",
-                "--env-id=LinearSystem-v0",
+                "-m",
+                "koopmanrl.soft_actor_koopman_critic",
+                "--env_id=LinearSystem-v0",
                 f"--seed={seed}",
-                "--v-lr=0.00047001054701930456",
-                "--q-lr=0.001802061953715088",
-                "--num-paths=150",
-                "--num-steps-per-path=175",
-                "--state-order=2",
-                "--action-order=3",
+                "--v_lr=0.00047001054701930456",
+                "--q_lr=0.001802061953715088",
+                "--num_paths=150",
+                "--num_steps_per_path=175",
+                "--state_order=2",
+                "--action_order=3",
             ]
         )
 
@@ -104,15 +106,16 @@ def run_fluid_flow() -> None:
         run_command(
             [
                 "python",
-                "cleanrl/soft_koopman_value_iteration.py",
-                "--env-id=FluidFlow-v0",
+                "-m",
+                "koopmanrl.soft_koopman_value_iteration",
+                "--env_id=FluidFlow-v0",
                 f"--seed={seed}",
                 "--lr=0.00031904756404241047",
-                "--num-training-epochs=125",
-                "--num-paths=200",
-                "--num-steps-per-path=225",
-                "--state-order=4",
-                "--action-order=2",
+                "--num_training_epochs=125",
+                "--num_paths=200",
+                "--num_steps_per_path=225",
+                "--state_order=4",
+                "--action_order=2",
             ]
         )
 
@@ -120,15 +123,16 @@ def run_fluid_flow() -> None:
         run_command(
             [
                 "python",
-                "cleanrl/soft_actor_koopman_critic.py",
-                "--env-id=FluidFlow-v0",
+                "-m",
+                "koopmanrl.soft_actor_koopman_critic",
+                "--env_id=FluidFlow-v0",
                 f"--seed={seed}",
-                "--v-lr=0.009423359172870875",
-                "--q-lr=0.0017865746944645956",
-                "--num-paths=50",
-                "--num-steps-per-path=175",
-                "--state-order=3",
-                "--action-order=3",
+                "--v_lr=0.009423359172870875",
+                "--q_lr=0.0017865746944645956",
+                "--num_paths=50",
+                "--num_steps_per_path=175",
+                "--state_order=3",
+                "--action_order=3",
             ]
         )
 
@@ -167,15 +171,16 @@ def run_lorenz() -> None:
         run_command(
             [
                 "python",
-                "cleanrl/soft_koopman_value_iteration.py",
-                "--env-id=Lorenz-v0",
+                "-m",
+                "koopmanrl.soft_koopman_value_iteration",
+                "--env_id=Lorenz-v0",
                 f"--seed={seed}",
                 "--lr=0.0005076064158494174",
-                "--num-training-epochs=125",
-                "--num-paths=150",
-                "--num-steps-per-path=250",
-                "--state-order=3",
-                "--action-order=1",
+                "--num_training_epochs=125",
+                "--num_paths=150",
+                "--num_steps_per_path=250",
+                "--state_order=3",
+                "--action_order=1",
             ]
         )
 
@@ -183,15 +188,16 @@ def run_lorenz() -> None:
         run_command(
             [
                 "python",
-                "cleanrl/soft_actor_koopman_critic.py",
-                "--env-id=Lorenz-v0",
+                "-m",
+                "koopmanrl.soft_actor_koopman_critic",
+                "--env_id=Lorenz-v0",
                 f"--seed={seed}",
-                "--v-lr=0.05156797026843538",
-                "--q-lr=0.023617484550332347",
-                "--num-paths=200",
-                "--num-steps-per-path=150",
-                "--state-order=2",
-                "--action-order=1",
+                "--v_lr=0.05156797026843538",
+                "--q_lr=0.023617484550332347",
+                "--num_paths=200",
+                "--num_steps_per_path=150",
+                "--state_order=2",
+                "--action_order=1",
             ]
         )
 
@@ -230,15 +236,16 @@ def run_double_well() -> None:
         run_command(
             [
                 "python",
-                "cleanrl/soft_koopman_value_iteration.py",
-                "--env-id=DoubleWell-v0",
+                "-m",
+                "koopmanrl.soft_koopman_value_iteration",
+                "--env_id=DoubleWell-v0",
                 f"--seed={seed}",
                 "--lr=0.0016556726497130062",
-                "--num-training-epochs=175",
-                "--num-paths=175",
-                "--num-steps-per-path=100",
-                "--state-order=2",
-                "--action-order=4",
+                "--num_training_epochs=175",
+                "--num_paths=175",
+                "--num_steps_per_path=100",
+                "--state_order=2",
+                "--action_order=4",
             ]
         )
 
@@ -246,15 +253,16 @@ def run_double_well() -> None:
         run_command(
             [
                 "python",
-                "cleanrl/soft_actor_koopman_critic.py",
-                "--env-id=DoubleWell-v0",
+                "-m",
+                "koopmanrl.soft_actor_koopman_critic",
+                "--env_id=DoubleWell-v0",
                 f"--seed={seed}",
-                "--v-lr=0.0003310304069101045",
-                "--q-lr=0.00039795751924458065",
-                "--num-paths=150",
-                "--num-steps-per-path=300",
-                "--state-order=4",
-                "--action-order=4",
+                "--v_lr=0.0003310304069101045",
+                "--q_lr=0.00039795751924458065",
+                "--num_paths=150",
+                "--num_steps_per_path=300",
+                "--state_order=4",
+                "--action_order=4",
             ]
         )
 

@@ -75,3 +75,11 @@ uv run -m koopmanrl.linear_quadratic_regulator --env_id FluidFlow-v0
 >```bash
 >python -m koopmanrl.sakc_optuna_opt --env_id FluidFlow-v0
 >```
+
+### Running Scripts
+
+We provide a number of helper scripts to either reproduce the results, or illustrations from the paper as well as running the hyperparameter optimizations. These can be run with:
+
+```bash
+uv run scripts/run_optimized_experiments.py
+```
