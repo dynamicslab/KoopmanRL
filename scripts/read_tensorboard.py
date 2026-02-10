@@ -1,3 +1,14 @@
+# /// script
+# requires-python = "== 3.10"
+# dependencies = [
+#   "os",
+#   "pandas",
+#   "matplotlib",
+#   "typed-argument-parser",
+#   "tensorboard"
+# ]
+# ///
+
 import os
 
 import matplotlib.pyplot as plt
@@ -5,6 +16,8 @@ import pandas as pd
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
 plt.style.use("ggplot")
+
+# TODO: Debug, and make sure it runs as intended.
 
 
 def tabulate_events(dpath, _scalar_name):
