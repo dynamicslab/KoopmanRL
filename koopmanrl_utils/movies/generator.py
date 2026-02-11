@@ -2,7 +2,6 @@ import random
 
 import numpy as np
 import torch
-
 from scripts.movies.env_enum import EnvEnum
 
 

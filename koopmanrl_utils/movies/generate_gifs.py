@@ -6,9 +6,8 @@ import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-from tap import Tap
-
 from scripts.movies.env_enum import EnvEnum
+from tap import Tap
 
 
 class ArgumentParser(Tap):

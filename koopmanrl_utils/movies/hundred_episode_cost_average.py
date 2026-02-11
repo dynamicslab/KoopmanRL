@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
 import numpy as np
-
 from scripts.movies.env_enum import EnvEnum
 
 # Set the style for a more modern look
