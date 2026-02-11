@@ -11,7 +11,7 @@ repos:
           - id: debug-statements
 
     - repo: https://github.com/astral-sh/ruff-pre-commit
-      rev: v0.14.13
+      rev: v0.15.0
       hooks:
           - id: ruff
             args: [--fix]
@@ -21,7 +21,7 @@ repos:
       rev: v2.14
       hooks:
           - id: vulture
-            args: [--min-confidence, "80", src/koopmanrl]
+            args: [--min-confidence, "80", koopmanrl]
     - repo: https://github.com/pycqa/isort
       rev: 7.0.0
       hooks:
