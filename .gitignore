@@ -1,6 +1,6 @@
 # Ignore PyCaches
-src/koopmanrl/__pycache__/
-src/koopmanrl/environments/__pycache__/
+koopmanrl/__pycache__/
+koopmanrl/environments/__pycache__/
 tests/__pycache__/
 
 # Ignore simulation results
