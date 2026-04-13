@@ -176,13 +176,14 @@ def _compute_vector_field(env, trajectories_main: np.ndarray, trajectories_zero:
     X, Y, Z = np.meshgrid(xs, ys, zs)
 
     grid_pts = np.stack([X.flatten(), Y.flatten(), Z.flatten()], axis=1)
-    zero_action = np.zeros((1, env.action_dim))
+    # f() passes state directly to solve_ivp(y0=state), which requires a 1D array.
+    # Use a 1D zero action so u[0] is a scalar inside continuous_f.
+    zero_action = np.zeros(env.action_dim)
 
     deltas = []
     for pt in grid_pts:
-        col = pt.reshape(-1, 1)
-        nxt = env.f(col, zero_action)
-        deltas.append((nxt - col).flatten())
+        nxt = env.f(pt, zero_action)
+        deltas.append(nxt - pt)
 
     deltas = np.array(deltas)          # (N, 3)
     norms = np.linalg.norm(deltas, axis=1, keepdims=True).clip(min=1e-10)
