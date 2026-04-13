@@ -1,2 +1,2 @@
-from movies.abstract_policy import Policy
-from movies.generator import Generator
+from koopmanrl_utils.movies.abstract_policy import Policy
+from koopmanrl_utils.movies.generator import Generator

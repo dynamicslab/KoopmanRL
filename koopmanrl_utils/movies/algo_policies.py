@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from movies import Policy
+from koopmanrl_utils.movies.abstract_policy import Policy
 
 from koopmanrl.koopman_tensor.utils import load_tensor
 from koopmanrl.linear_quadratic_regulator import LQRPolicy
