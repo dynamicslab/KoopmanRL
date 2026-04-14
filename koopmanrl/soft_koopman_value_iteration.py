@@ -1,4 +1,3 @@
-import json
 import os
 import random
 import time
@@ -13,7 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from koopmanrl.environments import DoubleWell, FluidFlow, LinearSystem, Lorenz
 from koopmanrl.koopman_observables import monomials
-from koopmanrl.utils import create_folder, make_env
+from koopmanrl.utils import create_folder, load_and_apply_config, make_env
 
 torch.set_default_dtype(torch.float64)
 delta = torch.finfo(torch.float64).eps  # 2.220446049250313e-16
@@ -48,30 +47,6 @@ _FALLBACKS: dict[str, object] = {
     "action_order":       2,
     "total_timesteps":    50000,
 }
-
-
-def load_and_apply_config(args: "ArgumentParser") -> "ArgumentParser":
-    """
-    Load a JSON config file and fill in any ArgumentParser field that was not
-    explicitly set on the CLI (i.e. still None).  Fields set on the CLI always
-    take priority (CLI > config file > fallback default).
-    """
-    if args.config_file is not None:
-        with open(args.config_file) as fh:
-            cfg = json.load(fh)
-
-        for json_key, attr in _CONFIG_KEY_MAP.items():
-            if getattr(args, attr) is None and json_key in cfg and cfg[json_key] is not None:
-                setattr(args, attr, cfg[json_key])
-
-        print(f"Loaded configuration from '{args.config_file}'")
-
-    # Apply fallback defaults for any field still None (no config file or key absent).
-    for attr, default in _FALLBACKS.items():
-        if getattr(args, attr) is None:
-            setattr(args, attr, default)
-
-    return args
 
 
 class ArgumentParser(Tap):
@@ -903,7 +878,7 @@ class DiscreteKoopmanValueIterationPolicy:
 
 
 def main():
-    args = load_and_apply_config(ArgumentParser().parse_args())
+    args = load_and_apply_config(ArgumentParser().parse_args(), _CONFIG_KEY_MAP, _FALLBACKS)
     run_name = f"{args.env_id}__{args.exp_name}__{args.num_actions}__{args.num_training_epochs}__{args.seed}__{int(time.time())}"  # noqa: E501
 
     writer = SummaryWriter(f"runs/SKVI/{run_name}")

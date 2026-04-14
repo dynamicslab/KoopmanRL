@@ -104,11 +104,3 @@ uv run python -m koopmanrl.soft_actor_koopman_critic \
     --seed 42 \
     --total_timesteps 100000
 ```
-
-### Running Scripts
-
-We provide a number of helper scripts to either reproduce the results, or illustrations from the paper as well as running the hyperparameter optimizations. These can be run with:
-
-```bash
-uv run scripts/run_optimized_experiments.py
-```

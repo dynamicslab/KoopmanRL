@@ -11,19 +11,19 @@ repos:
           - id: debug-statements
 
     - repo: https://github.com/astral-sh/ruff-pre-commit
-      rev: v0.15.0
+      rev: v0.15.7
       hooks:
           - id: ruff
             args: [--fix]
           - id: ruff-format
 
     - repo: https://github.com/jendrikseipp/vulture
-      rev: v2.14
+      rev: v2.15
       hooks:
           - id: vulture
             args: [--min-confidence, "80", koopmanrl]
     - repo: https://github.com/pycqa/isort
-      rev: 7.0.0
+      rev: 8.0.1
       hooks:
           - id: isort
             name: isort (python)

@@ -1,6 +1,46 @@
+import json
 import os
+from typing import Any
 
 import gym
+
+
+def load_and_apply_config(
+    args,
+    key_map: dict[str, str],
+    fallbacks: dict[str, Any],
+):
+    """
+    Load a JSON config file and fill in any ArgumentParser field that was not
+    explicitly set on the CLI (i.e. still None).  Fields set on the CLI always
+    take priority (CLI > config file > fallback default).
+
+    Parameters
+    ----------
+    args:
+        Parsed tap ``ArgumentParser`` instance.
+    key_map:
+        Maps JSON hyphenated keys to ``args`` attribute names.
+    fallbacks:
+        Default values applied to any attribute that is still ``None`` after
+        the config file has been applied.
+    """
+    if args.config_file is not None:
+        with open(args.config_file) as fh:
+            cfg = json.load(fh)
+
+        for json_key, attr in key_map.items():
+            if getattr(args, attr) is None and json_key in cfg and cfg[json_key] is not None:
+                setattr(args, attr, cfg[json_key])
+
+        print(f"Loaded configuration from '{args.config_file}'")
+
+    # Apply fallback defaults for any field still None (no config file or key absent).
+    for attr, default in fallbacks.items():
+        if getattr(args, attr) is None:
+            setattr(args, attr, default)
+
+    return args
 
 
 def create_folder(folder_path: str):
