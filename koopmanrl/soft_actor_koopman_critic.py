@@ -1,7 +1,9 @@
+import json
 import os
 import random
 import time
 from enum import Enum
+from typing import Optional
 
 import gym
 import numpy as np
@@ -19,36 +21,92 @@ from koopmanrl.utils import create_folder, make_env
 
 torch.set_default_dtype(torch.float64)  # Might not strictly be necessary outside of the Koopman calculation
 
+# ---------------------------------------------------------------------------
+# JSON config loading
+# ---------------------------------------------------------------------------
+
+# Maps JSON hyphenated keys to ArgumentParser attribute names.
+_CONFIG_KEY_MAP: dict[str, str] = {
+    "env-id":              "env_id",
+    "seed":                "seed",
+    "v-lr":                "v_lr",
+    "q-lr":                "q_lr",
+    "num-paths":           "num_paths",
+    "num-steps-per-path":  "num_steps_per_path",
+    "state-order":         "state_order",
+    "action-order":        "action_order",
+    "total-timesteps":     "total_timesteps",
+}
+
+# Fallback values that reproduce the original hard-coded defaults so that
+# omitting --config_file leaves behaviour completely unchanged.
+_FALLBACKS: dict[str, object] = {
+    "env_id":             "LinearSystem-v0",
+    "seed":               1,
+    "v_lr":               1e-3,
+    "q_lr":               1e-3,
+    "num_paths":          100,
+    "num_steps_per_path": 300,
+    "state_order":        2,
+    "action_order":       2,
+    "total_timesteps":    50000,
+}
+
+
+def load_and_apply_config(args: "ArgumentParser") -> "ArgumentParser":
+    """
+    Load a JSON config file and fill in any ArgumentParser field that was not
+    explicitly set on the CLI (i.e. still None).  Fields set on the CLI always
+    take priority (CLI > config file > fallback default).
+    """
+    if args.config_file is not None:
+        with open(args.config_file) as fh:
+            cfg = json.load(fh)
+
+        for json_key, attr in _CONFIG_KEY_MAP.items():
+            if getattr(args, attr) is None and json_key in cfg and cfg[json_key] is not None:
+                setattr(args, attr, cfg[json_key])
+
+        print(f"Loaded configuration from '{args.config_file}'")
+
+    # Apply fallback defaults for any field still None (no config file or key absent).
+    for attr, default in _FALLBACKS.items():
+        if getattr(args, attr) is None:
+            setattr(args, attr, default)
+
+    return args
+
 
 class ArgumentParser(Tap):
     exp_name: str = os.path.basename(__file__).rstrip(".py")  # the name of the experiment
-    seed: int = 1  # seed of the experiment (default : 1)
+    seed: Optional[int] = None  # seed of the experiment; loaded from config if not set (default: 1)
     torch_deterministic: bool = True  # if toggled, `torch.backends.cudnn.deterministic=False` (default: True)
     cuda: bool = False  # if toggled, cuda will be enabled by default (default: False)
     capture_video: bool = (
         False  # whether to capture videos of the agent performances (check out `videos` folder; default: False)
     )
-    env_id: str = "LinearSystem-v0"  # the id of the environment (default: LinearSystem-v0)
-    total_timesteps: int = 50000  # total timesteps of the experiments (default: 50000)
+    env_id: Optional[str] = None  # the id of the environment; loaded from config if not set (default: LinearSystem-v0)
+    total_timesteps: Optional[int] = None  # total timesteps; loaded from config if not set (default: 50000)
     buffer_size: int = int(1e6)  # the replay memory buffer size (default: 1000000)
     gamma: float = 0.99  # the discount factor gamma (default: 0.99)
     tau: float = 0.005  # target smoothing coefficient (default: 0.005)
     batch_size: int = 256  # the batch size of sample from the reply memory (default: 256)
     learning_starts: int = int(5e3)  # timestep to start learning (default: 5000)
     policy_lr: float = 3e-4  # the learning rate of the policy network optimizer (default: 0.0003)
-    v_lr: float = 1e-3  # the learning rate of the V network optimizer (default: 0.001)
-    q_lr: float = 1e-3  # the learning rate of the Q network optimizer (default: 0.001)
+    v_lr: Optional[float] = None  # V-network learning rate; loaded from config if not set (default: 0.001)
+    q_lr: Optional[float] = None  # Q-network learning rate; loaded from config if not set (default: 0.001)
     policy_frequency: int = 2  # the frequency of training policy (delayed; default: 2)
-    target_network_frequency: int = 1  # the frequency of updates for the target nerworks (default: 1)
+    target_network_frequency: int = 1  # the frequency of updates for the target networks (default: 1)
     noise_clip: float = 0.5  # noise clip parameter of the Target Policy Smoothing Regularization (default: 0.5)
     alpha: float = 0.2  # Entropy regularization coefficient (default: 0.2)
     autotune: bool = True  # automatic tuning of the entropy coefficient (default: True)
     alpha_lr: float = 1e-3  # the learning rate of the alpha network optimizer (default: 0.001)
-    num_paths: int = 100  # Number of paths for the dataset (default: 100)
-    num_steps_per_path: int = 300  # Number of steps per path for the dataset (default: 300)
-    state_order: int = 2  # Order of monomials to use for state dictionary (default: 2)
-    action_order: int = 2  # Order of monomials to use for action dictionary (default: 2)
-    regressor: str = "ols"  # Which regressor to use to build the Koopman tensor (default: \'ols\')
+    num_paths: Optional[int] = None  # number of paths for dataset; loaded from config if not set (default: 100)
+    num_steps_per_path: Optional[int] = None  # steps per path; loaded from config if not set (default: 300)
+    state_order: Optional[int] = None  # state monomial order; loaded from config if not set (default: 2)
+    action_order: Optional[int] = None  # action monomial order; loaded from config if not set (default: 2)
+    regressor: str = "ols"  # Which regressor to use to build the Koopman tensor (default: 'ols')
+    config_file: Optional[str] = None  # path to a JSON config file; CLI flags override file values
 
 
 def checkMatrixRank(X, name):
@@ -482,7 +540,7 @@ class Actor(nn.Module):
 
 
 def main():
-    args = ArgumentParser().parse_args()
+    args = load_and_apply_config(ArgumentParser().parse_args())
     curr_time = int(time.time())
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{args.v_lr}__{args.q_lr}__{curr_time}"
     writer = SummaryWriter(f"runs/SAKC/{run_name}")

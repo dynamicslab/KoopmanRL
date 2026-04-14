@@ -1,7 +1,9 @@
+import json
 import os
 import random
 import time
 from enum import Enum
+from typing import Optional
 
 import gym
 import numpy as np
@@ -16,26 +18,82 @@ from koopmanrl.utils import create_folder, make_env
 torch.set_default_dtype(torch.float64)
 delta = torch.finfo(torch.float64).eps  # 2.220446049250313e-16
 
+# ---------------------------------------------------------------------------
+# JSON config loading
+# ---------------------------------------------------------------------------
+
+# Maps JSON hyphenated keys to ArgumentParser attribute names.
+_CONFIG_KEY_MAP: dict[str, str] = {
+    "env-id":                "env_id",
+    "seed":                  "seed",
+    "learning-rate":         "lr",
+    "number-of-train-epochs":"num_training_epochs",
+    "num-paths":             "num_paths",
+    "num-steps-per-path":    "num_steps_per_path",
+    "state-order":           "state_order",
+    "action-order":          "action_order",
+    "total-timesteps":       "total_timesteps",
+}
+
+# Fallback values that reproduce the original hard-coded defaults so that
+# omitting --config_file leaves behaviour completely unchanged.
+_FALLBACKS: dict[str, object] = {
+    "env_id":             "LinearSystem-v0",
+    "seed":               1,
+    "lr":                 1e-3,
+    "num_training_epochs":150,
+    "num_paths":          100,
+    "num_steps_per_path": 300,
+    "state_order":        2,
+    "action_order":       2,
+    "total_timesteps":    50000,
+}
+
+
+def load_and_apply_config(args: "ArgumentParser") -> "ArgumentParser":
+    """
+    Load a JSON config file and fill in any ArgumentParser field that was not
+    explicitly set on the CLI (i.e. still None).  Fields set on the CLI always
+    take priority (CLI > config file > fallback default).
+    """
+    if args.config_file is not None:
+        with open(args.config_file) as fh:
+            cfg = json.load(fh)
+
+        for json_key, attr in _CONFIG_KEY_MAP.items():
+            if getattr(args, attr) is None and json_key in cfg and cfg[json_key] is not None:
+                setattr(args, attr, cfg[json_key])
+
+        print(f"Loaded configuration from '{args.config_file}'")
+
+    # Apply fallback defaults for any field still None (no config file or key absent).
+    for attr, default in _FALLBACKS.items():
+        if getattr(args, attr) is None:
+            setattr(args, attr, default)
+
+    return args
+
 
 class ArgumentParser(Tap):
     exp_name: str = os.path.basename(__file__).rstrip(".py")  # the name of this experiment
-    seed: int = 1  # seed of the experiment (default: 1)
+    seed: Optional[int] = None  # seed of the experiment; loaded from config if not set (default: 1)
     torch_deterministic: bool = True  # if toggled, `torch.backends.cudnn.deterministic=False` (default: True)
     cuda: bool = False  # if toggled, cuda will be enabled by default (default: True)
-    env_id: str = "LinearSystem-v0"  # the id of the environment (default: LinearSystem-v0)
-    total_timesteps: int = 50000  # total timesteps of the experiments (default: 50000)
+    env_id: Optional[str] = None  # id of the environment; loaded from config if not set (default: LinearSystem-v0)
+    total_timesteps: Optional[int] = None  # total timesteps; loaded from config if not set (default: 50000)
     gamma: float = 0.99  # the discount factor gamma (default: 0.99)
     batch_size: int = 2**14  # the batch size of sample from the reply memory (default: 2^14 = 16_384)
-    lr: float = 1e-3  # the learning rate of the Q network network optimizer (default: 0.001)
+    lr: Optional[float] = None  # learning rate; loaded from config if not set (default: 0.001)
     alpha: float = 1.0  # entropy regularization coefficient (default: 1.0)
     num_actions: int = 101  # number of actions that the policy can pick from (default: 101)
-    num_training_epochs: int = 150  # number of epochs that the model should be trained over (default: 150)
+    num_training_epochs: Optional[int] = None  # training epochs; loaded from config if not set (default: 150)
     batch_scale: int = 1  # increase batch size by this multiple for computing bellman error (default: 1)
-    num_paths: int = 100  # Number of paths for the dataset (default: 100)
-    num_steps_per_path: int = 300  # Number of steps per path for the dataset (default: 300)
-    state_order: int = 2  # Order of monomials to use for state dictionary (default: 2)
-    action_order: int = 2  # Order of monomials to use for action dictionary (default: 2)
-    regressor: str = "ols"  # Which regressor to use to build the Koopman tensor (default: \'ols\')
+    num_paths: Optional[int] = None  # number of paths for dataset; loaded from config if not set (default: 100)
+    num_steps_per_path: Optional[int] = None  # steps per path; loaded from config if not set (default: 300)
+    state_order: Optional[int] = None  # state monomial order; loaded from config if not set (default: 2)
+    action_order: Optional[int] = None  # action monomial order; loaded from config if not set (default: 2)
+    regressor: str = "ols"  # Which regressor to use to build the Koopman tensor (default: 'ols')
+    config_file: Optional[str] = None  # path to a JSON config file; CLI flags override file values
 
 
 def checkMatrixRank(X, name):
@@ -845,7 +903,7 @@ class DiscreteKoopmanValueIterationPolicy:
 
 
 def main():
-    args = ArgumentParser().parse_args()
+    args = load_and_apply_config(ArgumentParser().parse_args())
     run_name = f"{args.env_id}__{args.exp_name}__{args.num_actions}__{args.num_training_epochs}__{args.seed}__{int(time.time())}"  # noqa: E501
 
     writer = SummaryWriter(f"runs/SKVI/{run_name}")
