@@ -76,6 +76,35 @@ uv run -m koopmanrl.linear_quadratic_regulator --env_id FluidFlow-v0
 >python -m koopmanrl.sakc_optuna_opt --env_id FluidFlow-v0
 >```
 
+### Using Optimized Hyperparameter Configurations
+
+The `configurations/` directory contains the best-found hyperparameter configurations for SAKC and SKVI across each supported environment, produced by the Optuna optimization routines. The naming scheme is `<algo>_<env_slug>_hparams.json`, e.g.:
+
+```
+configurations/sakc_fluid_flow_hparams.json
+configurations/skvi_lorenz_hparams.json
+configurations/sakc_double_well_hparams.json
+```
+
+Both `koopmanrl.soft_actor_koopman_critic` and `koopmanrl.soft_koopman_value_iteration` accept a `--config_file` flag that loads hyperparameters directly from one of these JSON files:
+
+```bash
+uv run python -m koopmanrl.soft_actor_koopman_critic \
+    --config_file configurations/sakc_fluid_flow_hparams.json
+
+uv run python -m koopmanrl.soft_koopman_value_iteration \
+    --config_file configurations/skvi_lorenz_hparams.json
+```
+
+Any flag passed explicitly on the command line takes precedence over the value in the config file, so individual hyperparameters can be overridden without editing the JSON:
+
+```bash
+uv run python -m koopmanrl.soft_actor_koopman_critic \
+    --config_file configurations/sakc_fluid_flow_hparams.json \
+    --seed 42 \
+    --total_timesteps 100000
+```
+
 ### Running Scripts
 
 We provide a number of helper scripts to either reproduce the results, or illustrations from the paper as well as running the hyperparameter optimizations. These can be run with:
