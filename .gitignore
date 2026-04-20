@@ -6,3 +6,7 @@ tests/__pycache__/
 # Ignore simulation results
 runs/
 saved_models/
+
+# Ignore visualization outputs
+figures/
+video_frames/
