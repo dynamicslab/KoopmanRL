@@ -2,6 +2,7 @@
 koopmanrl/__pycache__/
 koopmanrl/environments/__pycache__/
 tests/__pycache__/
+koopmanrl_utils/movies/__pycache__/
 
 # Ignore simulation results
 runs/

@@ -2,10 +2,9 @@ import numpy as np
 import torch
 from koopmanrl_utils.movies.abstract_policy import Policy
 
-from koopmanrl.koopman_tensor.utils import load_tensor
 from koopmanrl.linear_quadratic_regulator import LQRPolicy
 from koopmanrl.sac_continuous_action import Actor
-from koopmanrl.soft_koopman_value_iteration import DiscreteKoopmanValueIterationPolicy
+from koopmanrl.soft_koopman_value_iteration import DiscreteKoopmanValueIterationPolicy, generate_koopman_tensor
 
 
 class LQR(Policy):
@@ -64,17 +63,29 @@ class SKVI(Policy):
         self,
         args,
         envs,
-        saved_koopman_model_name,
         trained_model_start_timestamp,
         chkpt_epoch_number,
         device,
         name=None,
+        koopman_num_paths=None,
+        koopman_num_steps=None,
     ):
-        # Define device
-        self.device = device
+        # SKVI always runs on CPU — the Koopman tensor is CPU-only
+        self.device = torch.device("cpu")
 
-        # Load saved Koopman tensor
-        self.koopman_tensor = load_tensor(env_id=args.env_id, saved_model_name=saved_koopman_model_name)
+        # Rebuild the Koopman tensor from the same hyperparameters used during training.
+        # koopman_num_paths/steps are kept separate from args.num_trajectories/num_steps so
+        # that the tensor can be reconstructed faithfully regardless of how many plotting
+        # trajectories were requested.
+        koopman_tensor = generate_koopman_tensor(
+            env_id=args.env_id,
+            seed=args.seed,
+            num_paths=koopman_num_paths if koopman_num_paths is not None else args.num_trajectories,
+            num_steps_per_path=koopman_num_steps if koopman_num_steps is not None else args.num_steps,
+            state_order=args.state_order,
+            action_order=args.action_order,
+            regressor=args.regressor,
+        )
 
         # Construct set of all possible actions
         all_actions = torch.from_numpy(
@@ -87,14 +98,17 @@ class SKVI(Policy):
         except Exception:
             dt = None
 
-        # Load SKVI policy
+        # Build SKVI policy and load trained value function weights
         self.policy = DiscreteKoopmanValueIterationPolicy(
-            args=args,
+            env_id=args.env_id,
             gamma=args.gamma,
             alpha=args.alpha,
-            dynamics_model=self.koopman_tensor,
+            dynamics_model=koopman_tensor,
             all_actions=all_actions,
             cost=envs.envs[0].vectorized_cost_fn,
+            use_ols=True,
+            learning_rate=args.skvi_lr,
+            seed=args.seed,
             dt=dt,
         )
         self.policy.load_model(
@@ -132,11 +146,47 @@ class SAKC(Policy):
         self.device = device
         self.policy = Actor(envs).to(device)
         if is_value_based:
-            path_to_state_dict = f"./saved_models/{args.env_id}/value_based_sa{'k' if is_koopman else ''}c_chkpts_{chkpt_timestamp}/step_{chkpt_step_number}.pt"  # noqa: E501
+            path_to_state_dict = f"./saved_models/SAKC/{args.env_id}/value_based_sa{'k' if is_koopman else ''}c_chkpts_{chkpt_timestamp}/step_{chkpt_step_number}.pt"  # noqa: E501
         else:
             path_to_state_dict = (
-                f"./saved_models/{args.env_id}/sac_chkpts_{chkpt_timestamp}/step_{chkpt_step_number}.pt"
+                f"./saved_models/SAKC/{args.env_id}/sakc_chkpts_{chkpt_timestamp}/step_{chkpt_step_number}.pt"
             )
+        self.policy.load_state_dict(torch.load(path_to_state_dict))
+        self._name = name
+
+    @property
+    def name(self):
+        if self._name is None:
+            return self.__class__.__name__
+        return self._name
+
+    def get_action(self, state, *args, **kwargs):
+        actions, _, _ = self.policy.get_action(torch.tensor(state).to(self.device))
+        actions = actions.detach().cpu().numpy()
+        return actions
+
+
+class SAC(Policy):
+    """Plain Soft Actor-Critic (no Koopman component).
+
+    Checkpoints are stored at:
+        ./saved_models/{env_id}/sac_chkpts_{chkpt_timestamp}/step_{chkpt_step_number}.pt
+    """
+
+    def __init__(
+        self,
+        args,
+        envs,
+        chkpt_timestamp,
+        chkpt_step_number,
+        device,
+        name=None,
+    ):
+        self.device = device
+        self.policy = Actor(envs).to(device)
+        path_to_state_dict = (
+            f"./saved_models/{args.env_id}/sac_chkpts_{chkpt_timestamp}/step_{chkpt_step_number}.pt"
+        )
         self.policy.load_state_dict(torch.load(path_to_state_dict))
         self._name = name
 

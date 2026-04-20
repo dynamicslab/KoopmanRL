@@ -37,7 +37,7 @@ from tap import Tap
 
 from koopmanrl.environments import DoubleWell, FluidFlow, Lorenz  # noqa: F401 — registers gym envs
 from koopmanrl.utils import create_folder
-from koopmanrl_utils.movies.algo_policies import LQR, SAKC, SKVI
+from koopmanrl_utils.movies.algo_policies import LQR, SAC, SAKC, SKVI
 from koopmanrl_utils.movies.default_policies import RandomPolicy, ZeroPolicy
 from koopmanrl_utils.movies.env_enum import EnvEnum
 from koopmanrl_utils.movies.generator import Generator
@@ -81,7 +81,7 @@ class Args(Tap):
 
     # Algorithm selection
     algo: str = "sakc"
-    """Main policy algorithm: zero | random | lqr | skvi | sakc."""
+    """Main policy algorithm: zero | random | lqr | skvi | sakc | sac."""
 
     baseline_algo: str = "zero"
     """Baseline policy algorithm: zero | random | lqr."""
@@ -96,18 +96,37 @@ class Args(Tap):
     num_actions: int = 101
     """Discrete action grid size for SKVI."""
 
+    # SKVI-specific Koopman tensor hyperparameters (loaded from config when algo=skvi)
+    state_order: Optional[int] = None
+    """Monomial order for the state observable. Loaded from SKVI config if omitted (default: 2)."""
+
+    action_order: Optional[int] = None
+    """Monomial order for the action observable. Loaded from SKVI config if omitted (default: 2)."""
+
+    skvi_lr: Optional[float] = None
+    """Learning rate for the SKVI value function. Loaded from SKVI config if omitted (default: 1e-3)."""
+
+    skvi_koopman_num_paths: Optional[int] = None
+    """Paths used to build the Koopman tensor for SKVI. Loaded from config (num-paths) if omitted.
+    Kept separate from --num_trajectories so the Koopman tensor can be reconstructed with its
+    original training parameters regardless of how many plotting trajectories are requested."""
+
+    skvi_koopman_num_steps: Optional[int] = None
+    """Steps-per-path used to build the Koopman tensor for SKVI. Loaded from config
+    (num-steps-per-path) if omitted. Kept separate from --num_steps for the same reason."""
+
+    regressor: str = "ols"
+    """Regression method for Koopman tensor fitting: ols | sindy | rrr | ridge."""
+
     # Checkpoint arguments (required for skvi / sakc)
-    chkpt_timestamp: Optional[int] = None
-    """Unix timestamp of the training run whose checkpoint to load."""
+    chkpt_timestamp: Optional[str] = None
+    """Folder suffix of the checkpoint directory. For SAKC: '{seed}_{unix_timestamp}' (e.g. '1_1768954004'). For SKVI: '{seed}_{unix_timestamp}' (e.g. '1_1768953873')."""
 
     chkpt_step: Optional[int] = None
     """Step number for SAKC checkpoint."""
 
     chkpt_epoch: Optional[int] = None
     """Epoch number for SKVI checkpoint."""
-
-    koopman_model_name: Optional[str] = None
-    """Saved Koopman tensor model name (required for SKVI)."""
 
     # Config override
     config_file: Optional[str] = None
@@ -117,8 +136,15 @@ class Args(Tap):
     output_dir: str = "video_frames"
     """Root directory for output."""
 
+    run_label: Optional[str] = None
+    """Optional label used as the output sub-folder name instead of a unix timestamp.
+    E.g. 'sakc_fluid_flow_5000steps' produces 'video_frames/FluidFlow-v0_sakc_fluid_flow_5000steps/'."""
+
     emit_dat: bool = False
     """Also write trajectory data as .dat files for TikZ ingestion."""
+
+    vector_field_resolution: int = 20
+    """Grid points per axis for the DoubleWell deterministic drift vector field (resolution² points total)."""
 
 
 # ---------------------------------------------------------------------------
@@ -160,6 +186,18 @@ def load_and_apply_config(args: Args) -> Args:
         args.num_trajectories = cfg.get("num-paths", 1)
     if args.num_steps is None:
         args.num_steps = cfg.get("num-steps-per-path", None)
+    # SKVI Koopman tensor hyperparameters
+    if args.state_order is None:
+        args.state_order = cfg.get("state-order", 2)
+    if args.action_order is None:
+        args.action_order = cfg.get("action-order", 2)
+    if args.skvi_lr is None:
+        args.skvi_lr = cfg.get("learning-rate", 1e-3)
+    # Koopman tensor data parameters — intentionally separate from num_trajectories/num_steps
+    if args.skvi_koopman_num_paths is None:
+        args.skvi_koopman_num_paths = cfg.get("num-paths", 100)
+    if args.skvi_koopman_num_steps is None:
+        args.skvi_koopman_num_steps = cfg.get("num-steps-per-path", 300)
 
     print(f"Loaded config from '{config_path}'")
     return args
@@ -195,21 +233,22 @@ def build_policy(algo: str, args: Args, envs, device):
     if algo == "lqr":
         return LQR(args=args, envs=envs, name="LQR")
     if algo == "skvi":
-        assert args.chkpt_timestamp and args.chkpt_epoch and args.koopman_model_name, (
-            "SKVI requires --chkpt-timestamp, --chkpt-epoch, and --koopman-model-name"
+        assert args.chkpt_timestamp and args.chkpt_epoch, (
+            "SKVI requires --chkpt_timestamp and --chkpt_epoch"
         )
         return SKVI(
             args=args,
             envs=envs,
-            saved_koopman_model_name=args.koopman_model_name,
             trained_model_start_timestamp=args.chkpt_timestamp,
             chkpt_epoch_number=args.chkpt_epoch,
             device=device,
             name="SKVI",
+            koopman_num_paths=args.skvi_koopman_num_paths,
+            koopman_num_steps=args.skvi_koopman_num_steps,
         )
     if algo == "sakc":
         assert args.chkpt_timestamp and args.chkpt_step, (
-            "SAKC requires --chkpt-timestamp and --chkpt-step"
+            "SAKC requires --chkpt_timestamp and --chkpt_step"
         )
         return SAKC(
             args=args,
@@ -221,7 +260,19 @@ def build_policy(algo: str, args: Args, envs, device):
             device=device,
             name="SAKC",
         )
-    raise ValueError(f"Unknown algorithm '{algo}'. Choose from: zero, random, lqr, skvi, sakc.")
+    if algo == "sac":
+        assert args.chkpt_timestamp and args.chkpt_step, (
+            "SAC requires --chkpt_timestamp and --chkpt_step"
+        )
+        return SAC(
+            args=args,
+            envs=envs,
+            chkpt_timestamp=args.chkpt_timestamp,
+            chkpt_step_number=args.chkpt_step,
+            device=device,
+            name="SAC",
+        )
+    raise ValueError(f"Unknown algorithm '{algo}'. Choose from: zero, random, lqr, skvi, sakc, sac.")
 
 
 # ---------------------------------------------------------------------------
@@ -277,6 +328,61 @@ def export_dat(folder: str, prefix: str, trajectories: np.ndarray, actions: np.n
         np.vstack(cost_rows),
         ["step", "cost"],
     )
+
+
+# ---------------------------------------------------------------------------
+# DoubleWell vector field
+# ---------------------------------------------------------------------------
+
+
+def _double_well_drift_field(env, resolution: int):
+    """
+    Evaluate the DoubleWell deterministic drift (u=0, no diffusion) on a
+    resolution×resolution grid that covers the full state_range.
+
+    Returns flat 1-D arrays (x, y, dx, dy) where dx/dy are the continuous-time
+    drift components  ẋ = 4x − 4x³,  ẏ = −2y.
+    """
+    xs = np.linspace(env.state_range[0], env.state_range[1], resolution)
+    ys = np.linspace(env.state_range[0], env.state_range[1], resolution)
+    X, Y = np.meshgrid(xs, ys)
+    grid_pts = np.stack([X.flatten(), Y.flatten()], axis=1)
+
+    zero_action = np.zeros(env.action_dim)
+    f_u = env.continuous_f(action=zero_action)
+    drifts = np.array([f_u(0.0, pt) for pt in grid_pts])  # (N, 2)
+
+    return X.flatten(), Y.flatten(), drifts[:, 0], drifts[:, 1]
+
+
+def export_double_well_vector_field(env, folder: str, resolution: int, emit_dat: bool) -> None:
+    """
+    Compute and persist the DoubleWell deterministic drift vector field.
+
+    Always writes:
+        double_well_vector_field.npy  — shape (resolution², 6), columns
+                                        [x, y, dx, dy, dxn, dyn] where
+                                        (dx, dy) are raw continuous-time drift
+                                        and (dxn, dyn) are L2-normalised.
+
+    When emit_dat is True also writes:
+        double_well_vector_field.dat  — same columns, tab-separated with
+                                        a #-prefixed header for PGFPlots
+                                        \\addplot table ingestion.
+    """
+    x, y, dx, dy = _double_well_drift_field(env, resolution)
+    norms = np.sqrt(dx**2 + dy**2).clip(min=1e-10)
+    dxn, dyn = dx / norms, dy / norms
+
+    vf = np.stack([x, y, dx, dy, dxn, dyn], axis=1)
+    npy_path = os.path.join(folder, "double_well_vector_field.npy")
+    np.save(npy_path, vf)
+    print(f"Saved double_well_vector_field.npy to '{folder}'")
+
+    if emit_dat:
+        dat_path = os.path.join(folder, "double_well_vector_field.dat")
+        write_dat(dat_path, vf, ["x", "y", "dx", "dy", "dxn", "dyn"])
+        print(f"Saved double_well_vector_field.dat to '{folder}'")
 
 
 # ---------------------------------------------------------------------------
@@ -351,8 +457,8 @@ def main() -> None:
     ), "Trajectories have different initial conditions — check your RNG seed."
 
     # Prepare output folder
-    curr_time = int(time.time())
-    output_folder = os.path.join(args.output_dir, f"{args.env_id}_{curr_time}")
+    folder_suffix = args.run_label if args.run_label is not None else str(int(time.time()))
+    output_folder = os.path.join(args.output_dir, f"{args.env_id}_{folder_suffix}")
     create_folder(output_folder)
 
     # Save .npy files
@@ -377,6 +483,15 @@ def main() -> None:
     np.save(os.path.join(output_folder, "metadata.npy"), metadata, allow_pickle=True)
 
     print(f"Saved .npy files to '{output_folder}'")
+
+    # DoubleWell: emit deterministic drift vector field at the end of the run
+    if args.env_id == "DoubleWell-v0":
+        export_double_well_vector_field(
+            envs.envs[0],
+            output_folder,
+            args.vector_field_resolution,
+            args.emit_dat,
+        )
 
     # Optionally write .dat files
     if args.emit_dat:
