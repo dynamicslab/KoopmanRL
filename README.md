@@ -1,5 +1,10 @@
 <h1 align='center'>Koopman-Assisted Reinforcement Learning</h1>
 
+<p align="center">
+<a href="https://python.org/"><img alt="Language: Python" src="https://img.shields.io/badge/language-Python-orange.svg"></a>
+<a href="https://spdx.org/licenses/MIT.html"><img alt="License KoopmanRL" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
+</p>
+
 ## About
 
 KoopmanRL is a reinforcement learning (RL) package designed around the two Koopman-Assisted RL (KARL) algorithms, Soft Koopman Value Iteration, and Soft Koopman Actor-Critic. It provides the utilities to build upon parts of its algorithms by either using only the Koopman tensor itself, or only components of the two KARL algorithms. In addition it provides utilities for automatic hyperparameter tuning of KARL algorithms, as well as 4 environments rooted in the control literature.
