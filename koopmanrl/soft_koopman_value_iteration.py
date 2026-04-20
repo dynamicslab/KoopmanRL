@@ -493,7 +493,7 @@ class DiscreteKoopmanValueIterationPolicy:
                 self.value_function_weights = torch.tensor(value_function_weights, requires_grad=True)
         else:
             self.value_function_weights = torch.load(
-                f"./saved_models/{self.env_id}/skvi_chkpts_{trained_model_start_timestamp}/epoch_{chkpt_epoch_number}.pt"
+                f"./saved_models/SKVI/{self.env_id}/skvi_chkpts_{trained_model_start_timestamp}/epoch_{chkpt_epoch_number}.pt"
             )
 
     def pis(self, xs):
