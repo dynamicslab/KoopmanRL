@@ -1,5 +1,10 @@
 <h1 align='center'>Koopman-Assisted Reinforcement Learning</h1>
 
+<p align="center">
+<a href="https://python.org/"><img alt="Language: Python" src="https://img.shields.io/badge/language-Python-orange.svg"></a>
+<a href="https://spdx.org/licenses/MIT.html"><img alt="License KoopmanRL" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
+</p>
+
 ## About
 
 KoopmanRL is a reinforcement learning (RL) package designed around the two Koopman-Assisted RL (KARL) algorithms, Soft Koopman Value Iteration, and Soft Koopman Actor-Critic. It provides the utilities to build upon parts of its algorithms by either using only the Koopman tensor itself, or only components of the two KARL algorithms. In addition it provides utilities for automatic hyperparameter tuning of KARL algorithms, as well as 4 environments rooted in the control literature.
@@ -76,10 +81,31 @@ uv run -m koopmanrl.linear_quadratic_regulator --env_id FluidFlow-v0
 >python -m koopmanrl.sakc_optuna_opt --env_id FluidFlow-v0
 >```
 
-### Running Scripts
+### Using Optimized Hyperparameter Configurations
 
-We provide a number of helper scripts to either reproduce the results, or illustrations from the paper as well as running the hyperparameter optimizations. These can be run with:
+The `configurations/` directory contains the best-found hyperparameter configurations for SAKC and SKVI across each supported environment, produced by the Optuna optimization routines. The naming scheme is `<algo>_<env_slug>_hparams.json`, e.g.:
+
+```
+configurations/sakc_fluid_flow_hparams.json
+configurations/skvi_lorenz_hparams.json
+configurations/sakc_double_well_hparams.json
+```
+
+Both `koopmanrl.soft_actor_koopman_critic` and `koopmanrl.soft_koopman_value_iteration` accept a `--config_file` flag that loads hyperparameters directly from one of these JSON files:
 
 ```bash
-uv run scripts/run_optimized_experiments.py
+uv run python -m koopmanrl.soft_actor_koopman_critic \
+    --config_file configurations/sakc_fluid_flow_hparams.json
+
+uv run python -m koopmanrl.soft_koopman_value_iteration \
+    --config_file configurations/skvi_lorenz_hparams.json
+```
+
+Any flag passed explicitly on the command line takes precedence over the value in the config file, so individual hyperparameters can be overridden without editing the JSON:
+
+```bash
+uv run python -m koopmanrl.soft_actor_koopman_critic \
+    --config_file configurations/sakc_fluid_flow_hparams.json \
+    --seed 42 \
+    --total_timesteps 100000
 ```

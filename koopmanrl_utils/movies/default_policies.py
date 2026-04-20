@@ -1,5 +1,5 @@
 import numpy as np
-from movies import Policy
+from koopmanrl_utils.movies.abstract_policy import Policy
 
 
 class ZeroPolicy(Policy):

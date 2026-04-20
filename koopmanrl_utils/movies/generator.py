@@ -2,7 +2,7 @@ import random
 
 import numpy as np
 import torch
-from scripts.movies.env_enum import EnvEnum
+from koopmanrl_utils.movies.env_enum import EnvEnum
 
 
 class Generator:
@@ -62,7 +62,7 @@ class Generator:
 
             def check_loop_condition():
                 if num_steps_per_trajectory is not None:
-                    return step_num < num_steps_per_trajectory
+                    return step_num >= num_steps_per_trajectory
                 else:
                     # If the episode is over, return True
                     if step_num >= self.envs.envs[0].max_episode_steps:
