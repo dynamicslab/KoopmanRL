@@ -1,0 +1,66 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "KoopmanRL: Koopman-Assisted Reinforcement Learning"
+version: 1.0.0
+date-released: 2026-04-20
+authors:
+  - family-names: Paehler
+    given-names: Ludger
+    email: ludger.paehler@tum.de
+    affiliation: Technical University of Munich
+    orcid: "https://orcid.org/0000-0002-7200-7637"
+  - family-names: Rozwood
+    given-names: Preston
+    email: pwr@cornell.edu
+    affiliation: Cornell University
+    orcid: "https://orcid.org/0009-0007-3589-3514"
+  - family-names: Mehrez
+    given-names: Edward J.
+    email: ejm322@cornell.edu
+    affiliation: Cornell University
+  - family-names: Wen
+    given-names: Sun
+    email: ws455@cornell.edu
+    affiliation: Cornell University
+  - family-names: Brunton
+    given-names: Steven L.
+    email: sbrunton@uw.edu
+    affiliation: University of Washington
+    orcid: "https://orcid.org/0000-0002-6565-5118"
+repository-code: "https://github.com/dynamicslab/koopmanrl"
+url: "https://github.com/dynamicslabs/koopmanrl"
+abstract: >
+    KoopmanRL is a reinforcement learning framework which utilizes the
+    Koopman operator to enhance maximum entropy-based reinforcement
+    learning algorithms at the example of the discrete value iteration,
+    and the Soft actor-critic algorithm. This package accompanies the
+    paper "Koopman-Assisted Reinforcement Learning" providing the
+    CleanRL-style implementations of the algorithms, and the hyperparameter
+    tuning harnesses to tune the algorithms on new environments.
+keywords:
+  - reinforcement learning
+  - Koopman operator
+  - PyTorch
+  - machine learning
+license: MIT
+references:
+  - type: journal-paper
+    title: "Koopman-Assisted Reinforcement Learning"
+    journal:
+      name: "tbd"
+    year: 2026
+    authors:
+      - family-names: Rozwood
+        given-names: Preston
+        orcid: "https://orcid.org/0009-0007-3589-3514"
+      - family-names: Mehrez
+        given-names: Edward J.
+      - family-names: Paehler
+        given-names: Ludger
+        orcid: "https://orcid.org/0000-0002-7200-7637"
+      - family-names: Wen
+        given-names: Sun
+      - family-names: Brunton
+        given-names: Steven L.
+        orcid: "https://orcid.org/0000-0002-6565-5118"

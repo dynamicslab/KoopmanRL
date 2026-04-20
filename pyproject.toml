@@ -31,9 +31,6 @@ keywords = [
     "Scientific Machine Learning",
     "Dynamical Systems",
 ]
-include = [
-    { path = "koopmanrl"},
-]
 dependencies = [
     "cleanrl>=1.2.0",
     "control>=0.10.2",
@@ -48,12 +45,6 @@ dependencies = [
     "torch>=2.9.1",
     "typed-argument-parser>=1.11.0",
 ]
-
-[project.scripts]
-soft_koopman_value_iteration = "koopmanrl.soft_koopman_value_iteration:main"
-soft_actor_koopman_critic = "koopmanrl.soft_actor_koopman_critic:main"
-skvi_optimization = "koopmanrl.skvi_optuna_opt:main"
-sakc_optimization = "koopmanrl.sakc_optuna_opt:main"
 
 [tool.ruff]
 line-length = 120
@@ -80,6 +71,18 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 
+[tool.hatch.build.targets.sdist]
+include = [
+    "koopmanrl",
+    "koopmanrl_utils",
+]
+
+[tool.hatch.build.targets.wheel]
+include = [
+    "koopmanrl",
+    "koopmanrl_utils",
+]
+
 [build-system]
-requires = ["uv_build>=0.9.26,<0.10.0"]
-build-backend = "uv_build"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
