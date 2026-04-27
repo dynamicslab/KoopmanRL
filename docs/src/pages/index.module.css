@@ -1,0 +1,64 @@
+.heroBanner {
+  padding: 4rem 0;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 50%, #2563eb 100%);
+}
+
+@media screen and (max-width: 996px) {
+  .heroBanner {
+    padding: 2rem;
+  }
+}
+
+.heroTitle {
+  color: #ffffff;
+  font-size: 3rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.heroSubtitle {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+.heroRule {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+  width: 60px;
+  margin: 1rem auto;
+}
+
+.heroCta {
+  display: inline-block;
+  padding: 0.75rem 2rem;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  border-radius: 4px;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 1rem;
+  text-decoration: none;
+  transition: background 0.2s ease, color 0.2s ease;
+  margin: 0 0.5rem;
+}
+
+.heroCta:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.features {
+  display: flex;
+  align-items: center;
+  padding: 2rem 0;
+  width: 100%;
+}
+
+.featureSvg {
+  height: 200px;
+  width: 200px;
+}

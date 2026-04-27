@@ -1,0 +1,9 @@
+{
+  "label": "Environments",
+  "position": 3,
+  "collapsed": false,
+  "link": {
+    "type": "generated-index",
+    "description": "Four benchmark control environments included in KoopmanRL, ranging from a simple linear system to chaotic nonlinear dynamics."
+  }
+}
