@@ -1,0 +1,9 @@
+{
+  "label": "Algorithms",
+  "position": 2,
+  "collapsed": false,
+  "link": {
+    "type": "generated-index",
+    "description": "Control algorithms implemented in KoopmanRL, including the two KARL algorithms and baseline comparators."
+  }
+}

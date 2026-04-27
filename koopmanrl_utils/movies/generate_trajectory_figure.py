@@ -30,7 +30,11 @@ import numpy as np
 import torch
 from tap import Tap
 
-from koopmanrl.environments import DoubleWell, FluidFlow, Lorenz  # noqa: F401 — registers gym envs
+from koopmanrl.environments import (  # noqa: F401 — registers gym envs
+    DoubleWell,
+    FluidFlow,
+    Lorenz,
+)
 from koopmanrl_utils.movies.env_enum import EnvEnum
 
 matplotlib.use("Agg")
@@ -185,7 +189,7 @@ def _compute_vector_field(env, trajectories_main: np.ndarray, trajectories_zero:
         nxt = env.f(pt, zero_action)
         deltas.append(nxt - pt)
 
-    deltas = np.array(deltas)          # (N, 3)
+    deltas = np.array(deltas)  # (N, 3)
     norms = np.linalg.norm(deltas, axis=1, keepdims=True).clip(min=1e-10)
     deltas_norm = deltas / norms
 
@@ -251,10 +255,7 @@ def main() -> None:
     env_id = metadata["env_id"]
 
     if env_id not in SUPPORTED_ENVS:
-        raise ValueError(
-            f"env_id '{env_id}' is not a supported plotting target. "
-            f"Choose from: {sorted(SUPPORTED_ENVS)}"
-        )
+        raise ValueError(f"env_id '{env_id}' is not a supported plotting target. Choose from: {sorted(SUPPORTED_ENVS)}")
 
     # -----------------------------------------------------------------------
     # Construct environment (needed for reference_point and f())
@@ -322,10 +323,7 @@ def main() -> None:
     ref_z = ref[2] if env_id != EnvEnum.DoubleWell else 0.0
     ax.scatter3D(ref[0], ref[1], ref_z, color="black", s=100, zorder=5, label="Target")
 
-    ax.scatter3D(
-        main_xy[0, 0], main_xy[0, 1], main_xy[0, 2],
-        color="gray", s=80, zorder=5, label=r"$x_0$"
-    )
+    ax.scatter3D(main_xy[0, 0], main_xy[0, 1], main_xy[0, 2], color="gray", s=80, zorder=5, label=r"$x_0$")
 
     # -----------------------------------------------------------------------
     # Coordinate frame or axis-off

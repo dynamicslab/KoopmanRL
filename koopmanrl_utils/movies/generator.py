@@ -2,6 +2,7 @@ import random
 
 import numpy as np
 import torch
+
 from koopmanrl_utils.movies.env_enum import EnvEnum
 
 

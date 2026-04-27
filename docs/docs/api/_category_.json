@@ -1,0 +1,9 @@
+{
+  "label": "API Reference",
+  "position": 5,
+  "collapsed": false,
+  "link": {
+    "type": "generated-index",
+    "description": "Reference documentation for the KoopmanRL Python API."
+  }
+}

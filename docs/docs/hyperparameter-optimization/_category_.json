@@ -1,0 +1,9 @@
+{
+  "label": "Hyperparameter Optimization",
+  "position": 4,
+  "collapsed": false,
+  "link": {
+    "type": "generated-index",
+    "description": "Automated hyperparameter search pipelines using Optuna and Ray Tune."
+  }
+}
