@@ -1,0 +1,9 @@
+{
+  "label": "Developer Guide",
+  "position": 6,
+  "collapsed": false,
+  "link": {
+    "type": "generated-index",
+    "description": "Contributing to KoopmanRL and extending it with new environments or algorithms."
+  }
+}

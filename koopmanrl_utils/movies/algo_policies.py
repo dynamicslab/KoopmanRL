@@ -1,10 +1,13 @@
 import numpy as np
 import torch
-from koopmanrl_utils.movies.abstract_policy import Policy
 
 from koopmanrl.linear_quadratic_regulator import LQRPolicy
 from koopmanrl.sac_continuous_action import Actor
-from koopmanrl.soft_koopman_value_iteration import DiscreteKoopmanValueIterationPolicy, generate_koopman_tensor
+from koopmanrl.soft_koopman_value_iteration import (
+    DiscreteKoopmanValueIterationPolicy,
+    generate_koopman_tensor,
+)
+from koopmanrl_utils.movies.abstract_policy import Policy
 
 
 class LQR(Policy):
@@ -184,9 +187,7 @@ class SAC(Policy):
     ):
         self.device = device
         self.policy = Actor(envs).to(device)
-        path_to_state_dict = (
-            f"./saved_models/{args.env_id}/sac_chkpts_{chkpt_timestamp}/step_{chkpt_step_number}.pt"
-        )
+        path_to_state_dict = f"./saved_models/{args.env_id}/sac_chkpts_{chkpt_timestamp}/step_{chkpt_step_number}.pt"
         self.policy.load_state_dict(torch.load(path_to_state_dict))
         self._name = name
 

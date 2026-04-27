@@ -23,29 +23,29 @@ delta = torch.finfo(torch.float64).eps  # 2.220446049250313e-16
 
 # Maps JSON hyphenated keys to ArgumentParser attribute names.
 _CONFIG_KEY_MAP: dict[str, str] = {
-    "env-id":                "env_id",
-    "seed":                  "seed",
-    "learning-rate":         "lr",
-    "number-of-train-epochs":"num_training_epochs",
-    "num-paths":             "num_paths",
-    "num-steps-per-path":    "num_steps_per_path",
-    "state-order":           "state_order",
-    "action-order":          "action_order",
-    "total-timesteps":       "total_timesteps",
+    "env-id": "env_id",
+    "seed": "seed",
+    "learning-rate": "lr",
+    "number-of-train-epochs": "num_training_epochs",
+    "num-paths": "num_paths",
+    "num-steps-per-path": "num_steps_per_path",
+    "state-order": "state_order",
+    "action-order": "action_order",
+    "total-timesteps": "total_timesteps",
 }
 
 # Fallback values that reproduce the original hard-coded defaults so that
 # omitting --config_file leaves behaviour completely unchanged.
 _FALLBACKS: dict[str, object] = {
-    "env_id":             "LinearSystem-v0",
-    "seed":               1,
-    "lr":                 1e-3,
-    "num_training_epochs":150,
-    "num_paths":          100,
+    "env_id": "LinearSystem-v0",
+    "seed": 1,
+    "lr": 1e-3,
+    "num_training_epochs": 150,
+    "num_paths": 100,
     "num_steps_per_path": 300,
-    "state_order":        2,
-    "action_order":       2,
-    "total_timesteps":    50000,
+    "state_order": 2,
+    "action_order": 2,
+    "total_timesteps": 50000,
 }
 
 

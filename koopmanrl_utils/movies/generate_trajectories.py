@@ -35,7 +35,11 @@ import numpy as np
 import torch
 from tap import Tap
 
-from koopmanrl.environments import DoubleWell, FluidFlow, Lorenz  # noqa: F401 — registers gym envs
+from koopmanrl.environments import (  # noqa: F401 — registers gym envs
+    DoubleWell,
+    FluidFlow,
+    Lorenz,
+)
 from koopmanrl.utils import create_folder
 from koopmanrl_utils.movies.algo_policies import LQR, SAC, SAKC, SKVI
 from koopmanrl_utils.movies.default_policies import RandomPolicy, ZeroPolicy
@@ -120,7 +124,11 @@ class Args(Tap):
 
     # Checkpoint arguments (required for skvi / sakc)
     chkpt_timestamp: Optional[str] = None
-    """Folder suffix of the checkpoint directory. For SAKC: '{seed}_{unix_timestamp}' (e.g. '1_1768954004'). For SKVI: '{seed}_{unix_timestamp}' (e.g. '1_1768953873')."""
+    """Folder suffix of the checkpoint directory.
+
+    For SAKC: '{seed}_{unix_timestamp}' (e.g. '1_1768954004').
+    For SKVI: '{seed}_{unix_timestamp}' (e.g. '1_1768953873').
+    """
 
     chkpt_step: Optional[int] = None
     """Step number for SAKC checkpoint."""
@@ -233,9 +241,7 @@ def build_policy(algo: str, args: Args, envs, device):
     if algo == "lqr":
         return LQR(args=args, envs=envs, name="LQR")
     if algo == "skvi":
-        assert args.chkpt_timestamp and args.chkpt_epoch, (
-            "SKVI requires --chkpt_timestamp and --chkpt_epoch"
-        )
+        assert args.chkpt_timestamp and args.chkpt_epoch, "SKVI requires --chkpt_timestamp and --chkpt_epoch"
         return SKVI(
             args=args,
             envs=envs,
@@ -247,9 +253,7 @@ def build_policy(algo: str, args: Args, envs, device):
             koopman_num_steps=args.skvi_koopman_num_steps,
         )
     if algo == "sakc":
-        assert args.chkpt_timestamp and args.chkpt_step, (
-            "SAKC requires --chkpt_timestamp and --chkpt_step"
-        )
+        assert args.chkpt_timestamp and args.chkpt_step, "SAKC requires --chkpt_timestamp and --chkpt_step"
         return SAKC(
             args=args,
             envs=envs,
@@ -261,9 +265,7 @@ def build_policy(algo: str, args: Args, envs, device):
             name="SAKC",
         )
     if algo == "sac":
-        assert args.chkpt_timestamp and args.chkpt_step, (
-            "SAC requires --chkpt_timestamp and --chkpt_step"
-        )
+        assert args.chkpt_timestamp and args.chkpt_step, "SAC requires --chkpt_timestamp and --chkpt_step"
         return SAC(
             args=args,
             envs=envs,
@@ -407,8 +409,7 @@ def main() -> None:
     # Validate environment
     if args.env_id not in SUPPORTED_ENVS:
         raise ValueError(
-            f"Environment '{args.env_id}' is not a supported plotting target. "
-            f"Choose from: {sorted(SUPPORTED_ENVS)}"
+            f"Environment '{args.env_id}' is not a supported plotting target. Choose from: {sorted(SUPPORTED_ENVS)}"
         )
 
     # Load config and fill in None fields
@@ -437,13 +438,9 @@ def main() -> None:
     baseline_gen = Generator(args, envs, baseline_policy)
 
     reset_seed(args.seed, args.torch_deterministic)
-    zero_traj, zero_act, zero_cost = zero_gen.generate_trajectories(
-        args.num_trajectories, args.num_steps
-    )
+    zero_traj, zero_act, zero_cost = zero_gen.generate_trajectories(args.num_trajectories, args.num_steps)
     reset_seed(args.seed, args.torch_deterministic)
-    main_traj, main_act, main_cost = main_gen.generate_trajectories(
-        args.num_trajectories, args.num_steps
-    )
+    main_traj, main_act, main_cost = main_gen.generate_trajectories(args.num_trajectories, args.num_steps)
     reset_seed(args.seed, args.torch_deterministic)
     baseline_traj, baseline_act, baseline_cost = baseline_gen.generate_trajectories(
         args.num_trajectories, args.num_steps
@@ -452,9 +449,9 @@ def main() -> None:
     print("Completed generating trajectories.")
 
     # Verify shared initial conditions
-    assert np.array_equal(zero_traj[0, 0], main_traj[0, 0]) and np.array_equal(
-        main_traj[0, 0], baseline_traj[0, 0]
-    ), "Trajectories have different initial conditions — check your RNG seed."
+    assert np.array_equal(zero_traj[0, 0], main_traj[0, 0]) and np.array_equal(main_traj[0, 0], baseline_traj[0, 0]), (
+        "Trajectories have different initial conditions — check your RNG seed."
+    )
 
     # Prepare output folder
     folder_suffix = args.run_label if args.run_label is not None else str(int(time.time()))

@@ -24,7 +24,7 @@ Step 2b – generate_gifs.py                (animated GIF — optional)
 
 Steps 2a and 2b are independent and can be run in either order or both.
 
-Supported environments: `FluidFlow-v0`, `Lorenz-v0`, `DoubleWell-v0`.  
+Supported environments: `FluidFlow-v0`, `Lorenz-v0`, `DoubleWell-v0`.
 `LinearSystem-v0` is excluded as a plotting target due to it resetting itself at the start of each interaction with it, and as such not being amenable to clean visualization.
 
 ---
