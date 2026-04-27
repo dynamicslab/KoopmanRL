@@ -18,15 +18,18 @@ from typing import Optional
 
 import gym
 import imageio.v2 as imageio
-import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from tap import Tap
 
-from koopmanrl.environments import DoubleWell, FluidFlow, Lorenz  # noqa: F401 — registers gym envs
+from koopmanrl.environments import (  # noqa: F401 — registers gym envs
+    DoubleWell,
+    FluidFlow,
+    Lorenz,
+)
 from koopmanrl_utils.movies.env_enum import EnvEnum
-
 
 # ---------------------------------------------------------------------------
 # Argument class
@@ -80,9 +83,9 @@ def moving_average(a: np.ndarray, n: int, keep_first: bool) -> np.ndarray:
     """Compute a causal moving average of window size *n*."""
     ret = np.cumsum(a, dtype=float)
     ret[n:] = ret[n:] - ret[:-n]
-    moving_avg = ret[n - 1:] / n
+    moving_avg = ret[n - 1 :] / n
     if keep_first:
-        return np.concatenate((a[:n - 1], moving_avg))
+        return np.concatenate((a[: n - 1], moving_avg))
     return moving_avg
 
 
@@ -181,14 +184,14 @@ def main() -> None:
 
         for step_num in range(main_policy_trajectories.shape[1]):
             if step_num == 0 or (step_num + 1) % args.save_every_n_steps == 0:
-                x = full_x[:(step_num + 1)]
-                y = full_y[:(step_num + 1)]
-                z = full_z[:(step_num + 1)]
+                x = full_x[: (step_num + 1)]
+                y = full_y[: (step_num + 1)]
+                z = full_z[: (step_num + 1)]
 
                 if args.plot_uncontrolled:
-                    x_zero = full_x_zero[:(step_num + 1)]
-                    y_zero = full_y_zero[:(step_num + 1)]
-                    z_zero = full_z_zero[:(step_num + 1)]
+                    x_zero = full_x_zero[: (step_num + 1)]
+                    y_zero = full_y_zero[: (step_num + 1)]
+                    z_zero = full_z_zero[: (step_num + 1)]
 
                 trajectory_ax.clear()
 
@@ -239,9 +242,7 @@ def main() -> None:
     # -----------------------------------------------------------------------
     safe_to_render_costs = True
     if np.any(baseline_policy_costs == 0):
-        print(
-            "Warning: baseline_policy_costs contains zeros; skipping cost GIF to avoid division by zero."
-        )
+        print("Warning: baseline_policy_costs contains zeros; skipping cost GIF to avoid division by zero.")
         safe_to_render_costs = False
 
     if safe_to_render_costs:
@@ -264,11 +265,11 @@ def main() -> None:
 
             for step_num in range(main_policy_costs.shape[1]):
                 if step_num == 0 or (step_num + 1) % args.save_every_n_steps == 0:
-                    log_ratio_slice = log_all_cost_ratios[:(step_num + 1)]
+                    log_ratio_slice = log_all_cost_ratios[: (step_num + 1)]
 
                     if step_num >= start_idx:
-                        ma_slice = moving_avg[:(step_num + 1) - start_idx]
-                        ma_x_slice = ma_x[:(step_num + 1) - start_idx]
+                        ma_slice = moving_avg[: (step_num + 1) - start_idx]
+                        ma_x_slice = ma_x[: (step_num + 1) - start_idx]
                     else:
                         ma_slice = np.array([])
                         ma_x_slice = np.array([])

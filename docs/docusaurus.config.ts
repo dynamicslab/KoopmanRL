@@ -7,7 +7,7 @@ import rehypeKatex from "rehype-katex";
 const config: Config = {
   title: "KoopmanRL",
   tagline: "Koopman-Assisted Reinforcement Learning for Dynamical Systems",
-  favicon: "img/favicon.ico",
+  favicon: "img/favicon.svg",
 
   url: "https://dynamicslab.github.io",
   baseUrl: "/KoopmanRL/",
@@ -53,7 +53,6 @@ const config: Config = {
   ],
 
   themeConfig: {
-    image: "img/koopmanrl-social-card.png",
     navbar: {
       title: "KoopmanRL",
       logo: {
