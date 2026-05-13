@@ -130,6 +130,11 @@ const config: Config = {
       defaultMode: "light",
       respectPrefersColorScheme: true,
     },
+    algolia: {
+      appId: "KLP3S9F9ZZ",
+      apiKey: "f1924b74902281f67c30b820e76a0ead",
+      indexName: "KoopmanRL",
+    },
   } satisfies Preset.ThemeConfig,
 };
 
