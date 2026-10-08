@@ -39,6 +39,7 @@ dependencies = [
     "numpy>=2.2.6",
     "optuna>=3.0.0",
     "ray[tune]>=2.53.0",
+    "scikit-learn>=1.6",
     "scipy>=1.15.3",
     "stable-baselines3==1.2.0",
     "tensorboard>=2.20.0",
