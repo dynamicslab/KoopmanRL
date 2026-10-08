@@ -32,6 +32,7 @@ koopman_tensor/
 ├── AGENTS.md           # This file
 ├── generate_tensor.py  # Generating the Koopman tensor for a specific environment
 ├── numpy_tensor.py     # Koopman tensor implementation in pure NumPy
+├── regressors.py       # Ridge, SINDy and reduced-rank regression of the tensor (scaled increment)
 ├── torch_tensor.py     # Koopman tensor implementation in PyTorch
 └── utils.py            # Utilities for loading and storing Koopman tensors
 ```

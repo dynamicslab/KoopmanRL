@@ -1,3 +1,5 @@
+from typing import Optional
+
 import gym
 import matplotlib.pyplot as plt
 import numpy as np
@@ -5,6 +7,7 @@ import torch
 from matplotlib.animation import FuncAnimation
 from tap import Tap
 
+import koopmanrl.environments  # noqa: F401  (registers the environments with gym)
 from koopmanrl.koopman_tensor.observables import torch_observables as observables
 from koopmanrl.koopman_tensor.torch_tensor import KoopmanTensor, Regressor
 from koopmanrl.koopman_tensor.utils import save_tensor
@@ -22,6 +25,9 @@ class ArgumentParser(Tap):
     save_model: bool = False  # Whether to store the Koopman tensor model in a pickle file (default: False)
     animate: bool = False  # Whether to show the animated dynamics over time (default: False)
     regressor: str = "ols"  # Which regressor to use to build the Koopman tensor (default: 'ols')
+    rank: Optional[int] = None  # Rank for the 'rrr' regressor (default: chosen on held-out transitions)
+    penalty: Optional[float] = None  # Penalty for the 'ridge' regressor (default: chosen on held-out transitions)
+    threshold: Optional[float] = None  # Threshold for the 'sindy' regressor (default: chosen on held-out transitions)
 
 
 def main():
@@ -127,6 +133,9 @@ def main():
             phi=observables.monomials(args.state_order),
             psi=observables.monomials(args.action_order),
             regressor=Regressor(args.regressor),
+            rank=args.rank,
+            penalty=args.penalty,
+            threshold=args.threshold,
             dt=env.dt,
         )
     except Exception:
@@ -138,7 +147,13 @@ def main():
             phi=observables.monomials(args.state_order),
             psi=observables.monomials(args.action_order),
             regressor=Regressor(args.regressor),
+            rank=args.rank,
+            penalty=args.penalty,
+            threshold=args.threshold,
         )
+
+    if hasattr(path_based_tensor, "regressor_parameter"):
+        print(f"Hyperparameter of the '{args.regressor}' regressor: {path_based_tensor.regressor_parameter}")
 
     """ Predict sample points """
     sample_indices = (0, X.shape[1])

@@ -2,6 +2,8 @@ from enum import Enum
 
 import numpy as np
 
+from koopmanrl.koopman_tensor.regressors import tensor_regression
+
 """ Helper functions """
 
 
@@ -21,49 +23,14 @@ def checkConditionNumber(X, name, threshold=200):
         pass
 
 
-# (Theta=Psi_X_T, dXdt=dPsi_X_T, lamb=0.05, n=d)
-def SINDy(Theta, dXdt, lamb=0.05):
-    d = dXdt.shape[1]
-    Xi = np.linalg.lstsq(Theta, dXdt, rcond=None)[0]  # Initial guess: Least-squares
-
-    for _ in range(10):  # which parameter should we be tuning here for RRR comp
-        smallinds = np.abs(Xi) < lamb  # Find small coefficients
-        Xi[smallinds] = 0  # and threshold
-        for ind in range(d):  # n is state dimension
-            biginds = smallinds[:, ind] == 0
-            # Regress dynamics onto remaining terms to find sparse Xi
-            Xi[biginds, ind] = np.linalg.lstsq(Theta[:, biginds], dXdt[:, ind], rcond=None)[0]
-
-    L = Xi
-    return L
-
-
 def ols(X, Y, pinv=True):
-    if pinv:
-        return np.linalg.pinv(X.T @ X) @ X.T @ Y
-    return np.linalg.inv(X.T @ X) @ X.T @ Y
+    if pinv:  # minimum-norm least squares by an orthogonal factorisation, as in the torch class
+        return np.linalg.lstsq(X, Y, rcond=None)[0]
+    return np.linalg.solve(X.T @ X, X.T @ Y)
 
 
 def OLS(X, Y, pinv=True):
     return ols(X, Y, pinv)
-
-
-def rrr(X, Y, rank=8):
-    B_ols = ols(X, Y)  # if infeasible use GD (numpy CG)
-    U, S, V = np.linalg.svd(Y.T @ X @ B_ols)
-    W = V[0:rank].T
-
-    B_rr = B_ols @ W @ W.T
-    L = B_rr  # .T
-    return L
-
-
-def RRR(X, Y, rank=8):
-    return rrr(X, Y, rank)
-
-
-def ridgeRegression(X, y, lamb=0.05):
-    return np.linalg.inv(X.T @ X + (lamb * np.identity(X.shape[1]))) @ X.T @ y
 
 
 """ Regressor enum """
@@ -73,13 +40,28 @@ class Regressor(str, Enum):
     OLS = "ols"
     RRR = "rrr"
     SINDy = "sindy"
+    RIDGE = "ridge"
 
 
 """ Koopman Tensor """
 
 
 class KoopmanTensor:
-    def __init__(self, X, Y, U, phi, psi, regressor=Regressor.OLS, p_inv=True, rank=8, is_generator=False, dt=0.01):
+    def __init__(
+        self,
+        X,
+        Y,
+        U,
+        phi,
+        psi,
+        regressor=Regressor.OLS,
+        p_inv=True,
+        rank=None,
+        is_generator=False,
+        dt=0.01,
+        penalty=None,
+        threshold=None,
+    ):
         """
         Create an instance of the KoopmanTensor class.
 
@@ -95,16 +77,24 @@ class KoopmanTensor:
             Dictionary space representing the states.
         psi : callable
             Dictionary space representing the actions.
-        regressor : {'ols', 'sindy', 'rrr'}, optional
-            String indicating the regression method to use. Default is 'ols'.
+        regressor : {'ols', 'ridge', 'sindy', 'rrr'}, optional
+            Regression method. Default is 'ols'. 'ridge', 'sindy' and 'rrr' are solved for the standardised
+            increment phi(x') - phi(x) (see koopmanrl/koopman_tensor/regressors.py).
         p_inv : bool, optional
-            Boolean indicating whether to use pseudo-inverse instead of regular inverse. Default is True.
+            Whether 'ols' returns the minimum-norm least-squares solution instead of solving the normal
+            equations. Default is True.
         rank : int, optional
-            Rank of the Koopman tensor when applying reduced rank regression. Default is 8.
+            Rank of the regression for 'rrr'. Default is None: chosen on the last 20% of the transitions.
         is_generator : bool, optional
             Boolean indicating whether the model is a Koopman generator tensor. Default is False.
         dt : float, optional
             The time step of the system. Default is 0.01.
+        penalty : float, optional
+            Penalty for 'ridge', relative to the standardised Gram matrix. Default is None: chosen on the last
+            20% of the transitions.
+        threshold : float, optional
+            Threshold for 'sindy' on the standardised coefficients. Default is None: chosen on the last 20% of
+            the transitions.
 
         Returns
         -------
@@ -176,15 +166,26 @@ class KoopmanTensor:
 
         # Solve for M and B
         lowercase_regressor = regressor.lower()
-        if lowercase_regressor == Regressor.RRR:
-            self.M = rrr(self.kron_matrix.T, self.regression_Y.T, rank).T
-            self.B = rrr(self.Phi_X.T, self.X.T, rank)
-        elif lowercase_regressor == Regressor.SINDy:
-            self.M = SINDy(self.kron_matrix.T, self.regression_Y.T).T
-            self.B = SINDy(self.Phi_X.T, self.X.T)
-        elif lowercase_regressor == Regressor.OLS:
+        if lowercase_regressor == Regressor.OLS:
             self.M = ols(self.kron_matrix.T, self.regression_Y.T, p_inv).T
             self.B = ols(self.Phi_X.T, self.X.T, p_inv)
+        elif lowercase_regressor in (Regressor.RIDGE, Regressor.SINDy, Regressor.RRR):
+            # With psi_0(u) = 1 the first block of kron_matrix is phi(x), and the regularised regressors act on
+            # the departure from persistence, phi(x') - phi(x).
+            persistence = not is_generator and bool(np.all(self.Psi_U[0] == 1))
+            M, B, self.regressor_parameter = tensor_regression(
+                lowercase_regressor,
+                self.kron_matrix,
+                self.regression_Y,
+                self.Phi_X,
+                self.X,
+                rank=rank,
+                penalty=penalty,
+                threshold=threshold,
+                persistence=persistence,
+            )
+            self.M = M
+            self.B = B
         else:
             raise Exception("Did not pick a supported regression algorithm.")
 

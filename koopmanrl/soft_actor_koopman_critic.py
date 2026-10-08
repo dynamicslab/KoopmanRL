@@ -16,6 +16,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from koopmanrl.environments import DoubleWell, FluidFlow, LinearSystem, Lorenz
 from koopmanrl.koopman_observables import monomials
+from koopmanrl.koopman_tensor.regressors import tensor_regression
 from koopmanrl.utils import create_folder, load_and_apply_config, make_env
 
 torch.set_default_dtype(torch.float64)  # Might not strictly be necessary outside of the Koopman calculation
@@ -108,42 +109,6 @@ def OLS(X, Y):
     return ols(X, Y)
 
 
-def SINDy(Theta, dXdt, lamb=0.05):
-    d = dXdt.shape[1]
-    Xi = torch.linalg.lstsq(Theta, dXdt, rcond=None).solution  # Initial guess: Least-squares
-
-    for _ in range(10):
-        smallinds = torch.abs(Xi) < lamb  # Find small coefficients
-        Xi[smallinds] = 0  # and threshold
-        for ind in range(d):  # n is state dimension
-            biginds = smallinds[:, ind] == 0
-            # Regress dynamics onto remaining terms to find sparse Xi
-            Xi[biginds, ind] = torch.linalg.lstsq(Theta[:, biginds], dXdt[:, ind].unsqueeze(0).T, rcond=None).solution[
-                :, 0
-            ]
-
-    L = Xi
-    return L
-
-
-def rrr(X, Y, rank=8):
-    B_ols = ols(X, Y)  # if infeasible use GD (numpy CG)
-    U, S, V = torch.linalg.svd(Y.T @ X @ B_ols)
-    W = V[0:rank].T
-
-    B_rr = B_ols @ W @ W.T
-    L = B_rr  # .T
-    return L
-
-
-def RRR(X, Y, rank=8):
-    return rrr(X, Y, rank)
-
-
-def ridgeRegression(X, y, lamb=0.05):
-    return torch.linalg.inv(X.T @ X + (lamb * torch.eye(X.shape[1]))) @ X.T @ y
-
-
 class Regressor(str, Enum):
     OLS = "ols"
     SINDy = "sindy"
@@ -160,9 +125,11 @@ class KoopmanTensor:
         phi,
         psi,
         regressor=Regressor.OLS,
-        rank=8,
+        rank=None,
         is_generator=False,
         dt=0.01,
+        penalty=None,
+        threshold=None,
     ):
         """
         Create an instance of the KoopmanTensor class.
@@ -179,16 +146,21 @@ class KoopmanTensor:
             Dictionary space representing the states.
         psi : callable
             Dictionary space representing the actions.
-        regressor : {'ols', 'sindy', 'rrr'}, optional
-            String indicating the regression method to use. Default is 'ols'.
-        p_inv : bool, optional
-            Boolean indicating whether to use pseudo-inverse instead of regular inverse. Default is True.
+        regressor : {'ols', 'ridge', 'sindy', 'rrr'}, optional
+            Regression method. Default is 'ols'. 'ridge', 'sindy' and 'rrr' are solved for the standardised
+            increment phi(x') - phi(x) (see koopmanrl/koopman_tensor/regressors.py).
         rank : int, optional
-            Rank of the Koopman tensor when applying reduced rank regression. Default is 8.
+            Rank of the regression for 'rrr'. Default is None: chosen on the last 20% of the transitions.
         is_generator : bool, optional
             Boolean indicating whether the model is a Koopman generator tensor. Default is False.
         dt : float, optional
             The time step of the system. Default is 0.01.
+        penalty : float, optional
+            Penalty for 'ridge', relative to the standardised Gram matrix. Default is None: chosen on the last
+            20% of the transitions.
+        threshold : float, optional
+            Threshold for 'sindy' on the standardised coefficients. Default is None: chosen on the last 20% of
+            the transitions.
 
         Returns
         -------
@@ -259,18 +231,26 @@ class KoopmanTensor:
             self.kron_matrix[:, i] = torch.kron(self.Psi_U[:, i], self.Phi_X[:, i])
 
         # Solve for M and B
-        if regressor == Regressor.RRR:
-            self.M = rrr(self.kron_matrix.T, self.regression_Y.T, rank).T
-            self.B = rrr(self.Phi_X.T, self.X.T, rank)
-        elif regressor == Regressor.SINDy:
-            self.M = SINDy(self.kron_matrix.T, self.regression_Y.T).T
-            self.B = SINDy(self.Phi_X.T, self.X.T)
-        elif regressor == Regressor.OLS:
+        if regressor == Regressor.OLS:
             self.M = ols(self.kron_matrix.T, self.regression_Y.T).T
             self.B = ols(self.Phi_X.T, self.X.T)
-        elif regressor == Regressor.RIDGE:
-            self.M = ridgeRegression(self.kron_matrix.T, self.regression_Y.T).T
-            self.B = ridgeRegression(self.Phi_X.T, self.X.T)
+        elif regressor in (Regressor.RIDGE, Regressor.SINDy, Regressor.RRR):
+            # With psi_0(u) = 1 the first block of kron_matrix is phi(x), and the regularised regressors act on
+            # the departure from persistence, phi(x') - phi(x).
+            persistence = not is_generator and bool(torch.all(self.Psi_U[0] == 1))
+            M, B, self.regressor_parameter = tensor_regression(
+                regressor,
+                self.kron_matrix,
+                self.regression_Y,
+                self.Phi_X,
+                self.X,
+                rank=rank,
+                penalty=penalty,
+                threshold=threshold,
+                persistence=persistence,
+            )
+            self.M = torch.from_numpy(M)
+            self.B = torch.from_numpy(B)
         else:
             raise Exception("Did not pick a supported regression algorithm.")
 
