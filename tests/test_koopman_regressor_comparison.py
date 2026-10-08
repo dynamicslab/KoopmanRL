@@ -1,5 +1,5 @@
-"""koopmanrl_utils.koopman_regressor_comparison builds the package's tensor, and its estimators, error and outputs
-are what the module says they are."""
+"""koopmanrl_utils.koopman_regressor_comparison builds the package's least-squares tensor, and its estimators, error and
+outputs are what the module says they are."""
 
 import contextlib
 import io
@@ -51,8 +51,7 @@ def test_scaled_least_squares_is_the_tensor_of_the_package(env_id):
     assert np.allclose(packaged, scaled, rtol=1e-6, atol=1e-8)
 
 
-@pytest.mark.parametrize("regressor", ["ols", "ridge", "sindy", "rrr"])
-def test_shipped_regressors_run_through_the_class_of_the_package(regressor):
+def test_least_squares_runs_through_the_class_of_the_package():
     X, U, Y = small_data("FluidFlow-v0")
     with contextlib.redirect_stdout(io.StringIO()):
         tensor = KoopmanTensor(
@@ -61,10 +60,23 @@ def test_shipped_regressors_run_through_the_class_of_the_package(regressor):
             torch.tensor(U.T),
             phi=monomials(2),
             psi=monomials(1),
-            regressor=Regressor(regressor),
+            regressor=Regressor("ols"),
         )
-    K, _ = comparison.fit_tensor(X, U, Y, 2, 1, regressor)
-    assert np.allclose(K, tensor.K.numpy())
+    K, _ = comparison.fit_tensor(X, U, Y, 2, 1, "ols")
+    assert np.array_equal(K, tensor.K.numpy())
+
+
+def test_frozen_shipped_regressors_are_what_they_were():
+    Z, _, T = regression_problem(noise=0.1)
+    reference = np.linalg.lstsq(Z, T, rcond=None)[0]
+    assert np.allclose(comparison.shipped_ols_numpy(Z, T), np.linalg.pinv(Z.T @ Z) @ Z.T @ T)
+    assert np.allclose(comparison.shipped_ridge(Z, T), np.linalg.solve(Z.T @ Z + 0.05 * np.eye(Z.shape[1]), Z.T @ T))
+    assert np.allclose(comparison.shipped_sindy(Z, T, threshold=0.0), reference)
+    assert np.allclose(comparison.shipped_rrr(Z, T, rank=T.shape[1]), reference)
+    # a fixed threshold of 0.05 on the raw coefficients and a fixed rank, whatever the problem
+    small = comparison.shipped_sindy(Z, 0.04 * T)
+    assert np.count_nonzero(small) < np.count_nonzero(reference)
+    assert np.linalg.matrix_rank(comparison.shipped_rrr(Z, T, rank=1)) == 1
 
 
 def test_numpy_copy_agrees_with_least_squares_on_a_well_posed_problem():

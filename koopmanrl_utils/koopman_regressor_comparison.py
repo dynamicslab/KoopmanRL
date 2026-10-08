@@ -6,8 +6,11 @@ dictionary orders and identification budgets of `configurations/`, with the othe
 eight alternatives, thirteen regressors in all.
 
 Regressors
-    As shipped, run through the package's own classes without change: `ols` (the torch class used by SKVI and SAKC),
-    `ols_numpy` (the NumPy copy of the class, which solves the normal equations), `ridge`, `sindy` and `rrr`.
+    As shipped: `ols` (the torch class used by SKVI and SAKC), run through the package's class, and `ols_numpy` (the
+    NumPy copy of the class, which solved the normal equations), `ridge`, `sindy` and `rrr` as they were in the
+    package when the results of the paper were produced (up to commit b06d974). These four are frozen copies of that
+    code, so that the comparison keeps describing it after the package's implementations change; on that commit they
+    give the classes' tensors to within the classes' own run-to-run rounding.
 
     Alternatives, implemented here: `ols_scaled`, `tsvd`, `ridge_cv`, `stlsq_cv`, `lasso_cv`, `rrr_cv`, `tls` and
     `huber`. They share two changes of coordinates that leave ordinary least squares unchanged and matter for every
@@ -79,9 +82,6 @@ from tap import Tap
 torch.set_default_dtype(torch.float64)
 
 import koopmanrl.environments  # noqa: F401,E402  (import registers the gym envs)
-from koopmanrl.koopman_tensor.numpy_tensor import (  # noqa: E402
-    KoopmanTensor as NumpyKoopmanTensor,
-)
 from koopmanrl.koopman_tensor.observables.numpy_observables import (  # noqa: E402
     monomials as numpy_monomials,
 )
@@ -104,7 +104,8 @@ HELDOUT_FRAC = 0.2
 VALIDATION_FRAC = 0.2  # share of the identification transitions on which a hyperparameter is chosen
 
 # key: (label, label in the figures, family, hyperparameter grid). Families: "paper" is the regressor behind the
-# results of the paper, "shipped" the other regressors of the package as they are, "alternative" those defined here.
+# results of the paper, "shipped" the other regressors of the package as they were then, "alternative" those defined
+# here.
 REGRESSORS = {
     "ols": ("OLS, torch lstsq (paper)", "OLS (paper)", "paper", None),
     "ols_numpy": ("OLS, NumPy copy (normal equations)", "OLS, NumPy copy", "shipped", None),
@@ -158,6 +159,54 @@ def design(X, U, state_order, action_order):
 def unfold(M, phi_dim, psi_dim):
     """The package's assembly of the tensor K (phi, phi, psi) from the regression matrix M."""
     return np.stack([M[i].reshape((phi_dim, psi_dim), order="F") for i in range(phi_dim)])
+
+
+# --------------------------------------------------------------------------- #
+# Shipped regressors, frozen
+# --------------------------------------------------------------------------- #
+# The package's NumPy least squares, ridge, SINDy and reduced-rank regressions as they were when the results of the
+# paper were produced (up to commit b06d974), on the regressor matrix Z (n, m) and the targets T (n, p). They are
+# copied here operation for operation, so that the comparison describes that code even after the package's
+# implementations change. As in the classes, the matrices are transposes of arrays with one column per transition.
+def _as_class(A):
+    return torch.from_numpy(np.ascontiguousarray(A.T)).T
+
+
+def shipped_ols_numpy(Z, T):
+    return np.linalg.pinv(Z.T @ Z) @ Z.T @ T
+
+
+def shipped_ridge(Z, T, penalty=0.05):
+    Z, T = _as_class(Z), _as_class(T)
+    return (torch.linalg.inv(Z.T @ Z + (penalty * torch.eye(Z.shape[1]))) @ Z.T @ T).numpy()
+
+
+def shipped_sindy(Z, T, threshold=0.05, iterations=10):
+    Z, T = _as_class(Z), _as_class(T)
+    B = torch.linalg.lstsq(Z, T, rcond=None).solution
+    for _ in range(iterations):
+        small = torch.abs(B) < threshold
+        B[small] = 0
+        for j in range(T.shape[1]):
+            big = small[:, j] == 0
+            B[big, j] = torch.linalg.lstsq(Z[:, big], T[:, j].unsqueeze(0).T, rcond=None).solution[:, 0]
+    return B.numpy()
+
+
+def shipped_rrr(Z, T, rank=8):
+    Z, T = _as_class(Z), _as_class(T)
+    B = torch.linalg.lstsq(Z, T, rcond=None).solution
+    _, _, V = torch.linalg.svd(T.T @ Z @ B)
+    W = V[0:rank].T
+    return (B @ W @ W.T).numpy()
+
+
+SHIPPED_ESTIMATORS = {
+    "ols_numpy": shipped_ols_numpy,
+    "ridge": shipped_ridge,
+    "sindy": shipped_sindy,
+    "rrr": shipped_rrr,
+}
 
 
 # --------------------------------------------------------------------------- #
@@ -285,15 +334,10 @@ def fit_increment(name, Z, T_inc):
 def fit_tensor(X, U, Y, state_order, action_order, regressor="ols"):
     """Identify the tensor K (phi, phi, psi) from transitions X, U, Y (n, dim); also returns the hyperparameter.
 
-    Shipped regressors run through the package's classes. The alternatives give the regression matrix M, which is
-    unfolded exactly as the package does."""
-    if regressor == "ols_numpy":
-        with contextlib.redirect_stdout(io.StringIO()):
-            tensor = NumpyKoopmanTensor(
-                X.T, Y.T, U.T, phi=numpy_monomials(state_order), psi=numpy_monomials(action_order)
-            )
-        M, phi_dim, psi_dim, hyper = np.asarray(tensor.M), tensor.phi_dim, tensor.psi_dim, None
-    elif regressor in SHIPPED:
+    Ordinary least squares runs through the package's torch class, as for the paper. The other shipped regressors are
+    the frozen copies above, applied to the same regression. The alternatives give the regression matrix M of the
+    increment. M is unfolded exactly as the package does."""
+    if regressor == "ols":
         with contextlib.redirect_stdout(io.StringIO()):
             tensor = KoopmanTensor(
                 torch.tensor(X.T),
@@ -303,10 +347,18 @@ def fit_tensor(X, U, Y, state_order, action_order, regressor="ols"):
                 psi=monomials(action_order),
                 regressor=Regressor(regressor),
             )
-        M, phi_dim, psi_dim, hyper = tensor.M.numpy(), tensor.phi_dim, tensor.psi_dim, None
+        return unfold(
+            np.nan_to_num(tensor.M.numpy(), nan=0.0, posinf=0.0, neginf=0.0), tensor.phi_dim, tensor.psi_dim
+        ), None
+    Z, Phi = design(X, U, state_order, action_order)
+    phi_dim, psi_dim = Phi.shape[0], Z.shape[1] // Phi.shape[0]
+    if regressor == "ols_numpy":  # the NumPy class lifts with the NumPy dictionaries
+        Phi, Psi = numpy_monomials(state_order)(X.T), numpy_monomials(action_order)(U.T)
+        Z = np.einsum("zn,jn->zjn", Psi, Phi).reshape(-1, len(X)).T
+        M, hyper = shipped_ols_numpy(Z, numpy_monomials(state_order)(Y.T).T).T, None
+    elif regressor in SHIPPED_ESTIMATORS:
+        M, hyper = SHIPPED_ESTIMATORS[regressor](Z, lift(Y, state_order).T).T, None
     else:
-        Z, Phi = design(X, U, state_order, action_order)
-        phi_dim, psi_dim = Phi.shape[0], Z.shape[1] // Phi.shape[0]
         B, hyper = fit_increment(regressor, Z, (lift(Y, state_order) - Phi).T)
         B[:phi_dim] += np.eye(phi_dim)  # back from the increment to phi(x')
         M = B.T
