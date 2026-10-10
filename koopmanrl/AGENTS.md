@@ -41,7 +41,7 @@ koopmanrl/
 * The main algorithms of the KoopmanRL package are `sakc_optuna_opt`, `skvi_optuna_opt`, `soft_actor_koopman_critic`, and `soft_koopman_value_iteration`.
 * If possible, when working with the Koopman tensor make sure to inherit as much as possible from either the `opt_wrappers`, or the `koopman_tensor` directory. All the core logic is represented in the `opt_wrappers`.
 * When implementing new hyperparameter optimization logic, utilize Ray tune functionality as well as possible.
-* `linear_quadratic_regulator`, `sac_continuous_action`, and `value_based_sac_continuous_action` are inherited from other libraries and should be left untouched, and not be considered when designing new functionality.
+* `linear_quadratic_regulator`, `sac_continuous_action`, and `value_based_sac_continuous_action` are inherited from other libraries and should be left untouched, and not be considered when designing new functionality. The one departure is their `--seed` argument: a run uses the given seed, and draws one at random only when none is given, so that `koopmanrl_utils/run_optimized_experiments.py` can repeat a baseline run.
 
 ## Working Checklist
 
