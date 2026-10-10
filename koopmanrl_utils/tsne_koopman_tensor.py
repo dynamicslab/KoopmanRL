@@ -96,11 +96,15 @@ Usage (from the repository root):
     uv run -m koopmanrl_utils.tsne_koopman_tensor --lstsq_driver gelsy --output_dir tsne_koopman_tensor_results/gelsy
                                                                      # the solver call of the package
     OMP_NUM_THREADS=1 uv run -m koopmanrl_utils.tsne_koopman_tensor --embed_only   # on one numerical thread
+    uv run -m koopmanrl_utils.tsne_koopman_tensor --identify_only --environments lorenz
+                                                                     # store the tensors of one benchmark, no embedding
 
 The benchmarks are identified one after the other and stored as soon as they are done; only the data of one benchmark
 are in memory (peak memory 0.8 GB for the default sweep and 0.9 GB for the `orders` sweep, most of it the
 libraries). The times were measured on a shared two-core machine: 1 min 23 s for the default sweep pinned to one
-core, 5 min for the `orders` sweep.
+core, 5 min for the `orders` sweep. With `--identify_only` the run ends when the tensors of `--environments` are
+stored: nothing is embedded and no other file is written. One such call per benchmark and one call with
+`--embed_only` are the two stages of the Snakemake workflow (`workflow/README.md`).
 
 Reproducibility
     The data are drawn from NumPy's global generator and the generators of the gym spaces, seeded in a fixed order,
@@ -277,6 +281,7 @@ class ArgumentParser(Tap):
     output_dir: str = "tsne_koopman_tensor_results"  # where the results are written
     resume: bool = False  # reuse the tensors of the benchmarks that an interrupted run of this sweep has stored
     embed_only: bool = False  # embed the tensors stored in output_dir again instead of identifying them
+    identify_only: bool = False  # identify and store the tensors of --environments, without embedding them
 
 
 # --------------------------------------------------------------------------- #
@@ -834,11 +839,17 @@ def numerical_threads():
 
 
 def run(args):
-    """Identify (or load) the tensors, embed them and write the output files; returns rows, embedding and scores."""
+    """Identify (or load) the tensors, embed them and write the output files; returns rows, embedding and scores.
+
+    With `--identify_only` the tensors are identified and stored, and the embedding and the scores are None."""
+    if args.identify_only and args.embed_only:
+        raise ValueError("--identify_only and --embed_only exclude each other")
     os.makedirs(args.output_dir, exist_ok=True)
     start = time.time()
     rows, tensors = load_sweep(args) if args.embed_only else identify_sweep(args)
     identification_seconds = time.time() - start
+    if args.identify_only:
+        return rows, None, None
     features = feature_matrix(rows, tensors, args)
     embedding = embed(features, args)
     scores = dict(

@@ -20,6 +20,12 @@ Each run writes a TensorBoard log with the return of every episode (`charts/epis
 of the figures. `koopmanrl_utils/ABLATIONS.md` describes how to turn these logs into the tables the surfaces are drawn
 from.
 
+What is run
+    The two grids and the seeds are listed in `configurations/ablations.json`, which the Snakemake workflow of
+    `workflow/` reads as well; that workflow calls this script once per run. The modules of the two algorithms,
+    their tuned configurations and the benchmarks are those of `run_optimized_experiments`, which reads them from
+    `configurations/episodic_returns.json`.
+
 Hyperparameters that are not swept
     Every run is started with the tuned configuration of its benchmark,
     `configurations/<algorithm>_<benchmark>_hparams.json`, and with the two swept hyperparameters, the benchmark and
@@ -89,6 +95,8 @@ Reproducibility
 """
 
 import itertools
+import json
+import os
 import sys
 from typing import Optional
 
@@ -96,26 +104,22 @@ from tap import Tap
 
 from koopmanrl_utils.run_optimized_experiments import ALGORITHMS as MODULES
 from koopmanrl_utils.run_optimized_experiments import (
+    CONFIG_DIR,
     ENVIRONMENTS,
     check_choices,
     config_file,
     run_lanes,
 )
 
+# What is run: the two grids and the seeds. The Snakemake workflow reads the same file.
+with open(os.path.join(CONFIG_DIR, "ablations.json")) as f:
+    ABLATIONS = json.load(f)["ablations"]
+
 # algorithm: {swept command-line flag: its values in the paper}; the first flag is the first column of the tables
-GRIDS = {
-    "skvi": {
-        "num_actions": [71, 81, 91, 101, 111, 121],
-        "num_training_epochs": [75, 100, 125, 150, 175, 200],
-    },
-    "sakc": {
-        "v_lr": [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05],
-        "q_lr": [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05],
-    },
-}
+GRIDS = {name: algorithm["grid"] for name, algorithm in ABLATIONS["algorithms"].items()}
 
 # seeds of the published data frames, used at every grid point
-SEEDS = [1, 21, 41, 61, 81]
+SEEDS = ABLATIONS["seeds"]
 
 
 class ArgumentParser(Tap):

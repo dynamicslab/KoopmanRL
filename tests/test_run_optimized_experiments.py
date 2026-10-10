@@ -17,6 +17,32 @@ def test_every_algorithm_runs_on_every_benchmark_with_every_seed():
         assert len(set(seeds)) == len(seeds)
 
 
+def test_what_is_run_is_read_from_the_file_shared_with_the_snakemake_workflow():
+    with open(os.path.join(launcher.CONFIG_DIR, "episodic_returns.json")) as f:
+        experiments = json.load(f)["episodic_returns"]
+    assert launcher.SEEDS == experiments["seeds"]
+    assert launcher.ENVIRONMENTS == experiments["benchmarks"]
+    assert list(launcher.ALGORITHMS) == list(experiments["algorithms"]) == ["lqr", "sac_q", "sac_v", "skvi", "sakc"]
+    assert launcher.TUNED == ("skvi", "sakc")
+    assert {env_id: len(set(seeds)) for env_id, seeds in launcher.SEEDS.items()} == {
+        "LinearSystem-v0": 24,
+        "FluidFlow-v0": 25,
+        "Lorenz-v0": 25,
+        "DoubleWell-v0": 25,
+    }
+
+
+@pytest.mark.parametrize("algorithm", list(launcher.EXPERIMENTS["algorithms"]))
+def test_the_workflow_looks_for_the_logs_where_the_algorithm_writes_them(algorithm):
+    entry = launcher.EXPERIMENTS["algorithms"][algorithm]
+    with open(os.path.join(launcher.REPO_ROOT, *entry["module"].split(".")) + ".py") as f:
+        source = f.read()
+    assert f'SummaryWriter(f"{entry["runs_dir"]}/{{run_name}}")' in source
+    assert entry["mem_mb"] > 0
+    table_names = [other["table_name"] for other in launcher.EXPERIMENTS["algorithms"].values()]
+    assert table_names.count(entry["table_name"]) == 1
+
+
 @pytest.mark.parametrize("env_id", list(launcher.ENVIRONMENTS))
 @pytest.mark.parametrize("algorithm", launcher.TUNED)
 def test_tuned_algorithms_use_the_configuration_of_the_benchmark(algorithm, env_id):

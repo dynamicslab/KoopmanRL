@@ -109,3 +109,23 @@ uv run python -m koopmanrl.soft_actor_koopman_critic \
     --seed 42 \
     --total_timesteps 100000
 ```
+
+## Reproducing the Results of the Paper
+
+The raw data of the figures and the tables the figures are drawn from can be made again with the launchers in `koopmanrl_utils/`. Each guide below describes the path from the runs to the pgfplots-ready tables:
+
+| Result | Launcher | Guide |
+|---|---|---|
+| Episodic returns of LQR, SAC (Q), SAC (V), SKVI and SAKC | `koopmanrl_utils.run_optimized_experiments` | [`koopmanrl_utils/EPISODIC_RETURNS.md`](koopmanrl_utils/EPISODIC_RETURNS.md) |
+| Ablations of SKVI and SAKC | `koopmanrl_utils.run_ablations` | [`koopmanrl_utils/ABLATIONS.md`](koopmanrl_utils/ABLATIONS.md) |
+| t-SNE embedding of the Koopman tensors | `koopmanrl_utils.tsne_koopman_tensor` | [`koopmanrl_utils/TSNE.md`](koopmanrl_utils/TSNE.md) |
+
+The same three pipelines are available as [Snakemake](https://snakemake.readthedocs.io) workflows, which make every run in a job of its own and only the results that are missing:
+
+```bash
+uv sync
+uvx --python 3.12 snakemake -n episodic_returns          # list the jobs without running them
+uvx --python 3.12 snakemake --cores 8 episodic_returns   # or: ablations, tsne
+```
+
+The episodic returns take 495 runs and the ablations 1,440 runs, which is several days of computing; [`workflow/README.md`](workflow/README.md) describes how to run a part of them and how to run them on a cluster.

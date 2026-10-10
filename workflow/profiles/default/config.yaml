@@ -1,0 +1,11 @@
+# Settings that Snakemake picks up for every call of this workflow.
+
+# A run that was interrupted is made again instead of stopping Snakemake with a request for this flag.
+rerun-incomplete: true
+# Print the command of each job.
+printshellcmds: true
+# What makes a job again: a newer input, changed parameters (the settings), another set of inputs,
+# another software environment. Snakemake would also go by the text of a rule ("code"), which is
+# left out: one blank more in the shell command of a run rule would make every run of a campaign
+# again. A changed rule does not repeat anything; use --forcerun <rule> where it has to.
+rerun-triggers: [mtime, params, input, software-env]
