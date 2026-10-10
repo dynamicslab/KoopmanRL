@@ -25,6 +25,7 @@ koopmanrl_utils/
 │   ├── generator.py                     # Generates controlled or uncontrolled trajectories
 │   ├── hundred_episode_cost_average.py  # Averages across 100 episodes
 │   └── plotting_trajectories.ipynb      # Plot the control trajectories
+├── ABLATIONS.md                         # From the runs to the pgfplots-ready tables of the two ablation figures
 ├── AGENTS.md                            # This file
 ├── dataframe_creator.py                 # Converts Tensorboard results to JSON data frames
 ├── EPISODIC_RETURNS.md                  # From the runs to the pgfplots-ready tables of the episodic-return figures
@@ -36,6 +37,7 @@ koopmanrl_utils/
 ├── process_episodic_returns.py          # Generates episodic return plots from JSON dataframe
 ├── process_sakc_ablations.py            # Generates the ablation plots for the Soft Actor Koopman-Critic from the JSON dataframes
 ├── process_skvi_ablations.py            # Generates the ablation plots for the Soft Koopman Value Iteration from the JSON dataframes
+├── run_ablations.py                     # Runs the experiments of the two ablation figures: the hyperparameter grids of SKVI and SAKC
 ├── run_optimized_experiments.py         # Runs the experiments of the episodic-return figures: tuned SKVI and SAKC, and the LQR and SAC baselines
 ├── run_sakc_optimization.py             # Runs the Soft Actor Koopman Critic hyperparameter optimization
 ├── run_skvi_optimization.py             # Runs the Soft Koopman Value Iteration hyperparameter optimization
@@ -53,7 +55,7 @@ All utility scripts follow a few critical patterns induced by the structure of t
 * The outputs of simulations are stored in the `runs/` folder of the directory an algorithm is started from: at the root of the repository for an algorithm run by hand, and in `--output_dir` for the runs of `run_optimized_experiments.py`. Each reinforcement learning experiment creates its own folder in which the Tensorboard file holding the experimental measurements can be found.
 * All utility scripts essentially presume JSON files as inputs. The utility scripts to go from a Tensorboard file to a JSON file are:
     * `dataframe_creator.py` takes the path to the root of a filetree with the folders of experiments with their tensorboard files and returns a JSON file
-    * `process_episodic_returns.py`, `process_sakc_ablations.py`, and `process_skvi_ablations.py` take said JSON file and return `.dat` frames for TikZ to generate episodic return plots, or 3D-surface plots for the ablations. `process_episodic_returns.py` writes a `.csv` table instead when the output name ends in `.csv`; `EPISODIC_RETURNS.md` walks through the whole path.
+    * `process_episodic_returns.py`, `process_sakc_ablations.py`, and `process_skvi_ablations.py` take said JSON file and return `.dat` frames for TikZ to generate episodic return plots, or 3D-surface plots for the ablations. All three write a `.csv` table instead when the output name ends in `.csv`; `EPISODIC_RETURNS.md` and `ABLATIONS.md` walk through the whole path for the episodic returns and for the ablations.
 * The episodic return plots utilize a stratified bootstrapping scheme to generate 95% confidence intervals, which are used in the episodic return plots of the paper.
 * Every single script is able to be executed in isolation.
 
