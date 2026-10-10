@@ -21,3 +21,6 @@ koopmanrl_utils/__pycache__/
 
 # Output of koopmanrl_utils/koopman_regressor_comparison.py
 koopman_regressor_comparison_results/
+
+# Output of koopmanrl_utils/run_optimized_experiments.py
+episodic_returns_results/

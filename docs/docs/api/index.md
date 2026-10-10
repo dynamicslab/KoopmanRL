@@ -32,7 +32,7 @@ KoopmanRL is organised into two top-level packages.
 | `koopmanrl_utils.movies.generate_trajectories` | Roll out policies and save trajectory `.npy` files |
 | `koopmanrl_utils.movies.generate_trajectory_figure` | Static PNG trajectory plots with optional vector field |
 | `koopmanrl_utils.movies.generate_gifs` | Animated GIF generation from saved trajectories |
-| `koopmanrl_utils.run_optimized_experiments` | Re-run best configs across seeds |
+| `koopmanrl_utils.run_optimized_experiments` | Re-run best configs and the baselines across seeds |
 | `koopmanrl_utils.plot_csv_from_tensorboards` | Plot training curves from TensorBoard CSVs |
 
 ## Environments
