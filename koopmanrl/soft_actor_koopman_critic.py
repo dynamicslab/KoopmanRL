@@ -102,7 +102,8 @@ def checkConditionNumber(X, name, threshold=200):
 
 
 def ols(X, Y):
-    return torch.linalg.lstsq(X, Y, rcond=None).solution
+    # gelsd: the default driver (gelsy) does not repeat across processes in current torch releases
+    return torch.linalg.lstsq(X, Y, rcond=None, driver="gelsd").solution
 
 
 def OLS(X, Y):

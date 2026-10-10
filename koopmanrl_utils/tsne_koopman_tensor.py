@@ -121,8 +121,8 @@ Reproducibility
     median and by up to 4e-6 (8e-6 in the `orders` sweep; both for the Lorenz system at orders (2, 4)). Another
     machine or another build of torch and its LAPACK was not tried and has to be expected to differ in the same way.
 
-    `gelsy` is the driver of the solver call of the package (`koopmanrl.koopman_tensor` and the modules of the
-    algorithms, which name none). Its result is not the same in every call, also within one process on one thread
+    `gelsy` is the driver of the solver call of `koopmanrl.koopman_tensor`, which names none; SKVI and SAKC solve
+    their regressions with `gelsd`. Its result is not the same in every call, also within one process on one thread
     and with identical data: torch hands LAPACK a pivot array that it has not initialised (torch 2.9.1, and the
     sources of its releases 1.9.0 to 2.13.0), LAPACK keeps every column whose entry in this array is not zero out of
     the column pivoting, and the result follows what the memory held. Between runs of the default sweep the tensors

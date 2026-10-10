@@ -385,8 +385,14 @@ are checked before any job is made, for all three workflows (*executed* as dry r
   its data frame. `dataframe_creator.py` lists the runs in the order of the names of their
   folders, which start with the benchmark, the algorithm and the seed, so the order does
   not depend on the file system or on the times at which the runs started.
-- **SAKC.** Two runs of SAKC with the same seed differ, as described at the top of
-  `run_optimized_experiments.py`, so its tables agree between reruns in distribution only.
+- **SKVI and SAKC.** The Koopman tensor of a run, and with it the returns of SAKC, whose
+  critic is trained through the tensor, repeat under the conditions given at the top of
+  `run_optimized_experiments.py`: the same machine and library versions and the same number
+  of threads, which the workflow sets to one. Runs made by hand on the linear system with
+  one thread (4,000 steps of SAKC, 400 of SKVI) logged the same returns on every call, and
+  the tensor was the same bit for bit in every process; with two threads its last digits
+  are different. This was not checked through the workflow, on the other benchmarks or for
+  the tables.
 - **Changed settings.** Snakemake makes a job again when its parameters changed, for example
   the runs when `total_timesteps` changes. Changing `python` does not repeat any job. See
   [What makes a job again](#what-makes-a-job-again).
@@ -645,7 +651,7 @@ linear system, 16 of SAKC on the linear system and the double well, 2,200 steps 
 - **Commands of the launcher.** `run_ablations.py --dry_run` prints the same 1,440 commands
   before and after the grids and seeds were moved to `configurations/ablations.json`.
 - **Runs.** What is said under [What repeats exactly](#what-repeats-exactly) about the number
-  of threads and about SAKC holds for these runs as well; it was not checked again.
+  of threads and about SKVI and SAKC holds for these runs as well; it was not checked again.
 
 ## t-SNE
 
