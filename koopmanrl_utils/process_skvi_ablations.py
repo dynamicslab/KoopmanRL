@@ -20,7 +20,7 @@ class ArgumentParser(Tap):
     root_dir: str = "/Users/lpaehler/Work/ReinforcementLearning/KoopmanRL/NewDataLogs/SKVI_Ablations"  # The root directory from where the dataset is to be processed # noqa: E501
     data_frame: str = "skvi_ablation_double_well"  # The name of the JSON data frame
     output_dir: str = "/Users/lpaehler/Work/ReinforcementLearning/KoopmanRL/NewDataLogs"  # The directory where the output .dat file will be saved # noqa: E501
-    output_name: str = "output.dat"  # The name of the .dat output file for TikZ plotting
+    output_name: str = "output.dat"  # The name of the output file for TikZ plotting; a name ending in .csv gives a comma-separated table with named columns, any other name the layout of the tables of the paper # noqa: E501
     smoothing_window: int = 1  # The number of episodes to smooth over with IQM
 
 
@@ -48,7 +48,9 @@ if __name__ == "__main__":
     # Parse the command line arguments
     args = ArgumentParser().parse_args()
 
-    # Change the directory to the root directory of the dataset to be processed
+    # Change the directory to the root directory of the dataset to be processed; the output directory is taken
+    # relative to the directory the script is started from
+    args.output_dir = os.path.abspath(args.output_dir)
     os.chdir(args.root_dir)
 
     # Define the JSOn data frame to be procesed
@@ -88,10 +90,22 @@ if __name__ == "__main__":
     # Concat the arrays the goal is to end up with a shape of (36, 3)
     dat_output = np.concatenate((X_output, Y_output, Z_output), axis=1)
 
-    np.savetxt(
-        os.path.join(args.output_dir, args.output_name),
-        dat_output,
-        fmt="%.4f",
-        header="x y z",
-        delimiter=" ",
-    )
+    # A .csv name gives a comma-separated table with a header row of column names. Any other name gives the layout
+    # of the tables of the paper, which its figure sources read by position: the header line `x y z`, the rows
+    # space-separated, and an empty line after every block of six rows, from which pgfplots takes the shape of the grid
+    output_path = os.path.join(args.output_dir, args.output_name)
+    if args.output_name.endswith(".csv"):
+        np.savetxt(
+            output_path,
+            dat_output,
+            fmt="%.4f",
+            header="num_actions,num_training_epochs,episodic_return",
+            delimiter=",",
+            comments="",
+        )
+    else:
+        with open(output_path, "w") as f:
+            f.write("x y z\n")
+            for block in dat_output.reshape(6, 6, 3):
+                np.savetxt(f, block, fmt="%.4f", delimiter=" ")
+                f.write("\n")
