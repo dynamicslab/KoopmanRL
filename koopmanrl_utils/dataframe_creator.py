@@ -20,7 +20,7 @@ class ArgumentParser(Tap):
     target_dir: str = "/Users/lpaehler/Work/ReinforcementLearning/KoopmanRL/NewDataLogs/data/Ablations/SAKC/runs"  # Directory which is to be walked, and data extracted from # noqa: E501
     system: str = "LinearSystem-v0"  # System for which the data frame is to be extracted. Options are: LinearSystem-v0, DoubleWell-v0, Lorenz-v0, and FluidFlow-v0. # noqa: E501
     mode: str = "SAKC_Ablations"  # Options include: SKVI_Ablations, SAKC_Ablations, and Episodic_Returns
-    rl_algo: str = "value_based_sac_continuous_action"  # RL algorithm for which the data frame is to be extracted. Options are: value_based_sac_continuous_action, sac_continuous_action, and linear_quadratic_regulator # noqa: E501
+    rl_algo: str = "value_based_sac_continuous_action"  # RL algorithm for which the data frame is to be extracted in the mode Episodic_Returns. Options are: linear_quadratic_regulator, sac_continuous_action, value_based_sac_continuous_action, soft_koopman_value_iteration, and soft_actor_koopman_critic # noqa: E501
     output_file: str = "test_frame.json"  # File name of the returned data frame
 
 
@@ -41,6 +41,28 @@ def tensorboard_extractor(tensorboard_file: str) -> Tuple[List[float], List[int]
     return episodic_returns, steps
 
 
+def run_name_fields(run_name: str) -> dict:
+    """
+    Fields encoded in the name of a run folder. The three layouts are
+
+        <environment>__soft_koopman_value_iteration__<number of actions>__<training epochs>__<seed>__<time>
+        <environment>__soft_actor_koopman_critic__<seed>__<v_lr>__<q_lr>__<time>
+        <environment>__<any other algorithm>__<seed>__<time>
+    """
+    parts = run_name.split("__")
+    fields = {"environment": parts[0], "rl_algorithm": parts[1]}
+    if parts[1] == "soft_koopman_value_iteration":
+        fields["seed"] = int(parts[4])
+    elif parts[1] == "soft_actor_koopman_critic":
+        fields["seed"] = int(parts[2])
+        fields["v_lr"] = float(parts[3])
+        fields["q_lr"] = float(parts[4])
+    else:
+        fields["seed"] = int(parts[2])
+    fields["time"] = int(parts[-1])
+    return fields
+
+
 def main() -> None:
     # Parse the input arguments
     args = ArgumentParser().parse_args()
@@ -50,8 +72,9 @@ def main() -> None:
     # Dictionary to hold the data pre-JSON
     temp_dict = {}
 
-    # Get the subfolders, and their respective names
-    paths_of_subfolders = [f.path for f in os.scandir(args.target_dir) if f.is_dir()]
+    # Get the subfolders, and their respective names. Sorted, since the order of a directory listing depends on
+    # the file system, and the confidence band of process_episodic_returns.py on the order of the runs.
+    paths_of_subfolders = sorted(f.path for f in os.scandir(args.target_dir) if f.is_dir())
 
     for folder_name in paths_of_subfolders:
         for _root, _, _files in os.walk(folder_name):
@@ -91,16 +114,22 @@ def main() -> None:
                 elif args.mode == "Episodic_Returns":
                     if args.rl_algo == _subfolder_name.split("__")[1]:
                         # Add dict object into the temporary dict
+                        _fields = run_name_fields(_subfolder_name)
+                        _time = _fields.pop("time")
                         temp_dict[_subfolder_name] = {
-                            "environment": _subfolder_name.split("__")[0],
-                            "rl_algorithm": _subfolder_name.split("__")[1],
-                            "seed": int(_subfolder_name.split("__")[2]),
+                            **_fields,
                             "episodic_returns": _episodic_returns,
                             "steps": _steps,
-                            "time": int(_subfolder_name.split("__")[3]),
+                            "time": _time,
                         }
                 else:
                     raise ValueError("Mode not recognized")
+
+    if not temp_dict:
+        raise ValueError(
+            f"No run of {args.system} in {args.target_dir} matches --mode {args.mode}"
+            + (f" and --rl_algo {args.rl_algo}." if args.mode == "Episodic_Returns" else ".")
+        )
 
     # Store the JSON object to the local file system
     with open(os.path.join(args.storage_dir, args.output_file), "w") as file:

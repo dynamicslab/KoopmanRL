@@ -19,7 +19,7 @@ class ArgumentParser(Tap):
     root_dir: str = "/home/lpaehler/Work/ReinforcementLearning/KoopmanRLLaptop/KoopmanRL/NewDataLogs/EpisodicReturns/LQR"  # The root directory of the dataframe holding the algorithm's performance # noqa: E501
     data_frame: str = "episodic_returns_lqr_double_well"  # The name of the JSON data frame
     output_dir: str = "/home/lpaehler/Work/ReinforcementLearning/KoopmanRLLaptop/KoopmanRL/NewDataLogs"  # The directory where the output .dat file will be saved # noqa: E501
-    output_name: str = "output.dat"  # The name of the .dat output file for TikZ plotting
+    output_name: str = "output.dat"  # The name of the output file for TikZ plotting; a name ending in .csv gives a comma-separated file, any other name a space-separated one, both with a header row of column names # noqa: E501
     smoothing_window: int = 1  # The number of episodes to smooth over with IQM
     confidence_band: float = 0.95  # Percent confidence band around the episodic return
     deterministic_bootstrap: bool = False  # Deterministic bootstrapping for reproducibility
@@ -69,7 +69,9 @@ if __name__ == "__main__":
     # The answer to life, universe and everything
     rs = np.random.RandomState(42)
 
-    # Change the directory to the root directory of the dataset to be processed
+    # Change the directory to the root directory of the dataset to be processed; the output directory is taken
+    # relative to the directory the script is started from
+    args.output_dir = os.path.abspath(args.output_dir)
     os.chdir(args.root_dir)
 
     # Define the JSOn data frame to be procesed
@@ -111,7 +113,7 @@ if __name__ == "__main__":
         _temp_array = _temp_array.reshape(_temp_array.shape[0], 1)
 
         # Initialize the bootstrapping (this step doesn't work yet)
-        _bs = StratifiedBootstrap(_temp_array)
+        _bs = StratifiedBootstrap(_temp_array, random_state=rs if args.deterministic_bootstrap else None)
 
         # Calculate the 95% confidence interval and append it to the prepared list
         conf_list.append(_bs.conf_int(IQM, method="percentile", reps=50000, size=args.confidence_band))
@@ -127,13 +129,16 @@ if __name__ == "__main__":
     # Assemble output dataframe
     dat_output = np.concatenate((unique_timesteps, iqm_array, conf_array), axis=1)
 
-    # Store everything into a single output dataframe
+    # Store everything into a single output dataframe: comma-separated for a .csv name, space-separated otherwise.
+    # The header row is written without a comment sign, since pgfplots takes the names of the columns from it.
+    delimiter = "," if args.output_name.endswith(".csv") else " "
     np.savetxt(
         os.path.join(args.output_dir, args.output_name),
         dat_output,
         fmt="%.4f",
-        header="timesteps episodic_returns lower_confidence_bound upper_confidence_bound",
-        delimiter=" ",
+        header=delimiter.join(["timesteps", "episodic_returns", "lower_confidence_bound", "upper_confidence_bound"]),
+        delimiter=delimiter,
+        comments="",
     )
 
     """
