@@ -1,0 +1,9 @@
+{
+  "label": "Reproducing the Paper",
+  "position": 7,
+  "collapsed": false,
+  "link": {
+    "type": "generated-index",
+    "description": "Launchers, processing scripts and Snakemake workflows that produce the tables behind the figures of the paper."
+  }
+}
