@@ -7,6 +7,7 @@ Use this note as the entry point before touching the repository. It points to th
 - `scripts/AGENTS.md` -
 - `src/koopmanrl/AGENTS.md` -
 - `tests/AGENTS.md` -
+- `workflow/README.md` - Snakemake workflows, their commands, and the conventions for adding one
 
 ## Global Conventions
 - Reinforcement learning core logic has to stay script-addressable through `python -m ..`.
@@ -19,6 +20,7 @@ configurations/          best hyperparameter configurations for the algorithms a
 scripts/                 utility scripts which reproduce the results from the paper
 src/koopmanrl/           core library including the two subfolders environments/, and koopman_tensor/
 tests/                   regression tests and unit tests for the library's core functionality
+workflow/                Snakemake workflows which run the experiments of the paper and process their results
 ```
 
 ## Working Checklist

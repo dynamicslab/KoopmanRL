@@ -1,0 +1,30 @@
+# Workflows that reproduce results of the paper. Commands and conventions: workflow/README.md.
+#
+# Each workflow has a rule file in rules/, a JSON file in configurations/ and a target rule with the
+# name of the workflow. To add one, include its rule file here and add its target to `all`.
+#
+# A call without a target makes nothing: it stops and lists the targets. `all` has to be named, since
+# it is 1,935 training runs.
+
+from snakemake.utils import min_version
+
+min_version("8.0")
+
+
+include: "rules/common.smk"
+include: "rules/episodic_returns.smk"
+include: "rules/ablations.smk"
+include: "rules/tsne.smk"
+
+
+rule targets:
+    default_target: True
+    input:
+        no_target,
+
+
+rule all:
+    input:
+        rules.episodic_returns.input,
+        rules.ablations.input,
+        rules.tsne.input,

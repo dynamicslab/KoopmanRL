@@ -28,3 +28,8 @@ episodic_returns_results/
 
 # Output of koopmanrl_utils/run_ablations.py
 ablation_results/
+
+# Output and bookkeeping of the Snakemake workflows in workflow/
+results/
+.snakemake/
+workflow/__pycache__/

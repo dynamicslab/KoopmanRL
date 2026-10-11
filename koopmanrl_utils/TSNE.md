@@ -29,6 +29,21 @@ numbers in this document are those of the runs described in it, on a shared two-
 machine with torch 2.9.1 (LAPACK of MKL 2024.2) and scikit-learn 1.7.2; where a number
 depends on the number of numerical threads, the range over one and two threads is given.
 
+The identification and the embedding can also be run as one Snakemake workflow, which keeps
+them apart: one job per benchmark identifies and stores its tensors (a call of the script
+with `--identify_only`, which ends before the embedding), and one job embeds the stored
+tensors of all benchmarks (`--embed_only`). Another embedding is then made from the same
+tensors, and only the missing tensors are identified:
+
+```bash
+uvx --python 3.12 snakemake --cores 1 tsne
+```
+
+The commands, the settings and the layout of its results are described in
+[`workflow/README.md`](../workflow/README.md). Its jobs run with one thread, and with one
+core it gave the tensors and the tables of one call of the script with `OMP_NUM_THREADS=1`,
+byte for byte.
+
 ---
 
 ## Step 1 — Raw data
@@ -672,3 +687,4 @@ for a run from the seeds and for an embedding of stored tensors; neither was com
 | `--output_dir` | `tsne_koopman_tensor_results` | Folder the files are written into. |
 | `--resume` | off | Read the stored tensors of the benchmarks that an interrupted run of the same sweep and driver has finished. |
 | `--embed_only` | off | Repeat steps 2 and 3 from the stored tensors, which have to be those of the sweep and the driver of the arguments. |
+| `--identify_only` | off | End after step 1: store the tensors of `--environments` and write nothing else. Used by the Snakemake workflow, with one call per benchmark. |

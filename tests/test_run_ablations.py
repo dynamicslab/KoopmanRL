@@ -1,10 +1,20 @@
+import importlib.util
+import itertools
 import json
+import os
+import re
 import sys
 
 import pytest
 
 from koopmanrl_utils import run_ablations as launcher
-from koopmanrl_utils.run_optimized_experiments import ALGORITHMS, ENVIRONMENTS
+from koopmanrl_utils.run_optimized_experiments import (
+    ALGORITHMS,
+    CONFIG_DIR,
+    ENVIRONMENTS,
+    EXPERIMENTS,
+    TUNED,
+)
 
 
 def dry_run(monkeypatch, capsys, *arguments):
@@ -23,6 +33,50 @@ def test_default_campaign_is_1440_runs_in_40_lanes():
     assert launcher.SEEDS == [1, 21, 41, 61, 81]
     for grid in launcher.GRIDS.values():
         assert [len(set(values)) for values in grid.values()] == [6, 6]
+
+
+def test_what_is_run_is_read_from_the_file_shared_with_the_snakemake_workflow():
+    with open(os.path.join(CONFIG_DIR, "ablations.json")) as f:
+        ablations = json.load(f)["ablations"]
+    assert launcher.SEEDS == ablations["seeds"]
+    assert len(set(launcher.SEEDS)) == len(launcher.SEEDS) == 5
+    assert launcher.GRIDS == {name: algorithm["grid"] for name, algorithm in ablations["algorithms"].items()}
+    # the order of the flags is the order of the columns of the tables and of the two fields of a run directory
+    assert {name: list(grid) for name, grid in launcher.GRIDS.items()} == {
+        "skvi": ["num_actions", "num_training_epochs"],
+        "sakc": ["v_lr", "q_lr"],
+    }
+    for grid in launcher.GRIDS.values():
+        assert len(set(itertools.product(*grid.values()))) == 36
+    # without settings the workflow makes the campaign of the paper, and the tables of its figures
+    assert [ablations[key] for key in ("total_timesteps", "only_algorithms", "only_benchmarks")] == [None] * 3
+    assert ablations["only_values"] == {}
+    assert ablations["smoothing_windows"] == [3]
+
+
+@pytest.mark.parametrize("algorithm", list(launcher.GRIDS))
+def test_the_algorithms_are_those_of_the_episodic_returns_and_the_scripts_of_the_workflow_exist(algorithm):
+    # the module, the log folder, the table name and the memory of an algorithm are listed once, in the file of
+    # the episodic returns, and the workflow of the ablations looks them up there under the same name
+    assert algorithm in EXPERIMENTS["algorithms"] and algorithm in TUNED
+    entry = launcher.ABLATIONS["algorithms"][algorithm]
+    assert importlib.util.find_spec(entry["table_module"]) is not None
+    with open(importlib.util.find_spec("koopmanrl_utils.dataframe_creator").origin) as f:
+        assert f'args.mode == "{entry["frame_mode"]}"' in f.read()
+
+
+@pytest.mark.parametrize("algorithm, number", [("skvi", int), ("sakc", float)], ids=["skvi", "sakc"])
+def test_a_grid_value_has_one_spelling_from_the_path_of_a_run_to_the_table(algorithm, number):
+    # the workflow writes str(value) into the path of a run and passes it to this launcher; the launcher passes
+    # the parsed number on as Python prints it, and the algorithm prints it into the name of the run the same way
+    for point in itertools.product(*launcher.GRIDS[algorithm].values()):
+        spelled = [str(value) for value in point]
+        assert all(re.fullmatch(r"[0-9]+(\.[0-9]+)?", text) for text in spelled)
+        parsed = tuple(number(text) for text in spelled)
+        assert parsed == point  # what the data frame holds and the processing script compares with the grid
+        assert [str(value) for value in parsed] == spelled
+        flags = launcher.command(algorithm, "LinearSystem-v0", 1, parsed)[-2:]
+        assert flags == [f"--{flag}={text}" for flag, text in zip(launcher.GRIDS[algorithm], spelled)]
 
 
 def test_dry_run_prints_the_commands_of_the_default_campaign(monkeypatch, capsys):

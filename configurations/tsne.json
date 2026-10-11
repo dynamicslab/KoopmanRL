@@ -1,0 +1,18 @@
+{
+    "tsne": {
+        "only_benchmarks": null,
+        "identification": {
+            "sweep": "inferred_layout",
+            "state_orders": null,
+            "action_orders": null,
+            "num_paths": null,
+            "num_steps_per_path": null,
+            "seeds": null,
+            "seed0": null,
+            "linear_system_seed": null,
+            "lstsq_driver": null
+        },
+        "embedding": {},
+        "mem_mb": 2000
+    }
+}

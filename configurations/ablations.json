@@ -1,0 +1,29 @@
+{
+    "ablations": {
+        "total_timesteps": null,
+        "only_algorithms": null,
+        "only_benchmarks": null,
+        "table_format": "csv",
+        "only_values": {},
+        "smoothing_windows": [3],
+        "seeds": [1, 21, 41, 61, 81],
+        "algorithms": {
+            "skvi": {
+                "grid": {
+                    "num_actions": [71, 81, 91, 101, 111, 121],
+                    "num_training_epochs": [75, 100, 125, 150, 175, 200]
+                },
+                "frame_mode": "SKVI_Ablations",
+                "table_module": "koopmanrl_utils.process_skvi_ablations"
+            },
+            "sakc": {
+                "grid": {
+                    "v_lr": [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05],
+                    "q_lr": [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05]
+                },
+                "frame_mode": "SAKC_Ablations",
+                "table_module": "koopmanrl_utils.process_sakc_ablations"
+            }
+        }
+    }
+}

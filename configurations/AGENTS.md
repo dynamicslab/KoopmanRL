@@ -6,6 +6,8 @@ The `configurations/` directory houses the best found hyperparameter configurati
 
 ```
 configurations/
+├── ablations.json                   # Grids and seeds of the two ablation figures; read by koopmanrl_utils/run_ablations.py and workflow/rules/ablations.smk
+├── episodic_returns.json            # Algorithms, benchmarks and seeds of the episodic-return figures; read by koopmanrl_utils/run_optimized_experiments.py and workflow/rules/episodic_returns.smk
 ├── sakc_double_well_hparams.json    # Best configuration of the Soft Actor Koopman-Critic for the Stochastic Double Well
 ├── sakc_fluid_flow_hparams.json     # Best configuration of the Soft Actor Koopman-Critic for the Fluid Flow
 ├── sakc_linear_system_hparams.json  # Best configuration of the Soft Actor Koopman-Critic for the Linear System
@@ -13,8 +15,11 @@ configurations/
 ├── skvi_double_well_hparams.json    # Best configuration of the Soft Koopman Value Iteration for the Stochastic Double Well
 ├── skvi_fluid_flow_hparams.json     # Best configuration of the Soft Koopman Value Iteration for the Fluid Flow
 ├── skvi_linear_system_hparams.json  # Best configuration of the Soft Koopman Value Iteration for the Linear System
-└── skvi_lorenz_hparams.json         # Best configuration of the Soft Koopman Value Iteration for Lorenz
+├── skvi_lorenz_hparams.json         # Best configuration of the Soft Koopman Value Iteration for Lorenz
+└── tsne.json                        # Arguments of koopmanrl_utils/tsne_koopman_tensor.py that the t-SNE workflow passes on, by step; read by workflow/rules/tsne.smk
 ```
+
+`ablations.json`, `episodic_returns.json` and `tsne.json` also list the settings of their Snakemake workflow: the workflow refuses a key that its file does not have, so a new setting is added to the file first. The algorithms, the benchmarks and the grids of these files are not settings: the launchers read them from the files, and the workflow refuses other values given on its command line. `workflow/README.md` describes the settings.
 
 ## JSON Schema of Configuration
 

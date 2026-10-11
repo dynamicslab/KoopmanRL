@@ -13,6 +13,10 @@ baselines run with the defaults of their scripts. Each run writes a TensorBoard 
 (`charts/episodic_return`), which is the raw data of the figures. `koopmanrl_utils/EPISODIC_RETURNS.md` describes how
 to turn these logs into the tables the figures are drawn from.
 
+What is run
+    The algorithms, the benchmarks and the seeds are listed in `configurations/episodic_returns.json`, which the
+    Snakemake workflow of `workflow/` reads as well; that workflow calls this script once per run.
+
 Seeds
     `SEEDS` lists the seeds of the SKVI and SAKC runs of the paper. Its baseline runs were made when the baseline
     scripts drew a seed below 1000 at random on every start; that seed is the third field of the name of each run
@@ -58,6 +62,7 @@ Reproducibility
     to agree. On another machine, floating-point rounding can change the returns of every algorithm.
 """
 
+import json
 import os
 import subprocess
 import sys
@@ -68,134 +73,20 @@ from tap import Tap
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG_DIR = os.path.join(REPO_ROOT, "configurations")
 
+# What is run: the algorithms, the benchmarks and the seeds. The Snakemake workflow reads the same file.
+with open(os.path.join(CONFIG_DIR, "episodic_returns.json")) as f:
+    EXPERIMENTS = json.load(f)["episodic_returns"]
+
 # benchmark: name of the benchmark in the configuration files
-ENVIRONMENTS = {
-    "LinearSystem-v0": "linear_system",
-    "FluidFlow-v0": "fluid_flow",
-    "Lorenz-v0": "lorenz",
-    "DoubleWell-v0": "double_well",
-}
+ENVIRONMENTS = EXPERIMENTS["benchmarks"]
 
 # algorithm: module that runs it
-ALGORITHMS = {
-    "lqr": "koopmanrl.linear_quadratic_regulator",
-    "sac_q": "koopmanrl.sac_continuous_action",
-    "sac_v": "koopmanrl.value_based_sac_continuous_action",
-    "skvi": "koopmanrl.soft_koopman_value_iteration",
-    "sakc": "koopmanrl.soft_actor_koopman_critic",
-}
-TUNED = ("skvi", "sakc")  # algorithms with a configuration file per benchmark
+ALGORITHMS = {name: algorithm["module"] for name, algorithm in EXPERIMENTS["algorithms"].items()}
+# algorithms with a configuration file per benchmark
+TUNED = tuple(name for name, algorithm in EXPERIMENTS["algorithms"].items() if algorithm["tuned"])
 
 # benchmark: seeds of the SKVI and SAKC runs of the paper
-SEEDS = {
-    "LinearSystem-v0": [
-        4430,
-        2738,
-        9700,
-        3478,
-        8578,
-        3602,
-        1228,
-        1749,
-        6687,
-        7659,
-        3362,
-        521,
-        435,
-        8229,
-        762,
-        7154,
-        1045,
-        4754,
-        2936,
-        868,
-        2574,
-        3169,
-        4605,
-        7,
-    ],
-    "FluidFlow-v0": [
-        5412,
-        3839,
-        5062,
-        3776,
-        9127,
-        3910,
-        9604,
-        5458,
-        1745,
-        5575,
-        7601,
-        2447,
-        1584,
-        3289,
-        8699,
-        5437,
-        3771,
-        1065,
-        4787,
-        9253,
-        7844,
-        7922,
-        4050,
-        6517,
-        6597,
-    ],
-    "Lorenz-v0": [
-        8801,
-        8207,
-        7115,
-        9370,
-        6503,
-        5442,
-        1053,
-        7904,
-        5611,
-        1635,
-        2064,
-        41,
-        7644,
-        1427,
-        8573,
-        1779,
-        9355,
-        169,
-        3786,
-        6957,
-        4788,
-        5900,
-        3158,
-        8953,
-        6504,
-    ],
-    "DoubleWell-v0": [
-        5991,
-        5243,
-        5581,
-        726,
-        2549,
-        6408,
-        6146,
-        159,
-        6382,
-        1078,
-        500,
-        4000,
-        9761,
-        8178,
-        8623,
-        8866,
-        9135,
-        3642,
-        9150,
-        1106,
-        5549,
-        5202,
-        6617,
-        8294,
-        469,
-    ],
-}
+SEEDS = EXPERIMENTS["seeds"]
 
 
 class ArgumentParser(Tap):

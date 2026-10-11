@@ -59,6 +59,7 @@ All utility scripts follow a few critical patterns induced by the structure of t
     * `process_episodic_returns.py`, `process_sakc_ablations.py`, and `process_skvi_ablations.py` take said JSON file and return `.dat` frames for TikZ to generate episodic return plots, or 3D-surface plots for the ablations. All three write a `.csv` table instead when the output name ends in `.csv`; `EPISODIC_RETURNS.md` and `ABLATIONS.md` walk through the whole path for the episodic returns and for the ablations.
 * The episodic return plots utilize a stratified bootstrapping scheme to generate 95% confidence intervals, which are used in the episodic return plots of the paper.
 * Every single script is able to be executed in isolation.
+* The Snakemake workflows in `workflow/` chain these scripts, one job per run, data frame and table. Lists that a script and its workflow both need, such as the seeds of `run_optimized_experiments.py`, are kept in `configurations/<workflow>.json` and read by both. `workflow/README.md` has the commands and conventions.
 
 ### JSON Data Schema
 

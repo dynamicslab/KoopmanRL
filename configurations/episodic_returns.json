@@ -1,0 +1,69 @@
+{
+    "episodic_returns": {
+        "total_timesteps": null,
+        "only_algorithms": null,
+        "only_benchmarks": null,
+        "table_format": "csv",
+        "algorithms": {
+            "lqr": {
+                "table_name": "LQR",
+                "module": "koopmanrl.linear_quadratic_regulator",
+                "tuned": false,
+                "runs_dir": "runs",
+                "mem_mb": 2000
+            },
+            "sac_q": {
+                "table_name": "SAC_Q",
+                "module": "koopmanrl.sac_continuous_action",
+                "tuned": false,
+                "runs_dir": "runs",
+                "mem_mb": 2000
+            },
+            "sac_v": {
+                "table_name": "SAC_V",
+                "module": "koopmanrl.value_based_sac_continuous_action",
+                "tuned": false,
+                "runs_dir": "runs",
+                "mem_mb": 2000
+            },
+            "skvi": {
+                "table_name": "SKVI",
+                "module": "koopmanrl.soft_koopman_value_iteration",
+                "tuned": true,
+                "runs_dir": "runs/SKVI",
+                "mem_mb": 4000
+            },
+            "sakc": {
+                "table_name": "SAKC",
+                "module": "koopmanrl.soft_actor_koopman_critic",
+                "tuned": true,
+                "runs_dir": "runs/SAKC",
+                "mem_mb": 2000
+            }
+        },
+        "benchmarks": {
+            "LinearSystem-v0": "linear_system",
+            "FluidFlow-v0": "fluid_flow",
+            "Lorenz-v0": "lorenz",
+            "DoubleWell-v0": "double_well"
+        },
+        "seeds": {
+            "LinearSystem-v0": [
+                4430, 2738, 9700, 3478, 8578, 3602, 1228, 1749, 6687, 7659, 3362, 521, 435, 8229,
+                762, 7154, 1045, 4754, 2936, 868, 2574, 3169, 4605, 7
+            ],
+            "FluidFlow-v0": [
+                5412, 3839, 5062, 3776, 9127, 3910, 9604, 5458, 1745, 5575, 7601, 2447, 1584, 3289,
+                8699, 5437, 3771, 1065, 4787, 9253, 7844, 7922, 4050, 6517, 6597
+            ],
+            "Lorenz-v0": [
+                8801, 8207, 7115, 9370, 6503, 5442, 1053, 7904, 5611, 1635, 2064, 41, 7644, 1427,
+                8573, 1779, 9355, 169, 3786, 6957, 4788, 5900, 3158, 8953, 6504
+            ],
+            "DoubleWell-v0": [
+                5991, 5243, 5581, 726, 2549, 6408, 6146, 159, 6382, 1078, 500, 4000, 9761, 8178,
+                8623, 8866, 9135, 3642, 9150, 1106, 5549, 5202, 6617, 8294, 469
+            ]
+        }
+    }
+}

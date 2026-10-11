@@ -2,9 +2,11 @@
 the package, and the output files are what the module says they are."""
 
 import contextlib
+import inspect
 import io
 import json
 import os
+import re
 import subprocess
 import sys
 
@@ -484,3 +486,72 @@ def test_peak_memory_is_in_megabytes_on_linux_and_macos(monkeypatch):
     assert tsne.peak_memory_mb() == 3 * 1024
     monkeypatch.setattr(tsne.sys, "platform", "darwin")
     assert tsne.peak_memory_mb() == 3
+
+
+def test_identification_and_embedding_can_be_separate_calls(tmp_path):
+    # the two steps of the Snakemake workflow: one call with --identify_only per benchmark, which stores the tensors
+    # of that benchmark and writes nothing else, then one call with --embed_only for all of them
+    stages = tmp_path / "stages"
+    for name in tsne.NAMES:
+        _, (rows, embedding, scores) = tiny_run(stages, "--identify_only", "--environments", name)
+        assert [row[0] for row in rows] == [name] * 8 and embedding is None and scores is None
+    stored = sorted(tsne.tensors_path("", name) for name in tsne.NAMES)
+    assert sorted(path.name for path in stages.iterdir()) == stored
+    before = {name: (stages / name).read_bytes() for name in stored}
+    _, (rows, embedding, _) = tiny_run(stages, "--embed_only")
+    assert {name: (stages / name).read_bytes() for name in stored} == before
+
+    # the benchmarks do not depend on each other: these are the rows, the tensors (to the rounding of the solver, see
+    # test_tensors_of_a_small_sweep_are_reproducible_from_its_seeds) and the files of one call for all benchmarks
+    _, (joint_rows, joint, _) = tiny_run(tmp_path / "joint")
+    assert rows == joint_rows and embedding.shape == joint.shape
+    files = sorted(path.name for path in stages.iterdir())
+    assert files == sorted(path.name for path in (tmp_path / "joint").iterdir())
+    for name in tsne.NAMES:
+        tensors = [tsne.load_tensors(tsne.tensors_path(tmp_path / run, name))[1] for run in ("stages", "joint")]
+        for a, b in zip(*tensors):
+            assert np.allclose(a, b, rtol=0.0, atol=1e-6 * np.abs(a).max())
+
+    # every file is an output of the rules of the workflow, so that Snakemake notices a missing one
+    with open(os.path.join(REPOSITORY, "workflow", "rules", "tsne.smk")) as f:
+        rules = f.read()
+    for file in files:
+        for name in tsne.NAMES:
+            file = file.replace(f"tensors_{name}.", "tensors_{benchmark}.").replace(
+                f"{name}_tsne.", "{benchmark}_tsne."
+            )
+        assert f'"{file}"' in rules
+
+    with pytest.raises(ValueError):
+        tiny_run(stages, "--identify_only", "--embed_only")
+
+
+def test_the_settings_of_the_snakemake_workflow_are_arguments_of_the_step_they_are_passed_to():
+    with open(os.path.join(REPOSITORY, "configurations", "tsne.json")) as f:
+        settings = json.load(f)
+    assert list(settings) == ["tsne"]
+    settings = settings["tsne"]
+    with open(os.path.join(REPOSITORY, "workflow", "rules", "tsne.smk")) as f:
+        rules = f.read()
+    set_by_rules = set(re.findall(r'"(\w+)"', re.search(r"TS_SET_BY_RULES = \((.*?)\)", rules, re.S).group(1)))
+    defaults = tsne.ArgumentParser().parse_args([]).as_dict()
+    assert set_by_rules == {"environments", "output_dir", "identify_only", "embed_only", "resume"} <= set(defaults)
+    assert all(f"--{name}" in rules for name in set_by_rules - {"resume"})
+
+    # `identification` lists the arguments that the identification reads, and no other: the workflow refuses these
+    # under `embedding`, where they would repeat the embedding of the same tensors and change nothing
+    identification = (tsne.sweep_grids, tsne.sweep_configurations, tsne.identify_sweep)
+    read = set(re.findall(r"\bargs\.(\w+)", "".join(inspect.getsource(function) for function in identification)))
+    assert read <= set(defaults)
+    assert set(settings["identification"]) == read - set_by_rules
+    # without settings the workflow makes the default sweep of the script, embedded with its defaults
+    assert settings["identification"].pop("sweep") == defaults["sweep"]
+    assert set(settings["identification"].values()) == {None}
+    assert settings["embedding"] == {} and settings["only_benchmarks"] is None
+
+    # the workflow reads the benchmarks from the file of the episodic returns and passes them in that order, which
+    # is the order of the rows of tsne.csv and of the legend
+    with open(os.path.join(REPOSITORY, "configurations", "episodic_returns.json")) as f:
+        benchmarks = json.load(f)["episodic_returns"]["benchmarks"]
+    assert list(benchmarks.items()) == [(env_id, entry["name"]) for env_id, entry in tsne.BENCHMARKS.items()]
+    assert list(benchmarks.values()) == defaults["environments"]

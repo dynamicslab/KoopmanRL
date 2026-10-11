@@ -24,6 +24,17 @@ Step 3 – process_episodic_returns.py
 All commands are run from the root of the repository. One curve of a figure is one
 algorithm on one benchmark, so steps 2 and 3 are run once per algorithm and benchmark.
 
+The three steps can also be run as one Snakemake workflow, which makes every run in a
+directory of its own, makes failed and interrupted runs again, and builds the data frames
+and tables from the runs that finished:
+
+```bash
+uvx --python 3.12 snakemake --cores 8 episodic_returns
+```
+
+The commands, the settings and the layout of its results are described in
+[`workflow/README.md`](../workflow/README.md).
+
 ---
 
 ## Step 1 — Raw data
