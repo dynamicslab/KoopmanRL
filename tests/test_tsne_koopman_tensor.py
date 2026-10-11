@@ -148,15 +148,15 @@ def packaged_data(env_id, seed, num_paths, steps):
 @pytest.mark.parametrize("env_id", ["LinearSystem-v0", "FluidFlow-v0", "Lorenz-v0", "DoubleWell-v0"])
 def test_data_and_tensor_are_those_of_the_package(env_id):
     # with the matrix of the linear system drawn from the data seed, the data are those of generate_koopman_tensor,
-    # value for value, and the tensor is its tensor up to the rounding of the solver: with "gelsy", the driver of the
-    # call of the package, and with the default driver of the script
+    # value for value, and the tensor is its tensor up to the rounding of the solver: with "gelsy", the driver of
+    # koopmanrl.koopman_tensor, and with "gelsd", the default driver of the script and the driver of SKVI and SAKC
     packaged, packaged_K = packaged_data(env_id, 3, 5, 40)
     tsne._PATHS.clear()
     paths = tsne.random_agent_paths(env_id, 3, 5, 40, linear_system_seed=-1)
     for mine, theirs in zip(paths, packaged):
         assert np.array_equal(mine.reshape(-1, mine.shape[-1]), theirs)
     assert tsne.LSTSQ_DRIVER == "gelsd"
-    for driver in ("gelsy", tsne.LSTSQ_DRIVER):  # the driver of the call of the package, and the default
+    for driver in ("gelsy", tsne.LSTSQ_DRIVER):  # the driver of koopmanrl.koopman_tensor, and the default
         K = tsne.identify(env_id, 3, 2, 2, 5, 40, linear_system_seed=-1, driver=driver)
         assert K.shape == packaged_K.shape
         assert np.allclose(K, packaged_K, rtol=0.0, atol=1e-9 * np.abs(packaged_K).max())
@@ -349,7 +349,7 @@ def test_tensors_of_a_small_sweep_are_the_same_in_another_process(tmp_path):
 
 
 def test_tensors_of_the_driver_of_the_package_are_reproducible_to_rounding(tmp_path):
-    # "gelsy", the driver of the call of the package, returns a tensor that may differ in the last digits from one
+    # "gelsy", the driver of koopmanrl.koopman_tensor, returns a tensor that may differ in the last digits from one
     # call to the next (more for the few transitions of this sweep, which condition the regression badly), and the
     # t-SNE turns such differences into different coordinates: from the seeds, its tensors are reproducible to that
     # rounding; the embedding is reproducible from the stored tensors (test_stored_tensors_give_the_embedding_again)

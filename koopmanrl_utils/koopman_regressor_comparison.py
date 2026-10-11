@@ -6,11 +6,12 @@ dictionary orders and identification budgets of `configurations/`, with the othe
 eight alternatives, thirteen regressors in all.
 
 Regressors
-    As shipped: `ols` (the torch class used by SKVI and SAKC), run through the package's class, and `ols_numpy` (the
-    NumPy copy of the class, which solved the normal equations), `ridge`, `sindy` and `rrr` as they were in the
-    package when the results of the paper were produced (up to commit b06d974). These four are frozen copies of that
-    code, so that the comparison keeps describing it after the package's implementations change; on that commit they
-    give the classes' tensors to within the classes' own run-to-run rounding.
+    As shipped: `ols`, run through the torch class of `koopmanrl.koopman_tensor.torch_tensor` (default driver
+    `gelsy`; SKVI and SAKC have their own copy of the class, solved with `gelsd`), and `ols_numpy` (the NumPy copy of
+    the class, which solved the normal equations), `ridge`, `sindy` and `rrr` as they were in the package when the
+    results of the paper were produced (up to commit b06d974). These four are frozen copies of that code, so that the
+    comparison keeps describing it after the package's implementations change; on that commit they give the classes'
+    tensors to within the classes' own run-to-run rounding.
 
     Alternatives, implemented here: `ols_scaled`, `tsvd`, `ridge_cv`, `stlsq_cv`, `lasso_cv`, `rrr_cv`, `tls` and
     `huber`. They share two changes of coordinates that leave ordinary least squares unchanged and matter for every
@@ -334,9 +335,10 @@ def fit_increment(name, Z, T_inc):
 def fit_tensor(X, U, Y, state_order, action_order, regressor="ols"):
     """Identify the tensor K (phi, phi, psi) from transitions X, U, Y (n, dim); also returns the hyperparameter.
 
-    Ordinary least squares runs through the package's torch class, as for the paper. The other shipped regressors are
-    the frozen copies above, applied to the same regression. The alternatives give the regression matrix M of the
-    increment. M is unfolded exactly as the package does."""
+    Ordinary least squares runs through the torch class of `koopmanrl.koopman_tensor.torch_tensor` (default driver
+    `gelsy`), as for the paper. The other shipped regressors are the frozen copies above, applied to the same
+    regression. The alternatives give the regression matrix M of the increment. M is unfolded exactly as the package
+    does."""
     if regressor == "ols":
         with contextlib.redirect_stdout(io.StringIO()):
             tensor = KoopmanTensor(

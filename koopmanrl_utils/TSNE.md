@@ -63,12 +63,13 @@ goes on with steps 2 and 3. Everything is written into `tsne_koopman_tensor_resu
   identification budget of the sweep uses the first steps of the first trajectories of that
   set.
 - **Identification.** Each tensor `K[i, j, z]` (predicted state monomial `i`, state monomial
-  `j`, action monomial `z`) is the ordinary-least-squares regression of the package's
-  `KoopmanTensor` class with monomial dictionaries. The regression is solved by
-  `torch.linalg.lstsq` with the LAPACK driver `gelsd` (`--lstsq_driver`), which returns the
-  same tensor in every call. The package calls the solver without naming a driver, which
-  is `gelsy`; that call is available as `--lstsq_driver gelsy` and does not return the same
-  tensor in every call (see "Reproducibility").
+  `j`, action monomial `z`) is the ordinary-least-squares regression of the `KoopmanTensor`
+  class of `koopmanrl.soft_koopman_value_iteration` with monomial dictionaries. The
+  regression is solved by `torch.linalg.lstsq` with the LAPACK driver `gelsd`
+  (`--lstsq_driver`), the driver with which SKVI and SAKC solve it, which returns the same
+  tensor in every call. `koopmanrl.koopman_tensor` calls the solver without naming a
+  driver, which is `gelsy`; that call is available as `--lstsq_driver gelsy` and does not
+  return the same tensor in every call (see "Reproducibility").
 - **Raw data.** The tensors of a benchmark are stored in `tensors_<benchmark>.npz`, with
   their rows of the sweep, the size of the data set and the driver of the solver, as soon
   as the benchmark is done. `--resume` picks up an interrupted run: benchmarks whose
@@ -538,7 +539,7 @@ in `settings.json`.
 |---|---|---|
 | `gelsd` (default) | Singular value decomposition (divide and conquer). | The same tensor in every call. |
 | `gelss` | Singular value decomposition. | The same tensor in every call; equal to that of `gelsd` to a relative 4e-10 in the default sweep. |
-| `gelsy` | Orthogonal factorisation with column pivoting. The driver of the solver call of the package, which names none. | Not the same tensor in every call. |
+| `gelsy` | Orthogonal factorisation with column pivoting. The driver of `koopmanrl.koopman_tensor`, which names none (SKVI and SAKC use `gelsd`). | Not the same tensor in every call. |
 
 With `gelsd`, on one machine and with one number of numerical threads, a run reproduces the
 tensors bit for bit and the tables byte for byte. This was compared for:
@@ -589,8 +590,8 @@ solution.
 
 **The driver of `koopmanrl.koopman_tensor`.** `--lstsq_driver gelsy` is the solver call of
 `koopmanrl.koopman_tensor`, which names no driver; SKVI and SAKC solve their regressions
-with `gelsd`. Its result differs from
-call to call, also within one process, on one thread and with identical data. torch hands
+with `gelsd`. The result of `gelsy` differs from call to call, also within one process, on
+one thread and with identical data. torch hands
 LAPACK's `GELSY` a pivot array that it has not initialised (torch 2.9.1, and the sources of
 its releases from 1.9.0 to 2.13.0; the development branch of torch sets it to zero). LAPACK
 keeps every column whose entry in this array is not zero out of the column pivoting, so the
@@ -675,7 +676,7 @@ for a run from the seeds and for an embedding of stored tensors; neither was com
 | `--num_paths`, `--num_steps_per_path` | tuned SKVI budget | Identification budgets of the `orders` sweep; several values give a grid. |
 | `--seeds`, `--seed0` | `8`, `0` | Number of data seeds and first seed of the `orders` sweep. |
 | `--linear_system_seed` | `0` | Seed of the matrix A that the linear system draws at construction. Negative: a new matrix per data seed, with the data of `generate_koopman_tensor`. |
-| `--lstsq_driver` | `gelsd` | LAPACK driver of the least-squares solver of the identification. `gelsd` and `gelss` (singular value decompositions) return the same tensor in every call. `gelsy` is the driver of the solver call of the package; its tensors differ from call to call (see "Reproducibility"). |
+| `--lstsq_driver` | `gelsd` | LAPACK driver of the least-squares solver of the identification. `gelsd` and `gelss` (singular value decompositions) return the same tensor in every call; `gelsd` is the driver of SKVI and SAKC. `gelsy` is the driver of `koopmanrl.koopman_tensor`, which names none; its tensors differ from call to call (see "Reproducibility"). |
 | `--common_basis` | `largest` | `largest`: dictionaries of the largest orders, missing coefficients zero. `smallest`: only the block of the smallest orders. |
 | `--double_well_coordinates` | `0 1` | Coordinates of the common state that the double well occupies. |
 | `--units` | `raw` | `raw`: units of the environments. `box`: every state coordinate and the action divided by the largest absolute value of its bound in the boxes of the environment. |

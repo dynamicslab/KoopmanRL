@@ -1,10 +1,11 @@
 """t-SNE embedding of Koopman tensors of the four benchmarks, written in a common dictionary basis.
 
 For every benchmark a set of Koopman tensors is identified from random-agent data by ordinary least squares, the
-regression of the package. Every tensor is written in the monomial dictionaries of the largest state order and the
-largest action order of the set (the common basis), flattened, and all tensors of all benchmarks are embedded
-together in two dimensions by t-distributed stochastic neighbour embedding. The output is the scatter of the
-electronic supplementary material of the paper (Figure S2), as files that its TikZ source reads.
+regression of the `KoopmanTensor` class of `koopmanrl.soft_koopman_value_iteration` (SKVI; SAKC has a copy of it).
+Every tensor is written in the monomial dictionaries of the largest state order and the largest action order of the
+set (the common basis), flattened, and all tensors of all benchmarks are embedded together in two dimensions by
+t-distributed stochastic neighbour embedding. The output is the scatter of the electronic supplementary material of
+the paper (Figure S2), as files that its TikZ source reads.
 
 Provenance
     The code that produced the published figure is not in the history of this repository or of the upstream
@@ -94,7 +95,7 @@ Usage (from the repository root):
     uv run -m koopmanrl_utils.tsne_koopman_tensor --embed_only --units box   # embed the stored tensors again
     uv run -m koopmanrl_utils.tsne_koopman_tensor --resume           # pick up an interrupted run
     uv run -m koopmanrl_utils.tsne_koopman_tensor --lstsq_driver gelsy --output_dir tsne_koopman_tensor_results/gelsy
-                                                                     # the solver call of the package
+                                                                     # the driver of koopmanrl.koopman_tensor
     OMP_NUM_THREADS=1 uv run -m koopmanrl_utils.tsne_koopman_tensor --embed_only   # on one numerical thread
     uv run -m koopmanrl_utils.tsne_koopman_tensor --identify_only --environments lorenz
                                                                      # store the tensors of one benchmark, no embedding
@@ -122,9 +123,9 @@ Reproducibility
     machine or another build of torch and its LAPACK was not tried and has to be expected to differ in the same way.
 
     `gelsy` is the driver of the solver call of `koopmanrl.koopman_tensor`, which names none; SKVI and SAKC solve
-    their regressions with `gelsd`. Its result is not the same in every call, also within one process on one thread
-    and with identical data: torch hands LAPACK a pivot array that it has not initialised (torch 2.9.1, and the
-    sources of its releases 1.9.0 to 2.13.0), LAPACK keeps every column whose entry in this array is not zero out of
+    their regressions with `gelsd`. The result of `gelsy` is not the same in every call, also within one process on
+    one thread and with identical data: torch hands LAPACK a pivot array that it has not initialised (torch 2.9.1, and
+    the sources of its releases 1.9.0 to 2.13.0), LAPACK keeps every column whose entry in this array is not zero out of
     the column pivoting, and the result follows what the memory held. Between runs of the default sweep the tensors
     of well-conditioned regressions then differ in the last digits (relative differences up to 1.2e-12).
 
@@ -249,8 +250,8 @@ INFERRED_LAYOUT = [
 INFERRED_LAYOUT_OMITTED_ORDERS = (4, 4)
 INFERRED_LAYOUT_SEED = 123  # the default seed of `generate_tensor`
 
-# LAPACK drivers of `torch.linalg.lstsq` for the regression (see "Reproducibility" in the module docstring). The
-# package calls the solver without naming one, which is "gelsy" on the CPU.
+# LAPACK drivers of `torch.linalg.lstsq` for the regression (see "Reproducibility" in the module docstring). SKVI
+# and SAKC name "gelsd", the default here; `koopmanrl.koopman_tensor` names none, which is "gelsy" on the CPU.
 LSTSQ_DRIVERS = ("gelsd", "gelss", "gelsy")
 LSTSQ_DRIVER = "gelsd"
 
@@ -265,7 +266,7 @@ class ArgumentParser(Tap):
     seeds: int = 8  # number of data seeds per configuration ("orders" sweep)
     seed0: int = 0  # first data seed; the seeds are seed0, seed0 + 1, ... ("orders" sweep)
     linear_system_seed: int = 0  # seed of the matrix A of the linear system; negative: drawn from each data seed
-    lstsq_driver: str = LSTSQ_DRIVER  # LAPACK driver of the regression: "gelsd", "gelss" or "gelsy" (the package's)
+    lstsq_driver: str = LSTSQ_DRIVER  # LAPACK driver: "gelsd" (SKVI's, SAKC's), "gelss" or "gelsy" (koopman_tensor's)
     common_basis: str = "largest"  # "largest": the dictionaries of the largest orders; "smallest": of the smallest
     double_well_coordinates: list[int] = [0, 1]  # coordinates of the common state that the double well occupies
     units: str = "raw"  # "raw": the units of the environments; "box": states and actions in units of their boxes
@@ -401,11 +402,12 @@ def random_agent_paths(env_id, seed, num_paths, steps, linear_system_seed=0):
 def least_squares_tensor(X, U, Y, state_order, action_order, driver=LSTSQ_DRIVER):
     """The Koopman tensor K (phi, phi, psi) of transitions X, U, Y (n, dim) by ordinary least squares.
 
-    This is the regression of the package's class (`KoopmanTensor` with the regressor "ols"): the same monomial
-    dictionaries, the same matrix of regressors kron(psi(u_n), phi(x_n)), `torch.linalg.lstsq` with the same
-    threshold for the rank and the same unfolding of M into K. `driver` is the LAPACK routine of the solver: with
-    "gelsy" the call is that of the package, whose result is not the same in every call; "gelsd" (the default) and
-    "gelss" return the same tensor in every call (see "Reproducibility" in the module docstring). The class builds
+    This is the regression of the class `KoopmanTensor` of `koopmanrl.soft_koopman_value_iteration` with the
+    regressor "ols": the same monomial dictionaries, the same matrix of regressors kron(psi(u_n), phi(x_n)),
+    `torch.linalg.lstsq` with the same threshold for the rank and the same unfolding of M into K. `driver` is the
+    LAPACK routine of the solver: "gelsd" (the default) is that of SKVI and SAKC, and it and "gelss" return the same
+    tensor in every call; with "gelsy" the call is that of `koopmanrl.koopman_tensor`, which names no driver and
+    whose result is not the same in every call (see "Reproducibility" in the module docstring). The class builds
     the regressors in a Python loop over the transitions and computes ranks and condition numbers that it only
     prints, which makes it several times slower on the largest budgets; the tests check that both give the same
     tensor up to the rounding of the solver."""
