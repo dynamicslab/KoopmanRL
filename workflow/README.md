@@ -857,7 +857,8 @@ what was run with the workflow is marked *executed*.
   before (*executed*: the tensors of the Lorenz system were removed with the tables and
   made again, and all four files of tensors were made again after a change of the script;
   the files and the tables had the checksums from before both times). With
-  `lstsq_driver: gelsy`, the solver call of the package, this does not hold: its result
+  `lstsq_driver: gelsy`, the driver of `koopmanrl.koopman_tensor` (SKVI and SAKC use
+  `gelsd`), this does not hold: its result
   differs from call to call, in the last digits for most tensors and altogether for two
   tensors of the Lorenz system, and the tables with it. `TSNE.md` has the numbers.
 - **The embedding.** From the same files of `tensors/`, the embedding job gives the same

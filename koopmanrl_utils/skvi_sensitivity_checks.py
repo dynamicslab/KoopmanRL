@@ -42,8 +42,11 @@ and policies are built by `skvi_policy_checks.train_skvi`, as in `koopmanrl.soft
 tuned configurations in `configurations/`.
 
 The results were first produced by exploratory scripts that this module consolidates. With the same seeds it
-reproduces their numbers exactly, except the one-step Jacobians of the fitted model recorded by the sensitivity study,
-which it evaluates in double precision with a step of 1e-4 (differences below 1e-7).
+reproduced their numbers exactly, except the one-step Jacobians of the fitted model recorded by the sensitivity study,
+which it evaluates in double precision with a step of 1e-4 (differences below 1e-7). Since d0d3016 the regressions of
+`koopmanrl.soft_koopman_value_iteration` use the LAPACK driver `gelsd` instead of the default `gelsy`; on the tuned
+configurations the tensors of the two drivers agree to rounding, so the numbers are expected to agree to rounding rather
+than exactly. The study has not been run again with `gelsd`.
 
 Reference: the results of these checks are in the electronic supplementary material of "Koopman-Assisted Reinforcement
 Learning" (Rozwood, Mehrez, Paehler, Sun and Brunton), section "Accuracy along the learned policy and sensitivity of
