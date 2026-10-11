@@ -1,8 +1,6 @@
-# Ignore PyCaches
-koopmanrl/__pycache__/
-koopmanrl/environments/__pycache__/
-tests/__pycache__/
-koopmanrl_utils/movies/__pycache__/
+# Ignore PyCaches and compiled Python files, in every directory
+__pycache__/
+*.py[cod]
 
 # Ignore simulation results
 runs/
@@ -18,7 +16,6 @@ tsne_koopman_tensor_results/
 skvi_policy_checks_results/
 skvi_sensitivity_checks_results/
 koopman_prediction_validation_results/
-koopmanrl_utils/__pycache__/
 
 # Output of koopmanrl_utils/koopman_regressor_comparison.py
 koopman_regressor_comparison_results/
@@ -32,4 +29,3 @@ ablation_results/
 # Output and bookkeeping of the Snakemake workflows in workflow/
 results/
 .snakemake/
-workflow/__pycache__/

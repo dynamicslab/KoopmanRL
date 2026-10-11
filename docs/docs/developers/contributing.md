@@ -43,6 +43,7 @@ The repository enforces formatting and linting via pre-commit:
 - **Ruff** — linting with `--fix` (`ruff`) and formatting (`ruff-format`), line length 120
 - **isort** — import sorting with `--profile black`
 - **Vulture** — dead-code detection on `koopmanrl/` with `--min-confidence 80`
+- **forbid-compiled-python** — a local hook that fails on any compiled Python file (`.pyc`, `.pyo`, `.pyd`, `__pycache__/`); these are gitignored and must not be committed
 
 In CI, `.github/workflows/lint.yml` runs `pre-commit run --all-files` on every pull request and push to `main`, and `.github/workflows/test-deploy-docs.yml` builds this documentation site on pull requests to `main`.
 

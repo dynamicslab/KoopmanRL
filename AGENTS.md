@@ -49,7 +49,7 @@ workflow/                Snakemake workflows: Snakefile, rules/*.smk, helpers.py
 
 ## Testing, Linting and CI
 - Run the tests of what you touch: `uv run pytest tests/test_<area>.py [-k <name>]`. There are no pytest markers; `uv run pytest` runs the whole suite (several minutes). Details and known failures are in `tests/AGENTS.md`.
-- `uv run pre-commit run --files <changed files>` (or `--all-files`): ruff (`--fix`, format; line length 120), isort (`--profile black`), vulture on `koopmanrl/`, and the basic pre-commit-hooks (whitespace, end of file, YAML, files > 1 MB, merge conflicts, debug statements).
+- `uv run pre-commit run --files <changed files>` (or `--all-files`): ruff (`--fix`, format; line length 120), isort (`--profile black`), vulture on `koopmanrl/`, the basic pre-commit-hooks (whitespace, end of file, YAML, files > 1 MB, merge conflicts, debug statements), and the local `forbid-compiled-python` hook, which fails on any `.pyc`/`.pyo`/`.pyd` or `__pycache__/` file. Compiled Python files are also gitignored in every directory, so none are tracked.
 - CI runs only pre-commit (`lint.yml`) and the docs build (`test-deploy-docs.yml` on PRs, `deploy-docs.yml` on `main`, Node 20). It does not run pytest, so run the relevant tests locally.
 - Docs site: `cd docs && npm ci && npm run build`; the build fails on broken links.
 
