@@ -46,7 +46,7 @@ KoopmanRL is organised into two top-level packages.
 | `koopmanrl_utils.koopman_regressor_comparison` | Held-out accuracy of the Koopman tensor under different regression algorithms |
 | `koopmanrl_utils.skvi_policy_checks` | Read SKVI's deployed policy off the Koopman tensor and check it against references |
 | `koopmanrl_utils.skvi_sensitivity_checks` | Tensor accuracy along the trained SKVI policy, and sensitivity of SKVI's control |
-| `koopmanrl_utils.interpret_koopman` | Load and print stored SKVI value-function weights (SAKC not implemented) |
+| `koopmanrl_utils.interpret_koopman` | Unfinished stub for printing stored SKVI value-function weights; it does not run yet (it reads an argument its parser does not define) |
 
 ## Environments
 
