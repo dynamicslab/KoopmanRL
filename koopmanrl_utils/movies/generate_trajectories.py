@@ -4,20 +4,29 @@ Generate controlled and uncontrolled trajectories for KoopmanRL environments.
 Hyperparameters for SAKC and SKVI are auto-loaded from:
     configurations/<algo>_<env_slug>_hparams.json
 
-Any flag passed explicitly on the CLI overrides the config file value.
+Any flag passed explicitly on the CLI overrides the config file value. Without
+--num_trajectories and --num_steps, SAKC and SKVI roll out as many trajectories, of
+as many steps, as the config uses to identify the Koopman tensor (num-paths,
+num-steps-per-path); pass both for a figure.
+
+Run from the repository root: the config path is relative, and checkpoints are
+loaded from ./saved_models/. koopmanrl_utils/movies/PIPELINE.md has the details.
 
 Example usage:
 
-    # SAKC on FluidFlow — seed and num-trajectories come from config
-    python -m koopmanrl_utils.movies.generate_trajectories \
+    # SAKC on FluidFlow, checkpoint folder
+    # saved_models/SAKC/FluidFlow-v0/sakc_chkpts_6597_1768954004/ (<seed>_<unix time>)
+    uv run -m koopmanrl_utils.movies.generate_trajectories \
         --env_id FluidFlow-v0 \
         --algo sakc \
-        --chkpt_timestamp 1732368170 \
+        --chkpt_timestamp 6597_1768954004 \
         --chkpt_step 50000 \
+        --num_trajectories 1 \
+        --num_steps 2000 \
         --emit_dat
 
     # LQR baseline on DoubleWell — no config, all defaults
-    python -m koopmanrl_utils.movies.generate_trajectories \
+    uv run -m koopmanrl_utils.movies.generate_trajectories \
         --env_id DoubleWell-v0 \
         --algo lqr \
         --baseline_algo zero \
