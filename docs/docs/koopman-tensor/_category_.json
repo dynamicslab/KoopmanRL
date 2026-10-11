@@ -1,0 +1,9 @@
+{
+  "label": "Koopman Tensor",
+  "position": 8,
+  "collapsed": false,
+  "link": {
+    "type": "generated-index",
+    "description": "Building the Koopman tensor, choosing its regressor, validating its predictions, and checking what SKVI does with it."
+  }
+}
