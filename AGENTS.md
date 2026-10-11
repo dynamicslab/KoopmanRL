@@ -32,7 +32,7 @@ workflow/                Snakemake workflows: Snakefile, rules/*.smk, helpers.py
 
 ## Running Code
 - Run everything from the repository root as a module: `uv run -m koopmanrl.<module>` or `uv run -m koopmanrl_utils.<module>`. Every algorithm and most scripts take `--help` (typed `tap` parsers).
-- Runs write TensorBoard logs to `runs/` and checkpoints to `saved_models/` in the working directory. These and the result directories of the scripts (`*_results/`, `results/`, `figures/`, `video_frames/`, `.snakemake/`) are gitignored; do not commit outputs.
+- Runs write TensorBoard logs to `runs/` and checkpoints to `saved_models/` in the working directory. These and the result directories of the scripts (`*_results/`, `results/`, `figures/`, `video_frames/`, `.snakemake/`) are gitignored; do not commit outputs. Compiled Python files (`__pycache__/`, `*.py[cod]`) are gitignored in every directory and are not tracked.
 - Do not execute `koopmanrl_utils/run_skvi_optimization.py` or `run_sakc_optimization.py` to inspect them: they take no arguments, so even `--help` starts four full Ray Tune studies. Read the source instead. Before executing any other script, check that it has an argument parser.
 - `koopmanrl.{skvi,sakc}_optuna_opt` default to `--cpu_cores_per_trial 28`, which Ray cannot schedule on a smaller machine (the study then idles forever), and to a `--storage_dir` on the authors' machine. Pass both when running them.
 - The reproduction launchers (`run_optimized_experiments`, `run_ablations`) start hundreds of 50,000-step runs by default. Use `--dry_run` to list the commands, and the filters described in their guides to run a part.
@@ -49,7 +49,7 @@ workflow/                Snakemake workflows: Snakefile, rules/*.smk, helpers.py
 
 ## Testing, Linting and CI
 - Run the tests of what you touch: `uv run pytest tests/test_<area>.py [-k <name>]`. There are no pytest markers; `uv run pytest` runs the whole suite (several minutes). Details and known failures are in `tests/AGENTS.md`.
-- `uv run pre-commit run --files <changed files>` (or `--all-files`): ruff (`--fix`, format; line length 120), isort (`--profile black`), vulture on `koopmanrl/`, and the basic pre-commit-hooks (whitespace, end of file, YAML, files > 1 MB, merge conflicts, debug statements).
+- `uv run pre-commit run --files <changed files>` (or `--all-files`): ruff (`--fix`, format; line length 120), isort (`--profile black`), vulture on `koopmanrl/`, the basic pre-commit-hooks (whitespace, end of file, YAML, files > 1 MB, merge conflicts, debug statements), and the local `forbid-compiled-python` hook, which fails on any `.pyc`/`.pyo`/`.pyd` or `__pycache__/` file.
 - CI runs only pre-commit (`lint.yml`) and the docs build (`test-deploy-docs.yml` on PRs, `deploy-docs.yml` on `main`, Node 20). It does not run pytest, so run the relevant tests locally.
 - Docs site: `cd docs && npm ci && npm run build`; the build fails on broken links.
 

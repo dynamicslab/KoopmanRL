@@ -28,6 +28,6 @@ Each environment module calls `gym.envs.registration.register` at import, under 
 
 * `gym==0.23.1` is pinned; its warning that Gym is unmaintained is expected.
 * `koopmanrl_utils/movies/` plots only FluidFlow, Lorenz and DoubleWell.
-* `__pycache__/` of this directory holds tracked `.pyc` files (including those of removed cartpole environments); they show up as modified after any run. Do not commit them.
+* `__pycache__/` of this directory is regenerated on import and gitignored, like every compiled Python file of the repository; the `forbid-compiled-python` pre-commit hook rejects one that is committed anyway (e.g. force-added).
 
 See the root `AGENTS.md` for setup, testing and the working checklist.

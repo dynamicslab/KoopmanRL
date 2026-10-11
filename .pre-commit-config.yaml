@@ -28,3 +28,11 @@ repos:
           - id: isort
             name: isort (python)
             args: ["--profile", "black"]
+
+    - repo: local
+      hooks:
+          - id: forbid-compiled-python
+            name: Forbid compiled Python files
+            entry: Compiled Python files (.pyc, .pyo, .pyd, __pycache__/) must not be committed
+            language: fail
+            files: '(\.py[cod]$|(^|/)__pycache__/)'
