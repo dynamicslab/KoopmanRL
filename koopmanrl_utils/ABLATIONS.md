@@ -50,6 +50,8 @@ uv run -m koopmanrl_utils.run_ablations --num_workers 8
 This makes 1,440 runs of 50,000 environment steps: two algorithms on four benchmarks, at
 the 36 points of a grid, with five seeds per grid point (1, 21, 41, 61, 81). The campaign
 takes several days of computing time. `--dry_run` prints the commands without running them.
+The grids and seeds are listed in `configurations/ablations.json`, which the launcher and the Snakemake
+workflow (`workflow/README.md`) both read.
 
 | Algorithm | Swept flag | Values | Axis label in the figure of the paper |
 |---|---|---|---|

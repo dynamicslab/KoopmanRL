@@ -54,6 +54,9 @@ are run with the seeds of SKVI and SAKC: their runs are new runs, not repetition
 runs of the paper. The options for running a part of the experiments, and the conditions
 under which a run repeats exactly, are described at the top of the script.
 
+The algorithms, benchmarks and seeds are listed in `configurations/episodic_returns.json`, which the
+launcher and the Snakemake workflow (`workflow/README.md`) both read.
+
 The runs write into `episodic_returns_results/` (`--output_dir`):
 
 | Algorithm | Logs |

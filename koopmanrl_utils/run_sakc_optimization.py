@@ -1,3 +1,19 @@
+"""Run the SAKC hyperparameter optimisation on the four benchmarks, one after the other.
+
+    uv run -m koopmanrl_utils.run_sakc_optimization
+
+Each benchmark is one call of `python -m koopmanrl.sakc_optuna_opt --env_id=<env>
+--output_file=sakc_<env_slug>_hparams` (Ray Tune with Optuna search), whose output is logged to
+`<env_slug>_opt.txt` in the working directory. The best configuration of each study is written to
+`<storage_dir>/sakc_<env_slug>_hparams.json`, the names of the files in `configurations/`.
+
+The script takes no arguments: any argument, `--help` included, is ignored and the four studies start. The
+studies run with the defaults of `koopmanrl.sakc_optuna_opt`, so before running it check there:
+`--cpu_cores_per_trial` (default 28; Ray cannot schedule a trial that asks for more cores than the machine has) and
+`--storage_dir` (the default is a path on the authors' machine, to which the result is written only at the end of a
+study). To run a single study with other settings, call `koopmanrl.sakc_optuna_opt` directly.
+"""
+
 import subprocess
 from typing import List
 
