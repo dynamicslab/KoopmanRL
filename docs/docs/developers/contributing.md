@@ -14,7 +14,7 @@ cd KoopmanRL
 uv sync --group dev
 ```
 
-The `dev` group installs `pytest`, `pre-commit`, and linting tools. Activate the pre-commit hooks:
+The `dev` group installs `pre-commit`, `pytest` and `pytest-cov`; the linters themselves are installed by pre-commit. Activate the pre-commit hooks:
 
 ```bash
 uv run pre-commit install
@@ -26,15 +26,25 @@ uv run pre-commit install
 uv run pytest
 ```
 
-Tests live in `tests/`. Each environment has a smoke test that checks the `reset`/`step` interface and verifies that the cost function returns the correct shape.
+Tests live in `tests/`:
+
+- `test_rl.py` runs each of the five algorithms for a short budget on all four environments, and checks that runs with the same seed repeat;
+- `test_hparam_opt.py` runs the SKVI and SAKC optimization scripts with a single short trial on all four environments;
+- `test_koopman_tensor_regressors.py` covers the ridge, SINDy and reduced-rank regressors;
+- the remaining modules test the scripts of `koopmanrl_utils/` (launchers, result processing, validation and t-SNE scripts) and the helpers of the Snakemake workflows in `workflow/`.
+
+The training and optimization tests start real (short) runs as subprocesses and take a while.
 
 ## Code style
 
 The repository enforces formatting and linting via pre-commit:
 
-- **Ruff** — linting and import sorting
-- **Black** — code formatting
-- A GitHub Actions workflow runs `pre-commit` on every pull request
+- **pre-commit-hooks** — trailing whitespace, end-of-file, YAML syntax, large files, merge conflicts, debug statements
+- **Ruff** — linting with `--fix` (`ruff`) and formatting (`ruff-format`), line length 120
+- **isort** — import sorting with `--profile black`
+- **Vulture** — dead-code detection on `koopmanrl/` with `--min-confidence 80`
+
+In CI, `.github/workflows/lint.yml` runs `pre-commit run --all-files` on every pull request and push to `main`, and `.github/workflows/test-deploy-docs.yml` builds this documentation site on pull requests to `main`.
 
 All checks must pass before merging. Run them locally with:
 
@@ -58,13 +68,14 @@ Every environment must implement:
 |--------------------|------|-------------|
 | `observation_space` | `gym.spaces.Box` | State bounds |
 | `action_space` | `gym.spaces.Box` | Action bounds |
-| `reset(seed)` | `→ np.ndarray` | Reset to a random initial state |
+| `reset(seed=None)` | `→ np.ndarray` | Reset to a random initial state (`FluidFlow.reset(state=None, seed=None)` also accepts an initial state) |
 | `step(action)` | `→ (obs, reward, done, info)` | Advance one timestep |
 | `cost_fn(state, action)` | `→ float` | Quadratic cost for LQR/evaluation |
 | `reward_fn(state, action)` | `→ float` | Negative cost |
-| `vectorized_cost_fn(states, actions)` | `→ torch.Tensor` | Batched cost for SAKC critic |
+| `vectorized_cost_fn(states, actions)` | `→ torch.Tensor` | Batched cost for SKVI's Bellman backup |
 | `f(state, action)` | `→ np.ndarray` | Ground-truth one-step transition |
-| `continuous_A`, `continuous_B` | `np.ndarray` | Linearised dynamics (for LQR) |
+| `continuous_A`, `continuous_B` | `np.ndarray` | Linearised continuous-time dynamics (for LQR); `LinearSystem` instead has the discrete `A`, `B`, which LQR falls back to |
+| `dt` | `float` | Time step (continuous-time environments; LQR and SKVI treat a missing `dt` as 1) |
 | `reference_point` | `np.ndarray` | Target state $x^*$ |
 
 ## Adding a new algorithm
@@ -77,11 +88,12 @@ Every environment must implement:
 ## Project layout
 
 ```
-koopmanrl/              Core algorithms and environments
-koopmanrl_utils/        Post-processing: trajectories, figures, GIFs
-configurations/         Best-found hyperparameter JSON files
+koopmanrl/              Core algorithms, environments, Koopman tensor, HPO scripts
+koopmanrl_utils/        Experiment launchers, result processing, Koopman/SKVI validation scripts, movies/
+configurations/         Best-found hyperparameter JSON files and settings of the reproduction scripts
+workflow/               Snakemake workflows that reproduce the results of the paper
 tests/                  Pytest test suite
 docs/                   Docusaurus documentation site
-figures/                Output figures (gitignored)
-video_frames/           Output trajectory data (gitignored)
 ```
+
+Outputs are written to gitignored directories: `runs/` (TensorBoard logs), `saved_models/` (checkpoints), `figures/` and `video_frames/` (movies), `results/` and `.snakemake/` (Snakemake), and the `*_results/` folders of the `koopmanrl_utils/` scripts (e.g. `episodic_returns_results/`, `ablation_results/`, `tsne_koopman_tensor_results/`).

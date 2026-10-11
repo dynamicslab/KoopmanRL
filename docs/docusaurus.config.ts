@@ -16,7 +16,12 @@ const config: Config = {
   projectName: "KoopmanRL",
 
   onBrokenLinks: "throw",
-  onBrokenMarkdownLinks: "warn",
+
+  markdown: {
+    hooks: {
+      onBrokenMarkdownLinks: "warn",
+    },
+  },
 
   i18n: {
     defaultLocale: "en",
@@ -30,7 +35,7 @@ const config: Config = {
         docs: {
           sidebarPath: "./sidebars.ts",
           editUrl:
-            "https://github.com/dynamicslab/KoopmanRL/tree/master/docs/",
+            "https://github.com/dynamicslab/KoopmanRL/tree/main/docs/",
           remarkPlugins: [remarkMath],
           rehypePlugins: [rehypeKatex],
         },
@@ -44,10 +49,10 @@ const config: Config = {
 
   stylesheets: [
     {
-      href: "https://cdn.jsdelivr.net/npm/katex@0.13.24/dist/katex.min.css",
+      href: "https://cdn.jsdelivr.net/npm/katex@0.16.45/dist/katex.min.css",
       type: "text/css",
       integrity:
-        "sha384-odtC+0UGzzFL/6PNoE8rX/SPcQDXBJ+uRepguP4QkPCm2LBxH3FA3y+fKSiJ+AmM",
+        "sha384-UA8juhPf75SzzAMA/4fo3yOU7sBJ0om7SCD2GHq0fZqZco6tr1UCV7nUbk9J90JM",
       crossorigin: "anonymous",
     },
   ],
@@ -97,11 +102,7 @@ const config: Config = {
           items: [
             {
               label: "Paper: KARL",
-              href: "https://github.com/dynamicslab/KoopmanRL",
-            },
-            {
-              label: "Zenodo Archive",
-              href: "https://zenodo.org",
+              href: "https://arxiv.org/abs/2403.02290",
             },
           ],
         },

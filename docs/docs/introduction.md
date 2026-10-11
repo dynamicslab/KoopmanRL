@@ -9,7 +9,7 @@ title: Introduction
 KoopmanRL is a reinforcement learning (RL) package built around two **Koopman-Assisted RL (KARL)** algorithms:
 
 - **Soft Koopman Value Iteration (SKVI)** — discrete value iteration enhanced with a Koopman operator representation of the system dynamics.
-- **Soft Koopman Actor-Critic (SAKC)** — an actor-critic algorithm that uses a Koopman tensor for improved policy learning in nonlinear dynamical systems.
+- **Soft Actor Koopman-Critic (SAKC)** — an actor-critic algorithm that uses a Koopman tensor for improved policy learning in nonlinear dynamical systems.
 
 The library also provides utilities to build upon individual components — use only the Koopman tensor, only specific algorithmic pieces, or the full KARL pipelines — and includes automatic hyperparameter tuning routines and four control-oriented benchmark environments.
 
@@ -25,13 +25,26 @@ KARL combines this operator-theoretic perspective with maximum-entropy reinforce
 
 ## Citation
 
-If you use KoopmanRL in your research, please cite:
+If you use KoopmanRL in your research, please cite the paper:
+
+```bibtex
+@article{rozwood2024koopman,
+  author  = {Rozwood, Preston and Mehrez, Edward and Paehler, Ludger and Sun, Wen and Brunton, Steven L.},
+  title   = {Koopman-Assisted Reinforcement Learning},
+  journal = {arXiv preprint arXiv:2403.02290},
+  year    = {2024},
+  url     = {https://arxiv.org/abs/2403.02290},
+}
+```
+
+and, for the software itself (see [`CITATION.cff`](https://github.com/dynamicslab/KoopmanRL/blob/main/CITATION.cff)):
 
 ```bibtex
 @software{koopmanrl,
-  author    = {Paehler, Ludger and Rozwood, Preston and Mehrez, Edward J.},
-  title     = {KoopmanRL: Koopman-Assisted Reinforcement Learning},
-  year      = {2026},
-  url       = {https://github.com/dynamicslab/KoopmanRL},
+  author  = {Paehler, Ludger and Rozwood, Preston and Mehrez, Edward J. and Sun, Wen and Brunton, Steven L.},
+  title   = {KoopmanRL: Koopman-Assisted Reinforcement Learning},
+  version = {1.0.0},
+  year    = {2026},
+  url     = {https://github.com/dynamicslab/KoopmanRL},
 }
 ```

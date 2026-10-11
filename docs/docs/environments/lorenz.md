@@ -6,7 +6,7 @@ title: Lorenz Attractor
 
 # Lorenz Attractor (`Lorenz-v0`)
 
-The Lorenz environment implements the classic Lorenz system — a three-dimensional chaotic system with two unstable equilibria. The control task is to stabilise the state near one of the non-trivial equilibria $x^* = (\sqrt{\beta(\rho-1)},\, \sqrt{\beta(\rho-1)},\, \rho - 1)$.
+The Lorenz environment implements the classic Lorenz system — a three-dimensional chaotic system which, at the standard parameters, has three unstable equilibria: the origin and the two non-trivial equilibria $(\pm\sqrt{\beta(\rho-1)},\, \pm\sqrt{\beta(\rho-1)},\, \rho - 1)$. The control task is to stabilise the state at the non-trivial equilibrium with positive $x_1, x_2$, $x^* = (\sqrt{\beta(\rho-1)},\, \sqrt{\beta(\rho-1)},\, \rho - 1)$.
 
 ## Dynamics
 
