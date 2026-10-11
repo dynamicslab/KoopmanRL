@@ -1,18 +1,18 @@
 # Environments Guide
 
-Library of reinforcement learning control environments heavily inspired by dynamical system control theory literature. Of the 4 control environments `Lorenz` is the one chaotic environment.
+Library of reinforcement learning control environments heavily inspired by dynamical system control theory literature. Of the 4 control environments `Lorenz` is the one chaotic environment. `DoubleWell` is two-dimensional and stochastic; the other three are three-dimensional.
 
 ## Directory Guide
 
 ```
 environments/
-├── __init__.py       # Subdirectory initialization export all 4 environments
+├── __init__.py       # Imports the 4 environment classes, which registers them with gym
 ├── AGENTS.md         # This file
 ├── double_well.py    # The Stochastic double well environment
 ├── fluid_flow.py     # Fluid Flow control environment
 ├── linear_system.py  # Linear System control environment
 ├── lorenz.py         # Lorenz 1963 chaotic system control environment
-└── test_env.py       # Utility to test an environment implementation
+└── test_env.py       # Rolls out an environment: uv run -m koopmanrl.environments.test_env --env_id <id> --seed <n>
 ```
 
 ## Design Guide
@@ -22,10 +22,12 @@ All four environments follow two guiding principles:
 * All environments follow the legacy `gym` standard
 * Environments are allowed to run with FP64, and are run on CPU
 
-## Working Checklist
+## Registration
 
-1. Review the relevant AGENTS guide(s) and existing tests/examples for the functionality you touch.
-2. Prototype changes in single files or helper scripts—avoid interactive REPL work.
-3. Add or update targeted tests (tests/test_*.py) alongside code changes.
-4. Run the scoped pytest command (uv run test -m ...) before submitting.
-5. Keep documentation edits minimal and aligned.
+Each environment module calls `gym.envs.registration.register` at import, under the ids `LinearSystem-v0`, `FluidFlow-v0`, `Lorenz-v0` and `DoubleWell-v0`. `gym.make("<id>")` therefore only works after `import koopmanrl.environments` (or one of its modules); a script that skips the import fails with `gym.error.NameNotFound`.
+
+* `gym==0.23.1` is pinned; its warning that Gym is unmaintained is expected.
+* `koopmanrl_utils/movies/` plots only FluidFlow, Lorenz and DoubleWell.
+* `__pycache__/` of this directory holds tracked `.pyc` files (including those of removed cartpole environments); they show up as modified after any run. Do not commit them.
+
+See the root `AGENTS.md` for setup, testing and the working checklist.
