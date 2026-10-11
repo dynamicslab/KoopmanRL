@@ -7,16 +7,17 @@ and the uncontrolled vector field as a quiver plot.
 
 Example usage:
 
-    python -m koopmanrl_utils.movies.generate_trajectory_figure \\
+    uv run -m koopmanrl_utils.movies.generate_trajectory_figure \\
         --data_folder video_frames/FluidFlow-v0_1744000000 \\
         --plot_uncontrolled \\
         --plot_vector_field \\
         --vector_field_resolution 8 \\
-        --show_coordinate_frame \\
         --view_elev 25 \\
         --view_azim 60 \\
         --emit_dat \\
         --output_file figures/fluid_flow_trajectory.png
+
+The coordinate frame is drawn by default; passing --show_coordinate_frame toggles it off.
 """
 
 import os
