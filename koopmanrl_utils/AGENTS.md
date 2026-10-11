@@ -43,7 +43,8 @@ koopmanrl_utils/
 ├── run_skvi_optimization.py             # Runs the Soft Koopman Value Iteration hyperparameter optimization
 ├── skvi_policy_checks.py                # Reads the SKVI policy off the Koopman tensor and checks it (LQR, pruning)
 ├── skvi_sensitivity_checks.py           # Koopman-tensor accuracy along the SKVI policy; sensitivity of SKVI's control
-└── tsne_koopman_tensor.py               # Loads the saved Koopman tensors and generates a t-SNE plot from it
+├── TSNE.md                              # From the Koopman tensors to the pgfplots-ready tables of the t-SNE figure
+└── tsne_koopman_tensor.py               # Joint t-SNE of the Koopman tensors of the four benchmarks in a common basis; pgfplots CSV files
 ```
 
 ## Critical Patterns
