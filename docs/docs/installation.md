@@ -54,8 +54,11 @@ To install with development dependencies (testing, linting):
 # uv
 uv sync --group dev
 
-# pip
-pip install ".[dev]"
+# pip (>= 25.1; `dev` is a PEP 735 dependency group, not an extra)
+pip install --group dev .
+
+# older pip
+pip install . pre-commit pytest pytest-cov
 ```
 
 ## Verifying the installation
@@ -74,14 +77,17 @@ uv run pytest
 
 | Package | Purpose |
 |---------|---------|
-| `torch >= 2.9` | Neural network training |
+| `torch >= 2.9.1` | Neural network training |
 | `gym == 0.23.1` | RL environment interface |
 | `cleanrl >= 1.2` | CleanRL RL algorithm implementations |
-| `control >= 0.10` | Linear control theory utilities |
+| `control >= 0.10.2` | Linear control theory utilities |
 | `optuna >= 3.0` | Hyperparameter optimisation |
 | `ray[tune] >= 2.53` | Distributed hyperparameter search |
-| `scipy >= 1.15` | Scientific computing |
-| `stable-baselines3 == 1.2` | Baseline RL algorithms |
+| `scipy >= 1.15.3` | Scientific computing |
+| `stable-baselines3 == 1.2.0` | Replay buffer for the SAC-style algorithms |
 | `tensorboard >= 2.20` | Experiment logging |
-| `numpy >= 2.2` | Numerical arrays |
-| `matplotlib >= 3.10` | Plotting |
+| `numpy >= 2.2.6` | Numerical arrays |
+| `matplotlib >= 3.10.8` | Plotting |
+| `typed-argument-parser >= 1.11` | Typed command-line parsers (`tap`) of all scripts |
+| `scikit-learn >= 1.6` | t-SNE embedding and regressor comparison utilities |
+| `rliable >= 1.2` | IQM and stratified bootstrap confidence intervals for result processing |

@@ -13,7 +13,7 @@ const FeatureList: FeatureItem[] = [
     description: (
       <>
         Two novel KARL algorithms — Soft Koopman Value Iteration (SKVI) and
-        Soft Koopman Actor-Critic (SAKC) — leverage the Koopman operator to
+        Soft Actor Koopman-Critic (SAKC) — leverage the Koopman operator to
         linearize nonlinear dynamics for improved sample efficiency.
       </>
     ),

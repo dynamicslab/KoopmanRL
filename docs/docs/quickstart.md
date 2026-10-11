@@ -45,7 +45,7 @@ Run **Soft Koopman Value Iteration** on the Lorenz attractor:
 uv run -m koopmanrl.soft_koopman_value_iteration --env_id Lorenz-v0
 ```
 
-Run **Soft Koopman Actor-Critic** on the Double-Well potential:
+Run **Soft Actor Koopman-Critic** on the Double-Well potential:
 
 ```bash
 uv run -m koopmanrl.soft_actor_koopman_critic --env_id DoubleWell-v0
@@ -53,7 +53,7 @@ uv run -m koopmanrl.soft_actor_koopman_critic --env_id DoubleWell-v0
 
 ## Using Pre-optimised Hyperparameters
 
-The `configurations/` directory ships with best-found hyperparameter JSON files for every algorithm-environment pair:
+The `configurations/` directory ships with best-found hyperparameter JSON files for SKVI and SAKC on all four environments (`<algorithm>_<environment>_hparams.json`); the LQR and SAC baselines take no config file:
 
 ```bash
 uv run python -m koopmanrl.soft_actor_koopman_critic \
@@ -69,9 +69,15 @@ uv run python -m koopmanrl.soft_actor_koopman_critic \
     --total_timesteps 100000
 ```
 
+## Reproducibility
+
+`--seed` is honoured by all five algorithms. SKVI and SAKC default to seed `1` (or the seed of the config file); LQR and both SAC baselines draw a seed at random when none is given and record it in the run name, so pass `--seed` to repeat a run.
+
+SKVI and SAKC solve their least-squares problems with the LAPACK driver `gelsd`, so two runs with the same seed repeat bit for bit on the same machine and library versions at a fixed number of numerical threads. Results are not guaranteed to repeat across different thread counts.
+
 ## Discovering All Options
 
-Every module exposes a typed argument parser. Query it with `--help`:
+Every algorithm module exposes a typed argument parser. Query it with `--help`:
 
 ```bash
 uv run -m koopmanrl.soft_koopman_value_iteration --help
