@@ -34,8 +34,8 @@ KoopmanRL is organised into two top-level packages.
 | `koopmanrl_utils.movies.generate_gifs` | Animate saved trajectories as trajectory and cost-ratio GIFs |
 | `koopmanrl_utils.run_optimized_experiments` | Re-run best configs and the baselines across seeds (episodic-return figures) |
 | `koopmanrl_utils.run_ablations` | Run the SKVI and SAKC hyperparameter grids behind the two ablation figures |
-| `koopmanrl_utils.run_skvi_optimization` | Run `skvi_optuna_opt` on all four benchmarks (no CLI; starts the studies when run) |
-| `koopmanrl_utils.run_sakc_optimization` | Run `sakc_optuna_opt` on all four benchmarks (no CLI; starts the studies when run) |
+| `koopmanrl_utils.run_skvi_optimization` | Run `skvi_optuna_opt` on all four benchmarks (requires `--storage_dir`; starts the four studies when run with it) |
+| `koopmanrl_utils.run_sakc_optimization` | Run `sakc_optuna_opt` on all four benchmarks (requires `--storage_dir`; starts the four studies when run with it) |
 | `koopmanrl_utils.dataframe_creator` | Collect the episodic returns of a folder of TensorBoard runs into a JSON data frame |
 | `koopmanrl_utils.process_episodic_returns` | Reduce an episodic-return data frame to IQM curves with bootstrap confidence bands (table for plotting) |
 | `koopmanrl_utils.process_skvi_ablations` | Reduce an SKVI ablation data frame to the IQM surface table |

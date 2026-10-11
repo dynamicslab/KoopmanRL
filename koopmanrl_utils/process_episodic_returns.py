@@ -16,9 +16,9 @@ logger.setLevel(logging.INFO)
 
 
 class ArgumentParser(Tap):
-    root_dir: str = "/home/lpaehler/Work/ReinforcementLearning/KoopmanRLLaptop/KoopmanRL/NewDataLogs/EpisodicReturns/LQR"  # The root directory of the dataframe holding the algorithm's performance # noqa: E501
+    root_dir: str  # The root directory of the dataframe holding the algorithm's performance
     data_frame: str = "episodic_returns_lqr_double_well"  # The name of the JSON data frame
-    output_dir: str = "/home/lpaehler/Work/ReinforcementLearning/KoopmanRLLaptop/KoopmanRL/NewDataLogs"  # The directory where the output .dat file will be saved # noqa: E501
+    output_dir: str  # The directory where the output .dat file will be saved
     output_name: str = "output.dat"  # The name of the output file for TikZ plotting; a name ending in .csv gives a comma-separated file, any other name a space-separated one, both with a header row of column names # noqa: E501
     smoothing_window: int = 1  # The number of episodes to smooth over with IQM
     confidence_band: float = 0.95  # Percent confidence band around the episodic return

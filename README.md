@@ -89,7 +89,7 @@ uv run -m koopmanrl.linear_quadratic_regulator --env_id FluidFlow-v0
 >    --storage_dir . --output_file my_sakc_fluid_flow --cpu_cores_per_trial 4
 >```
 >
->The best configuration is written to `<storage_dir>/<output_file>.json`. Set `--storage_dir`, whose default is a path on the authors' machine, and keep `--cpu_cores_per_trial` (default 28) at or below the number of cores of your machine, since Ray cannot schedule a trial that asks for more.
+>The best configuration is written to `<storage_dir>/<output_file>.json`. `--storage_dir` is required and has to exist. Keep `--cpu_cores_per_trial` (default 28) at or below the number of cores of your machine, since Ray cannot schedule a trial that asks for more.
 
 ### Using Optimized Hyperparameter Configurations
 

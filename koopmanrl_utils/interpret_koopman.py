@@ -17,9 +17,9 @@ from tensorboard.backend.event_processing.event_accumulator import EventAccumula
 class ArgumentParser(Tap):
     algorithm_type: str = "SKVI"  # Options are: SKVI, or SAKC
     environment: str = "LinearSystem"  # Options are: LinearSystem, FluidFlow, Lorenz, DoubleWell
-    paths_to_files: str = "interpret_koopman.json"  # Single JSON file holding the paths to all the stored files
+    paths_to_files: str  # Single JSON file holding the paths to all the stored files, in the layout of the template koopmanrl_utils/interpret_koopman.json  # noqa: E501
     # No storage routine to speak of at this time.
-    storage_dir: str = "/home/lpaehler/Work/ReinforcementLearning/KoopmanRLLaptop/KoopmanRL/BayesianOptimization/koopman-rl"  # Directory into which to store the result  # noqa: E501
+    storage_dir: str  # Directory into which to store the result
     output_file: str = "koopman_polynomial"  # Name of the json with the best configuration
 
 

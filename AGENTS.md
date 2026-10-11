@@ -33,8 +33,8 @@ workflow/                Snakemake workflows: Snakefile, rules/*.smk, helpers.py
 ## Running Code
 - Run everything from the repository root as a module: `uv run -m koopmanrl.<module>` or `uv run -m koopmanrl_utils.<module>`. Every algorithm and most scripts take `--help` (typed `tap` parsers).
 - Runs write TensorBoard logs to `runs/` and checkpoints to `saved_models/` in the working directory. These and the result directories of the scripts (`*_results/`, `results/`, `figures/`, `video_frames/`, `.snakemake/`) are gitignored; do not commit outputs.
-- Do not execute `koopmanrl_utils/run_skvi_optimization.py` or `run_sakc_optimization.py` to inspect them: they take no arguments, so even `--help` starts four full Ray Tune studies. Read the source instead. Before executing any other script, check that it has an argument parser.
-- `koopmanrl.{skvi,sakc}_optuna_opt` default to `--cpu_cores_per_trial 28`, which Ray cannot schedule on a smaller machine (the study then idles forever), and to a `--storage_dir` on the authors' machine. Pass both when running them.
+- `koopmanrl_utils/run_skvi_optimization.py` and `run_sakc_optimization.py` require `--storage_dir` and start four full Ray Tune studies as soon as they are given one; only `--help` is safe to run. Before executing any other script, check that it has an argument parser.
+- `koopmanrl.{skvi,sakc}_optuna_opt` require `--storage_dir`, and default to `--cpu_cores_per_trial 28`, which Ray cannot schedule on a smaller machine (the study then idles forever). Pass both when running them.
 - The reproduction launchers (`run_optimized_experiments`, `run_ablations`) start hundreds of 50,000-step runs by default. Use `--dry_run` to list the commands, and the filters described in their guides to run a part.
 
 ## Global Conventions

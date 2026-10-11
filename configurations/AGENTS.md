@@ -25,7 +25,7 @@ configurations/
 
 * `--config_file` of `koopmanrl.soft_koopman_value_iteration` and `koopmanrl.soft_actor_koopman_critic`, through `koopmanrl/utils.py::load_and_apply_config`: a flag given on the command line wins over the file, the file over the script's fallback. The kebab-case keys are mapped onto flags by each script's key map (e.g. `learning-rate` → `--lr`, `number-of-train-epochs` → `--num_training_epochs`). `target-score`, `num-envs`, `metric` and `metric-last-n-average-window` are written by the optimization but are in neither key map, so the algorithms ignore them.
 * `koopmanrl_utils/run_optimized_experiments.py` (the tuned SKVI and SAKC runs of the episodic returns) and `koopmanrl_utils/movies/generate_trajectories.py`, which resolves `configurations/<algo>_<env_slug>_hparams.json` from `--algo` and `--env_id`, relative to the working directory.
-* The files are the output of `koopmanrl.{skvi,sakc}_optuna_opt`, which writes `<storage_dir>/<output_file>.json`; `koopmanrl_utils/run_{skvi,sakc}_optimization.py` pass the `<algo>_<env_slug>_hparams` names. Do not let a new study overwrite these files unless the results of the paper are meant to change.
+* The files are the output of `koopmanrl.{skvi,sakc}_optuna_opt`, which writes `<storage_dir>/<output_file>.json`; `koopmanrl_utils/run_{skvi,sakc}_optimization.py` pass the `<algo>_<env_slug>_hparams` names, and their required `--storage_dir`. Do not let a new study overwrite these files unless the results of the paper are meant to change.
 
 ## JSON Schema of Configuration
 

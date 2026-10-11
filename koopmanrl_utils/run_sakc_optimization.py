@@ -1,80 +1,45 @@
 """Run the SAKC hyperparameter optimisation on the four benchmarks, one after the other.
 
-    uv run -m koopmanrl_utils.run_sakc_optimization
+    uv run -m koopmanrl_utils.run_sakc_optimization --storage_dir <directory>
 
 Each benchmark is one call of `python -m koopmanrl.sakc_optuna_opt --env_id=<env>
---output_file=sakc_<env_slug>_hparams` (Ray Tune with Optuna search), whose output is logged to
-`<env_slug>_opt.txt` in the working directory. The best configuration of each study is written to
-`<storage_dir>/sakc_<env_slug>_hparams.json`, the names of the files in `configurations/`.
+--output_file=sakc_<env_slug>_hparams --storage_dir=<directory>` (Ray Tune with Optuna search), with the Python
+interpreter that runs this script, whose output is logged to `<env_slug>_opt.txt` in the working directory. The best
+configuration of each study is written to `<directory>/sakc_<env_slug>_hparams.json`, the names of the files in
+`configurations/`; the directory has to exist, and is written into only at the end of a study.
 
-The script takes no arguments: any argument, `--help` included, is ignored and the four studies start. The
-studies run with the defaults of `koopmanrl.sakc_optuna_opt`, so before running it check there:
-`--cpu_cores_per_trial` (default 28; Ray cannot schedule a trial that asks for more cores than the machine has) and
-`--storage_dir` (the default is a path on the authors' machine, to which the result is written only at the end of a
-study). To run a single study with other settings, call `koopmanrl.sakc_optuna_opt` directly.
+`--storage_dir` is required, and `--help` prints the options without starting a study. `--cpu_cores_per_trial` is
+passed on to every study when it is given; otherwise the studies use the default of `koopmanrl.sakc_optuna_opt`
+(28; Ray cannot schedule a trial that asks for more cores than the machine has). All other settings are the defaults
+of `koopmanrl.sakc_optuna_opt`; to run a single study with other settings, call it directly.
 """
 
+import shlex
 import subprocess
-from typing import List
+import sys
+from typing import List, Optional
+
+from tap import Tap
+
+# environment id, and the slug of the names of its log and its output file
+ENVIRONMENTS = [
+    ("LinearSystem-v0", "linear_system"),
+    ("FluidFlow-v0", "fluid_flow"),
+    ("Lorenz-v0", "lorenz"),
+    ("DoubleWell-v0", "double_well"),
+]
+
+
+class ArgumentParser(Tap):
+    storage_dir: str  # Directory the best configuration of every study is written into; it has to exist
+    cpu_cores_per_trial: Optional[int] = None  # Number of CPU cores per trial; the default of sakc_optuna_opt if unset
 
 
 def run_command(command: List[str], log_file: str) -> None:
     """Run a shell command, log stdout/stderr to a file, and raise on failure."""
-    print(f"Running: {' '.join(command)} > {log_file}", flush=True)
+    print(f"Running: {shlex.join(command)} > {log_file}", flush=True)
     with open(log_file, "w") as f:
         subprocess.run(command, check=True, stdout=f, stderr=subprocess.STDOUT)
-
-
-def run_linear_system() -> None:
-    run_command(
-        [
-            "python",
-            "-m",
-            "koopmanrl.sakc_optuna_opt",
-            "--env_id=LinearSystem-v0",
-            "--output_file=sakc_linear_system_hparams",
-        ],
-        log_file="linear_system_opt.txt",
-    )
-
-
-def run_fluid_flow() -> None:
-    run_command(
-        [
-            "python",
-            "-m",
-            "koopmanrl.sakc_optuna_opt",
-            "--env_id=FluidFlow-v0",
-            "--output_file=sakc_fluid_flow_hparams",
-        ],
-        log_file="fluid_flow_opt.txt",
-    )
-
-
-def run_lorenz() -> None:
-    run_command(
-        [
-            "python",
-            "-m",
-            "koopmanrl.sakc_optuna_opt",
-            "--env_id=Lorenz-v0",
-            "--output_file=sakc_lorenz_hparams",
-        ],
-        log_file="lorenz_opt.txt",
-    )
-
-
-def run_double_well() -> None:
-    run_command(
-        [
-            "python",
-            "-m",
-            "koopmanrl.sakc_optuna_opt",
-            "--env_id=DoubleWell-v0",
-            "--output_file=sakc_double_well_hparams",
-        ],
-        log_file="double_well_opt.txt",
-    )
 
 
 def main() -> None:
@@ -82,10 +47,23 @@ def main() -> None:
 
     It assumes it is run from the repository root.
     """
-    run_linear_system()
-    run_fluid_flow()
-    run_lorenz()
-    run_double_well()
+    args = ArgumentParser().parse_args()
+    options = [f"--storage_dir={args.storage_dir}"]
+    if args.cpu_cores_per_trial is not None:
+        options.append(f"--cpu_cores_per_trial={args.cpu_cores_per_trial}")
+
+    for env_id, slug in ENVIRONMENTS:
+        run_command(
+            [
+                sys.executable,
+                "-m",
+                "koopmanrl.sakc_optuna_opt",
+                f"--env_id={env_id}",
+                f"--output_file=sakc_{slug}_hparams",
+                *options,
+            ],
+            log_file=f"{slug}_opt.txt",
+        )
 
 
 if __name__ == "__main__":
