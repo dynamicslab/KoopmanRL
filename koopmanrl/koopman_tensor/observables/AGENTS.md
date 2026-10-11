@@ -1,6 +1,6 @@
 # Observables Guide
 
-Implementation of the Koopman observables the Koopman tensor is eventually constructed out of. Implementations are provided in NumPy, and PyTorch with the core feature set being Monomials, and Gaussians.
+Implementation of the Koopman observables the Koopman tensor is eventually constructed out of. Implementations are provided in NumPy, and PyTorch with the dictionaries `monomials`, `indicators`, `gaussians` and `identity`, and the helpers that enumerate monomial powers (`allMonomialPowers`).
 
 ## Directory Structure
 
@@ -11,10 +11,9 @@ observables/
 └── torch_observables.py  # Implementation of the Koopman tensor observables in PyTorch
 ```
 
-## Working Checklist
+## Critical Patterns
 
-1. Review the relevant AGENTS guide(s) and existing tests/examples for the functionality you touch.
-2. Prototype changes in single files or helper scripts—avoid interactive REPL work.
-3. Add or update targeted tests (tests/test_*.py) alongside code changes.
-4. Run the scoped pytest command (uv run test -m ...) before submitting.
-5. Keep documentation edits minimal and aligned.
+* `koopmanrl/koopman_observables.py` is an identical copy of `torch_observables.py`, and it is the one SKVI, SAKC and `koopmanrl_utils/skvi_policy_checks.py` import. Keep the two files identical.
+* The directory has no `__init__.py`; it is imported as a namespace package (`koopmanrl.koopman_tensor.observables.torch_observables`).
+
+See the root `AGENTS.md` for setup, testing and the working checklist.

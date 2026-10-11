@@ -1,46 +1,36 @@
-# Scripts Guide
+# KoopmanRL Utilities Guide
 
-The script directory contains a collection of scripts to reproduce the results from the paper, postprocess results, and to generate TikZ plots or movies thereof.
+The `koopmanrl_utils/` directory contains a collection of scripts to reproduce the results from the paper, postprocess results, and to generate TikZ plots or movies thereof.
 
 ## Running Scripts
 
-All scripts need to be run from the root of the repository, and can be run as
+All scripts need to be run from the root of the repository, as modules:
 
-- `uv run koopmanrl_utils/<name of scripts>`
+- `uv run -m koopmanrl_utils.<name of script>` (the directory has no `__init__.py`; it is imported as a namespace package)
+
+Most scripts have a `tap` parser and list their options with `--help`. `run_skvi_optimization.py` and `run_sakc_optimization.py` do not: they ignore their arguments, so even `--help` starts four full hyperparameter optimizations. Read them instead of running them. `interpret_koopman.py` is an unfinished stub (it reads `args.skvi_stored_weights`, which its parser does not define, and `interpret_koopman.json` holds paths on the authors' machine), and `plot_csv_from_tensorboards.py` defaults to run names of 2024.
 
 ## Directory Structure
 
 ```
 koopmanrl_utils/
-├── movies/
-│   ├── fluid_flow/                      # Subdirectory for experiments on the fluid flow environment
-│   ├── __init__.py                      # Initialization file
-│   ├── abstract_policy.py               # Abstract method for the policy
-│   ├── AGENTS.md                        # Agents.md file for the subdirectory
-│   ├── algo_policies.py                 # Algorithmic inspection of the Koopman policies
-│   ├── default_policies.py              # Generate uncontrolled policies on the environments
-│   ├── env_enum.py                      # Enumeration of the reinforcement learning environments
-│   ├── generate_csvs.ipynb              # Stores the policies into a CSV
-│   ├── generate_gifs.py                 # Generates GIF illustrations of the applied control policy
-│   ├── generator.py                     # Generates controlled or uncontrolled trajectories
-│   ├── hundred_episode_cost_average.py  # Averages across 100 episodes
-│   └── plotting_trajectories.ipynb      # Plot the control trajectories
+├── movies/                              # Trajectory figures and GIFs of the trained policies (see movies/AGENTS.md, movies/PIPELINE.md)
 ├── ABLATIONS.md                         # From the runs to the pgfplots-ready tables of the two ablation figures
 ├── AGENTS.md                            # This file
 ├── dataframe_creator.py                 # Converts Tensorboard results to JSON data frames
 ├── EPISODIC_RETURNS.md                  # From the runs to the pgfplots-ready tables of the episodic-return figures
 ├── interpret_koopman.json               # Configuration of test file to test interpretability on
-├── interpret_koopman.py                 # Ingests a Koopman configuration, and interprets its tensor
+├── interpret_koopman.py                 # Unfinished stub for interpreting a stored Koopman tensor; does not run
 ├── koopman_prediction_validation.py     # Held-out one-step and multi-step prediction error of the Koopman tensor
 ├── koopman_regressor_comparison.py      # Held-out error of the Koopman tensor under 13 regression algorithms; TikZ figures
 ├── plot_csv_from_tensorboards.py        # Ingests Tensorboard results and generates csv files
-├── process_episodic_returns.py          # Generates episodic return plots from JSON dataframe
-├── process_sakc_ablations.py            # Generates the ablation plots for the Soft Actor Koopman-Critic from the JSON dataframes
-├── process_skvi_ablations.py            # Generates the ablation plots for the Soft Koopman Value Iteration from the JSON dataframes
+├── process_episodic_returns.py          # Writes the pgfplots tables (.dat, or .csv) of the episodic returns from the JSON data frames
+├── process_sakc_ablations.py            # Writes the pgfplots tables of the SAKC ablation from the JSON data frames
+├── process_skvi_ablations.py            # Writes the pgfplots tables of the SKVI ablation from the JSON data frames
 ├── run_ablations.py                     # Runs the experiments of the two ablation figures: the hyperparameter grids of SKVI and SAKC
 ├── run_optimized_experiments.py         # Runs the experiments of the episodic-return figures: tuned SKVI and SAKC, and the LQR and SAC baselines
-├── run_sakc_optimization.py             # Runs the Soft Actor Koopman Critic hyperparameter optimization
-├── run_skvi_optimization.py             # Runs the Soft Koopman Value Iteration hyperparameter optimization
+├── run_sakc_optimization.py             # Runs sakc_optuna_opt on the four environments; takes no arguments
+├── run_skvi_optimization.py             # Runs skvi_optuna_opt on the four environments; takes no arguments
 ├── skvi_policy_checks.py                # Reads the SKVI policy off the Koopman tensor and checks it (LQR, pruning)
 ├── skvi_sensitivity_checks.py           # Koopman-tensor accuracy along the SKVI policy; sensitivity of SKVI's control
 ├── TSNE.md                              # From the Koopman tensors to the pgfplots-ready tables of the t-SNE figure
@@ -53,12 +43,15 @@ koopmanrl_utils/
 
 All utility scripts follow a few critical patterns induced by the structure of the reinforcement learning algorithms:
 
-* The outputs of simulations are stored in the `runs/` folder of the directory an algorithm is started from: at the root of the repository for an algorithm run by hand, and in `--output_dir` for the runs of `run_optimized_experiments.py`. Each reinforcement learning experiment creates its own folder in which the Tensorboard file holding the experimental measurements can be found.
+* The outputs of simulations are stored in the `runs/` folder of the directory an algorithm is started from: at the root of the repository for an algorithm run by hand, in `--output_dir` for the runs of `run_optimized_experiments.py` and `run_ablations.py`, and in `results/<workflow>/runs/...` for the Snakemake workflows. Each reinforcement learning experiment creates its own folder in which the Tensorboard file holding the experimental measurements can be found.
 * All utility scripts essentially presume JSON files as inputs. The utility scripts to go from a Tensorboard file to a JSON file are:
     * `dataframe_creator.py` takes the path to the root of a filetree with the folders of experiments with their tensorboard files and returns a JSON file
     * `process_episodic_returns.py`, `process_sakc_ablations.py`, and `process_skvi_ablations.py` take said JSON file and return `.dat` frames for TikZ to generate episodic return plots, or 3D-surface plots for the ablations. All three write a `.csv` table instead when the output name ends in `.csv`; `EPISODIC_RETURNS.md` and `ABLATIONS.md` walk through the whole path for the episodic returns and for the ablations.
 * The episodic return plots utilize a stratified bootstrapping scheme to generate 95% confidence intervals, which are used in the episodic return plots of the paper.
-* Every single script is able to be executed in isolation.
+* Every script except the two `run_*_optimization.py` drivers can be executed in isolation.
+* The launchers `run_optimized_experiments.py` and `run_ablations.py` start hundreds of 50,000-step runs by default. `--dry_run` prints the commands; `--num_workers` runs them in parallel with Ray; the filters for running a part are described at the top of each script and in `EPISODIC_RETURNS.md` / `ABLATIONS.md`.
+* `tsne_koopman_tensor.py` solves its regressions with `--lstsq_driver gelsd` by default, the driver of SKVI and SAKC; see `TSNE.md`.
+* Each script writes into its own gitignored results directory in the working directory (`episodic_returns_results/`, `ablation_results/`, `tsne_koopman_tensor_results/`, `skvi_policy_checks_results/`, `skvi_sensitivity_checks_results/`, `koopman_prediction_validation_results/`, `koopman_regressor_comparison_results/`, `video_frames/`, `figures/`). `tests/AGENTS.md` lists which test file covers which script.
 * The Snakemake workflows in `workflow/` chain these scripts, one job per run, data frame and table. Lists that a script and its workflow both need, such as the seeds of `run_optimized_experiments.py`, are kept in `configurations/<workflow>.json` and read by both. `workflow/README.md` has the commands and conventions.
 
 ### JSON Data Schema
@@ -130,10 +123,4 @@ The expected JSON schema of the scripts is the following:
 }
 ```
 
-## Working Checklist
-
-1. Review the relevant AGENTS guide(s) and existing tests/examples for the script you touch.
-2. Prototype changes in single files or helper scripts—avoid interactive REPL work.
-3. Add or update targeted tests (tests/test_*.py) alongside code changes.
-4. Run the scoped pytest command (uv run test -m ...) before submitting.
-5. Keep documentation edits minimal and aligned.
+See the root `AGENTS.md` for setup, testing and the working checklist.
