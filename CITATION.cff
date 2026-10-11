@@ -3,7 +3,7 @@ message: "If you use this software, please cite it as below."
 type: software
 title: "KoopmanRL: Koopman-Assisted Reinforcement Learning"
 version: 1.0.0
-date-released: 2026-04-20
+date-released: 2026-10-10
 authors:
   - family-names: Paehler
     given-names: Ludger
@@ -43,7 +43,9 @@ keywords:
   - Koopman operator
   - PyTorch
   - machine learning
-license: MIT
+license:
+  - MIT
+  - LGPL-3.0-only
 references:
   - type: article
     title: "Koopman-Assisted Reinforcement Learning"

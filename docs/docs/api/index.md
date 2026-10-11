@@ -40,7 +40,6 @@ KoopmanRL is organised into two top-level packages.
 | `koopmanrl_utils.process_episodic_returns` | Reduce an episodic-return data frame to IQM curves with bootstrap confidence bands (table for plotting) |
 | `koopmanrl_utils.process_skvi_ablations` | Reduce an SKVI ablation data frame to the IQM surface table |
 | `koopmanrl_utils.process_sakc_ablations` | Reduce an SAKC ablation data frame to the IQM surface table |
-| `koopmanrl_utils.plot_csv_from_tensorboards` | Plot training curves from TensorBoard logs |
 | `koopmanrl_utils.tsne_koopman_tensor` | t-SNE embedding of Koopman tensors of the four benchmarks in a common dictionary basis |
 | `koopmanrl_utils.koopman_prediction_validation` | Prediction error of the fitted Koopman tensor on held-out random-agent data |
 | `koopmanrl_utils.koopman_regressor_comparison` | Held-out accuracy of the Koopman tensor under different regression algorithms |

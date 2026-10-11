@@ -29,7 +29,7 @@ uv run pytest
 Tests live in `tests/`:
 
 - `test_rl.py` runs each of the five algorithms for a short budget on all four environments, and checks that runs with the same seed repeat;
-- `test_hparam_opt.py` runs the SKVI and SAKC optimization scripts with a single short trial on all four environments;
+- `test_hparam_opt.py` runs the SKVI and SAKC optimization scripts as smoke tests: one single-sample Ray Tune study on one CPU core per algorithm, on the linear system by default, and on the other three environments with `-m hpo_full`;
 - `test_koopman_tensor_regressors.py` covers the ridge, SINDy and reduced-rank regressors;
 - the remaining modules test the scripts of `koopmanrl_utils/` (launchers, result processing, validation and t-SNE scripts) and the helpers of the Snakemake workflows in `workflow/`.
 
