@@ -8,7 +8,7 @@ All scripts need to be run from the root of the repository, as modules:
 
 - `uv run -m koopmanrl_utils.<name of script>` (the directory has no `__init__.py`; it is imported as a namespace package)
 
-Most scripts have a `tap` parser and list their options with `--help`. `run_skvi_optimization.py` and `run_sakc_optimization.py` do not: they ignore their arguments, so even `--help` starts four full hyperparameter optimizations. Read them instead of running them. `interpret_koopman.py` is an unfinished stub (it reads `args.skvi_stored_weights`, which its parser does not define, and `interpret_koopman.json` holds paths on the authors' machine), and `plot_csv_from_tensorboards.py` defaults to run names of 2024.
+Most scripts have a `tap` parser and list their options with `--help`. `run_skvi_optimization.py` and `run_sakc_optimization.py` require `--storage_dir` and start four full hyperparameter optimizations as soon as they are given one; only `--help` is safe to run. Paths are never defaulted to a machine: `dataframe_creator.py` requires `--target_dir` and `--storage_dir`, and the `process_*` scripts `--root_dir` and `--output_dir`. `interpret_koopman.py` is an unfinished stub (it reads `args.skvi_stored_weights`, which its parser does not define; `--paths_to_files` takes a JSON file in the layout of the template `interpret_koopman.json`), and `plot_csv_from_tensorboards.py` defaults to run names of 2024.
 
 ## Directory Structure
 
@@ -19,7 +19,7 @@ koopmanrl_utils/
 ├── AGENTS.md                            # This file
 ├── dataframe_creator.py                 # Converts Tensorboard results to JSON data frames
 ├── EPISODIC_RETURNS.md                  # From the runs to the pgfplots-ready tables of the episodic-return figures
-├── interpret_koopman.json               # Configuration of test file to test interpretability on
+├── interpret_koopman.json               # Template of the --paths_to_files of interpret_koopman.py (placeholders for checkpoint paths)
 ├── interpret_koopman.py                 # Unfinished stub for interpreting a stored Koopman tensor; does not run
 ├── koopman_prediction_validation.py     # Held-out one-step and multi-step prediction error of the Koopman tensor
 ├── koopman_regressor_comparison.py      # Held-out error of the Koopman tensor under 13 regression algorithms; TikZ figures
@@ -29,8 +29,8 @@ koopmanrl_utils/
 ├── process_skvi_ablations.py            # Writes the pgfplots tables of the SKVI ablation from the JSON data frames
 ├── run_ablations.py                     # Runs the experiments of the two ablation figures: the hyperparameter grids of SKVI and SAKC
 ├── run_optimized_experiments.py         # Runs the experiments of the episodic-return figures: tuned SKVI and SAKC, and the LQR and SAC baselines
-├── run_sakc_optimization.py             # Runs sakc_optuna_opt on the four environments; takes no arguments
-├── run_skvi_optimization.py             # Runs skvi_optuna_opt on the four environments; takes no arguments
+├── run_sakc_optimization.py             # Runs sakc_optuna_opt on the four environments; requires --storage_dir
+├── run_skvi_optimization.py             # Runs skvi_optuna_opt on the four environments; requires --storage_dir
 ├── skvi_policy_checks.py                # Reads the SKVI policy off the Koopman tensor and checks it (LQR, pruning)
 ├── skvi_sensitivity_checks.py           # Koopman-tensor accuracy along the SKVI policy; sensitivity of SKVI's control
 ├── TSNE.md                              # From the Koopman tensors to the pgfplots-ready tables of the t-SNE figure

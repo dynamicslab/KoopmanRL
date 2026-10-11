@@ -17,9 +17,9 @@ logger.setLevel(logging.INFO)
 
 
 class ArgumentParser(Tap):
-    root_dir: str = "/Users/lpaehler/Work/ReinforcementLearning/KoopmanRL/NewDataLogs/SAKC_Ablations"  # The root directory from where the dataset is to be processed # noqa: E501
+    root_dir: str  # The root directory from where the dataset is to be processed
     data_frame: str = "sakc_ablation_double_well"  # The name of the JSON data frame
-    output_dir: str = "/Users/lpaehler/Work/ReinforcementLearning/KoopmanRL/NewDataLogs"  # The directory where the output .dat file will be saved # noqa: E501
+    output_dir: str  # The directory where the output .dat file will be saved
     output_name: str = "output.dat"  # The name of the output file for TikZ plotting; a name ending in .csv gives a comma-separated table with named columns, any other name the layout of the tables of the paper # noqa: E501
     smoothing_window: int = 1  # The number of episodes to smooth over with IQM
 

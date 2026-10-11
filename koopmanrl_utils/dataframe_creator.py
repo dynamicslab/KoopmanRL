@@ -16,8 +16,8 @@ from tensorboard.backend.event_processing.event_accumulator import EventAccumula
 
 
 class ArgumentParser(Tap):
-    storage_dir: str = "/Users/lpaehler/Work/ReinforcementLearning/KoopmanRL/NewDataLogs/data"  # Directory to store the resulting data frame into # noqa: E501
-    target_dir: str = "/Users/lpaehler/Work/ReinforcementLearning/KoopmanRL/NewDataLogs/data/Ablations/SAKC/runs"  # Directory which is to be walked, and data extracted from # noqa: E501
+    storage_dir: str  # Directory to store the resulting data frame into
+    target_dir: str  # Directory which is to be walked, and data extracted from
     system: str = "LinearSystem-v0"  # System for which the data frame is to be extracted. Options are: LinearSystem-v0, DoubleWell-v0, Lorenz-v0, and FluidFlow-v0. # noqa: E501
     mode: str = "SAKC_Ablations"  # Options include: SKVI_Ablations, SAKC_Ablations, and Episodic_Returns
     rl_algo: str = "value_based_sac_continuous_action"  # RL algorithm for which the data frame is to be extracted in the mode Episodic_Returns. Options are: linear_quadratic_regulator, sac_continuous_action, value_based_sac_continuous_action, soft_koopman_value_iteration, and soft_actor_koopman_critic # noqa: E501

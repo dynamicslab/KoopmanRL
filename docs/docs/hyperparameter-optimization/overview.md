@@ -20,7 +20,7 @@ Each optimization script:
 The optimization metric is the average episodic return over the last `average_window` episodes of training.
 
 :::caution
-The default of `--storage_dir` is a hard-coded path from the authors' machine, so always pass `--storage_dir` (e.g. `.`), and choose an `--output_file` that does not overwrite the shipped `configurations/*_hparams.json`. `--cpu_cores_per_trial` defaults to `28`; Ray cannot schedule a trial that asks for more cores than the machine has, so set it to at most your core count.
+`--storage_dir` is required (e.g. `.`; the directory has to exist). Choose an `--output_file` that does not overwrite the shipped `configurations/*_hparams.json`. `--cpu_cores_per_trial` defaults to `28`; Ray cannot schedule a trial that asks for more cores than the machine has, so set it to at most your core count.
 :::
 
 ## SAKC optimization
@@ -59,7 +59,7 @@ uv run -m koopmanrl.sakc_optuna_opt \
 | `--cpu_cores_per_trial` | `28` | CPU allocation per Ray worker; must not exceed the machine's cores |
 | `--num_envs` | `1` | Recorded in the trial configuration (not used by the training wrappers) |
 | `--average_window` | `5` | Number of final episodes the metric is averaged over |
-| `--storage_dir` | author's local path | Directory the result JSON is written to; always set it |
+| `--storage_dir` | required | Directory the result JSON is written to; it has to exist |
 | `--output_file` | `sakc_linear_system_params` | Output JSON filename (no extension) |
 
 The SKVI script takes the same flags (default `--output_file`: `skvi_linear_system_params`).
@@ -110,7 +110,7 @@ configurations/
 └── tsne.json                         # arguments of the t-SNE workflow (tsne_koopman_tensor)
 ```
 
-The eight `*_hparams.json` files are the results of `koopmanrl_utils/run_skvi_optimization.py` and `koopmanrl_utils/run_sakc_optimization.py`, which run `skvi_optuna_opt` and `sakc_optuna_opt` one after the other on the four benchmarks with the default flags of the optimization scripts, writing `<algorithm>_<benchmark>_hparams.json` to `--storage_dir`. These drivers take no arguments and start the full studies as soon as they are run.
+The eight `*_hparams.json` files are the results of `koopmanrl_utils/run_skvi_optimization.py` and `koopmanrl_utils/run_sakc_optimization.py`, which run `skvi_optuna_opt` and `sakc_optuna_opt` one after the other on the four benchmarks with the default flags of the optimization scripts, writing `<algorithm>_<benchmark>_hparams.json` to `--storage_dir`. The drivers require `--storage_dir`, which they pass on to every study, and pass on `--cpu_cores_per_trial` when it is given; for example `uv run -m koopmanrl_utils.run_skvi_optimization --storage_dir my_hparams --cpu_cores_per_trial 4` (the directory has to exist; use one other than `configurations/` so that the shipped files are not overwritten). They start the four full studies as soon as they are run with a `--storage_dir`; `--help` only prints their options.
 
 Pass any of these directly to the training scripts:
 

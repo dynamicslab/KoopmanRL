@@ -34,8 +34,8 @@ KoopmanRL is organised into two top-level packages.
 | `koopmanrl_utils.movies.generate_gifs` | Animate saved trajectories as trajectory and cost-ratio GIFs |
 | `koopmanrl_utils.run_optimized_experiments` | Re-run best configs and the baselines across seeds (episodic-return figures) |
 | `koopmanrl_utils.run_ablations` | Run the SKVI and SAKC hyperparameter grids behind the two ablation figures |
-| `koopmanrl_utils.run_skvi_optimization` | Run `skvi_optuna_opt` on all four benchmarks (no CLI; starts the studies when run) |
-| `koopmanrl_utils.run_sakc_optimization` | Run `sakc_optuna_opt` on all four benchmarks (no CLI; starts the studies when run) |
+| `koopmanrl_utils.run_skvi_optimization` | Run `skvi_optuna_opt` on all four benchmarks (requires `--storage_dir`; starts the four studies when run with it) |
+| `koopmanrl_utils.run_sakc_optimization` | Run `sakc_optuna_opt` on all four benchmarks (requires `--storage_dir`; starts the four studies when run with it) |
 | `koopmanrl_utils.dataframe_creator` | Collect the episodic returns of a folder of TensorBoard runs into a JSON data frame |
 | `koopmanrl_utils.process_episodic_returns` | Reduce an episodic-return data frame to IQM curves with bootstrap confidence bands (table for plotting) |
 | `koopmanrl_utils.process_skvi_ablations` | Reduce an SKVI ablation data frame to the IQM surface table |
@@ -46,7 +46,7 @@ KoopmanRL is organised into two top-level packages.
 | `koopmanrl_utils.koopman_regressor_comparison` | Held-out accuracy of the Koopman tensor under different regression algorithms |
 | `koopmanrl_utils.skvi_policy_checks` | Read SKVI's deployed policy off the Koopman tensor and check it against references |
 | `koopmanrl_utils.skvi_sensitivity_checks` | Tensor accuracy along the trained SKVI policy, and sensitivity of SKVI's control |
-| `koopmanrl_utils.interpret_koopman` | Load and print stored SKVI value-function weights (SAKC not implemented) |
+| `koopmanrl_utils.interpret_koopman` | Unfinished stub for printing stored SKVI value-function weights; it does not run yet (it reads an argument its parser does not define) |
 
 ## Environments
 
