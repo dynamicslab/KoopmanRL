@@ -20,11 +20,14 @@ def test_sakc_opt(env_id, tmp_path):
             "--num_samples=1",
             f"--total_timesteps={TOTAL_TIMESTEPS}",
             "--cpu_cores_per_trial=16",
+            f"--storage_dir={tmp_path}",
+            "--output_file=best_config",
         ],
         timeout=600,
         env=env,
     )
     assert result.returncode == 0, result.stderr
+    assert (tmp_path / "best_config.json").is_file()
 
 
 @pytest.mark.parametrize("env_id", ENVS)
@@ -39,8 +42,11 @@ def test_skvi_opt(env_id, tmp_path):
             "--num_samples=1",
             f"--total_timesteps={TOTAL_TIMESTEPS}",
             "--cpu_cores_per_trial=16",
+            f"--storage_dir={tmp_path}",
+            "--output_file=best_config",
         ],
         timeout=600,
         env=env,
     )
     assert result.returncode == 0, result.stderr
+    assert (tmp_path / "best_config.json").is_file()
