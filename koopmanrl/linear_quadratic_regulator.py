@@ -1,5 +1,6 @@
 import os
 import time
+from typing import Optional
 
 import gym
 import numpy as np
@@ -17,6 +18,7 @@ torch.set_default_dtype(torch.float64)
 
 class ArgumentParser(Tap):
     exp_name: str = os.path.basename(__file__).rstrip(".py")  # the name of this experiment
+    seed: Optional[int] = None  # seed of the experiment; drawn at random if not set (default: None)
     torch_deterministic: bool = True  # if toggled, `torch.backends.cudnn.deterministic=False` (default: True)
     cuda: bool = False  # if toggled, cuda will be enabled by default (default: False)
     env_id: str = "LinearSystem-v0"  # the id of the environment (default: LinearSystem-v0)
@@ -171,8 +173,8 @@ class LQRPolicy:
 def main():
     args = ArgumentParser().parse_args()
 
-    # Generate a random seed
-    sampled_seed = np.random.randint(1000)
+    # Use the given seed, or generate a random one
+    sampled_seed = args.seed if args.seed is not None else np.random.randint(1000)
 
     run_name = f"{args.env_id}__{args.exp_name}__{sampled_seed}__{int(time.time())}"
 

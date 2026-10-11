@@ -109,7 +109,7 @@ uv run python -m koopmanrl.soft_actor_koopman_critic \
 
 ## Running optimised experiments
 
-After optimization, `run_optimized_experiments.py` re-runs the best configurations across multiple seeds for final performance evaluation:
+After optimization, `run_optimized_experiments.py` re-runs the best configurations, and the LQR and SAC baselines next to them, across multiple seeds for final performance evaluation:
 
 ```bash
 uv run python -m koopmanrl_utils.run_optimized_experiments
