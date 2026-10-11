@@ -9,8 +9,6 @@
 
 KoopmanRL is a reinforcement learning (RL) package designed around the two Koopman-Assisted RL (KARL) algorithms, Soft Koopman Value Iteration (SKVI), and Soft Actor Koopman-Critic (SAKC). It provides the utilities to build upon parts of its algorithms by either using only the Koopman tensor itself, or only components of the two KARL algorithms. In addition it provides utilities for automatic hyperparameter tuning of KARL algorithms, as well as 4 environments rooted in the control literature.
 
-The documentation is hosted at [dynamicslab.github.io/KoopmanRL](https://dynamicslab.github.io/KoopmanRL/).
-
 ## Getting Started
 
 Having [uv](https://docs.astral.sh/uv/) installed, one can easily get the project's environment up-and-running by cloning the repository and syncing the local project environment with the lock file:
