@@ -24,3 +24,6 @@ koopman_regressor_comparison_results/
 
 # Output of koopmanrl_utils/run_optimized_experiments.py
 episodic_returns_results/
+
+# Output of koopmanrl_utils/run_ablations.py
+ablation_results/
