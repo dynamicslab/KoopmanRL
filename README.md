@@ -35,8 +35,11 @@ uv pip install .
 At which point one can run the first experiment, taking the (fast) Linear Quadratic Regulator as an illustrative example here:
 
 ```bash
-uv run -m koopmanrl.linear_quadratic_regulator
+uv run -m koopmanrl.linear_quadratic_regulator   # after `uv sync`
+python -m koopmanrl.linear_quadratic_regulator   # in the activated virtual environment
 ```
+
+The commands in this README use `uv run`, which first syncs the project environment with the lock file. In a virtual environment set up with `uv pip install .`, run them with `python` in place of `uv run` instead (e.g. `python -m koopmanrl.sakc_optuna_opt ...`), so that the installed environment is used as it is.
 
 Which will default to the linear system with the default hyperparameters. For all algorithms, and the hyperparameter optimization routines query the available hyperparameters with the `--help` identifier after the routine at which point all options will be listed in the terminal.
 
@@ -141,6 +144,10 @@ uvx --python 3.12 snakemake --cores 8 episodic_returns   # or: ablations, tsne
 ```
 
 The episodic returns take 495 runs and the ablations 1,440 runs, which is several days of computing; [`workflow/README.md`](workflow/README.md) describes how to run a part of them and how to run them on a cluster.
+
+## License
+
+KoopmanRL is released under the MIT License ([`LICENSE.md`](LICENSE.md)). The observables in `koopmanrl/koopman_observables.py` and `koopmanrl/koopman_tensor/observables/` are adapted from [d3s](https://github.com/sklus/d3s) and remain under the LGPL-3.0, and the SAC-based scripts are adapted from [CleanRL](https://github.com/vwxyzjn/cleanrl) (MIT); see [`LICENSES/README.md`](LICENSES/README.md). The package as a whole is distributed under `MIT AND LGPL-3.0-only`.
 
 ## Citation
 

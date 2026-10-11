@@ -23,7 +23,6 @@ koopmanrl/
 ├── koopman_tensor/                               # Koopman tensor classes, shared regressors, generate_tensor (see koopman_tensor/AGENTS.md)
 ├── __init__.py                                   # Initialization of the Python package
 ├── AGENTS.md                                     # This file
-├── interpretability_discrete_value_iteration.py  # Interpretability experiment of the discrete value iteration; broken: imports a module `analysis` that does not exist
 ├── koopman_observables.py                        # Copy of koopman_tensor/observables/torch_observables.py; the one SKVI and SAKC import
 ├── linear_quadratic_regulator.py                 # Baseline: discounted, entropy-regularised LQR
 ├── opt_wrappers.py                               # Training loops of SKVI and SAKC as functions for Ray Tune; imports the classes of the two algorithm files

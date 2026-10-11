@@ -8,7 +8,7 @@ All scripts need to be run from the root of the repository, as modules:
 
 - `uv run -m koopmanrl_utils.<name of script>` (the directory has no `__init__.py`; it is imported as a namespace package)
 
-Most scripts have a `tap` parser and list their options with `--help`. `run_skvi_optimization.py` and `run_sakc_optimization.py` require `--storage_dir` and start four full hyperparameter optimizations as soon as they are given one; only `--help` is safe to run. Paths are never defaulted to a machine: `dataframe_creator.py` requires `--target_dir` and `--storage_dir`, and the `process_*` scripts `--root_dir` and `--output_dir`. `interpret_koopman.py` is an unfinished stub (it reads `args.skvi_stored_weights`, which its parser does not define; `--paths_to_files` takes a JSON file in the layout of the template `interpret_koopman.json`), and `plot_csv_from_tensorboards.py` defaults to run names of 2024.
+Most scripts have a `tap` parser and list their options with `--help`. `run_skvi_optimization.py` and `run_sakc_optimization.py` require `--storage_dir` and start four full hyperparameter optimizations as soon as they are given one; only `--help` is safe to run. Paths are never defaulted to a machine: `dataframe_creator.py` requires `--target_dir` and `--storage_dir`, and the `process_*` scripts `--root_dir` and `--output_dir`. `interpret_koopman.py` is an unfinished stub (it reads `args.skvi_stored_weights`, which its parser does not define; `--paths_to_files` takes a JSON file in the layout of the template `interpret_koopman.json`).
 
 ## Directory Structure
 
@@ -23,7 +23,6 @@ koopmanrl_utils/
 ├── interpret_koopman.py                 # Unfinished stub for interpreting a stored Koopman tensor; does not run
 ├── koopman_prediction_validation.py     # Held-out one-step and multi-step prediction error of the Koopman tensor
 ├── koopman_regressor_comparison.py      # Held-out error of the Koopman tensor under 13 regression algorithms; TikZ figures
-├── plot_csv_from_tensorboards.py        # Ingests Tensorboard results and generates csv files
 ├── process_episodic_returns.py          # Writes the pgfplots tables (.dat, or .csv) of the episodic returns from the JSON data frames
 ├── process_sakc_ablations.py            # Writes the pgfplots tables of the SAKC ablation from the JSON data frames
 ├── process_skvi_ablations.py            # Writes the pgfplots tables of the SKVI ablation from the JSON data frames

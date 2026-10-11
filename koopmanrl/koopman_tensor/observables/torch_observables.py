@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: LGPL-3.0-only
+# Adapted from d3s (https://github.com/sklus/d3s), licensed under the GNU Lesser General Public License v3.0;
+# see LICENSES/README.md. The rest of KoopmanRL is MIT-licensed (LICENSE.md).
 import copy
 import math
 
