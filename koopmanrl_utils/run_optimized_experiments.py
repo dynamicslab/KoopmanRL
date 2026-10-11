@@ -48,18 +48,19 @@ fails does not stop the others; the failed runs are listed at the end, and their
 be removed before the logs are processed.
 
 Reproducibility
-    Every run is seeded. In our checks (runs of a few thousand steps on the linear system), two runs of LQR, SAC (Q),
-    SAC (V) or SKVI with the same seed, on the same machine and library versions, logged the same returns. Two such
-    runs of SAKC usually did not: their returns agree until training starts and drift apart afterwards. The
-    random-agent data and their dictionary features are the same bit for bit in both runs, but the least-squares
-    solution that identifies the Koopman tensor differs from process to process in its last digits, with one
-    numerical thread as with several, and the critic of SAKC is trained through that tensor. A rerun of SAKC
-    therefore agrees with an earlier run in distribution, not run by run.
+    Every run is seeded. In our checks (runs of a few thousand steps on the linear system; 400 steps for SKVI), two
+    runs of LQR, SAC (Q), SAC (V), SKVI or SAKC with the same seed, on the same machine and library versions and
+    with the same number of numerical threads, logged the same returns. For SKVI and SAKC the Koopman tensor was
+    the same bit for bit in every process, and so were the value-function weights that SKVI saves. Their
+    least-squares problems are solved with the LAPACK driver `gelsd`: with the default driver of
+    `torch.linalg.lstsq`, `gelsy`, the solution differs from process to process in its last digits (torch 2.9.1),
+    and the critic of SAKC is trained through the tensor, which turns such a difference into different returns.
 
     The returns also depend on the number of numerical threads: runs of SAC (Q) with one seed repeated exactly with
-    one thread and exactly with two, but the two settings gave different returns once training had started. This
-    script leaves the number of threads to the environment (OMP_NUM_THREADS), so it has to be the same for two runs
-    to agree. On another machine, floating-point rounding can change the returns of every algorithm.
+    one thread and exactly with two, but the two settings gave different returns once training had started, and the
+    Koopman tensor of SKVI and SAKC differs in its last digits between one thread and two. This script leaves the
+    number of threads to the environment (OMP_NUM_THREADS), so it has to be the same for two runs to agree. On
+    another machine, floating-point rounding can change the returns of every algorithm.
 """
 
 import json

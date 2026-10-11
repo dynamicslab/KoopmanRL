@@ -89,7 +89,8 @@ def checkConditionNumber(X, name, threshold=200):
 
 
 def ols(X, Y):
-    return torch.linalg.lstsq(X, Y, rcond=None).solution
+    # gelsd: the default driver (gelsy) does not repeat across processes in current torch releases
+    return torch.linalg.lstsq(X, Y, rcond=None, driver="gelsd").solution
 
 
 def OLS(X, Y):
@@ -802,7 +803,10 @@ class DiscreteKoopmanValueIterationPolicy:
                 # Optimize value function weights
                 if self.use_ols:
                     # OLS as in Lewis
-                    self.value_function_weights = torch.linalg.lstsq(phi_x_batch.T, expectation_term_1.T).solution
+                    # gelsd: the default driver (gelsy) does not repeat across processes in current torch releases
+                    self.value_function_weights = torch.linalg.lstsq(
+                        phi_x_batch.T, expectation_term_1.T, driver="gelsd"
+                    ).solution
                 else:
                     # Compute loss
                     loss = torch.pow(V_x_prime_batch - expectation_term_1, 2).mean()

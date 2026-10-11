@@ -587,8 +587,9 @@ between one thread and two. Where singular values lie at the threshold, last-dig
 differences of another machine or build can change the estimated rank, and with it the
 solution.
 
-**The driver of the package.** `--lstsq_driver gelsy` is the solver call of the package
-(`koopmanrl.koopman_tensor` and the modules of the algorithms). Its result differs from
+**The driver of `koopmanrl.koopman_tensor`.** `--lstsq_driver gelsy` is the solver call of
+`koopmanrl.koopman_tensor`, which names no driver; SKVI and SAKC solve their regressions
+with `gelsd`. Its result differs from
 call to call, also within one process, on one thread and with identical data. torch hands
 LAPACK's `GELSY` a pivot array that it has not initialised (torch 2.9.1, and the sources of
 its releases from 1.9.0 to 2.13.0; the development branch of torch sets it to zero). LAPACK

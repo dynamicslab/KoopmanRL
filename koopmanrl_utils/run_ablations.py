@@ -90,8 +90,8 @@ Running a part
     processed; remove the log of an interrupted run before it is repeated.
 
 Reproducibility
-    The section of this name in `run_optimized_experiments` applies: every run is seeded, and repeated runs of SAKC
-    with one seed agree in distribution, not run by run.
+    The section of this name in `run_optimized_experiments` applies: every run is seeded, and two runs with one seed
+    log the same returns on the same machine, with the same library versions and the same number of numerical threads.
 """
 
 import itertools
