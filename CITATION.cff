@@ -19,8 +19,8 @@ authors:
     given-names: Edward J.
     email: ejm322@cornell.edu
     affiliation: Cornell University
-  - family-names: Wen
-    given-names: Sun
+  - family-names: Sun
+    given-names: Wen
     email: ws455@cornell.edu
     affiliation: Cornell University
   - family-names: Brunton
@@ -29,7 +29,7 @@ authors:
     affiliation: University of Washington
     orcid: "https://orcid.org/0000-0002-6565-5118"
 repository-code: "https://github.com/dynamicslab/koopmanrl"
-url: "https://github.com/dynamicslabs/koopmanrl"
+url: "https://dynamicslab.github.io/KoopmanRL/"
 abstract: >
     KoopmanRL is a reinforcement learning framework which utilizes the
     Koopman operator to enhance maximum entropy-based reinforcement
@@ -45,11 +45,11 @@ keywords:
   - machine learning
 license: MIT
 references:
-  - type: journal-paper
+  - type: article
     title: "Koopman-Assisted Reinforcement Learning"
-    journal:
-      name: "tbd"
-    year: 2026
+    journal: "arXiv preprint arXiv:2403.02290"
+    url: "https://arxiv.org/abs/2403.02290"
+    year: 2024
     authors:
       - family-names: Rozwood
         given-names: Preston
@@ -59,8 +59,8 @@ references:
       - family-names: Paehler
         given-names: Ludger
         orcid: "https://orcid.org/0000-0002-7200-7637"
-      - family-names: Wen
-        given-names: Sun
+      - family-names: Sun
+        given-names: Wen
       - family-names: Brunton
         given-names: Steven L.
         orcid: "https://orcid.org/0000-0002-6565-5118"

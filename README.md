@@ -7,20 +7,23 @@
 
 ## About
 
-KoopmanRL is a reinforcement learning (RL) package designed around the two Koopman-Assisted RL (KARL) algorithms, Soft Koopman Value Iteration, and Soft Koopman Actor-Critic. It provides the utilities to build upon parts of its algorithms by either using only the Koopman tensor itself, or only components of the two KARL algorithms. In addition it provides utilities for automatic hyperparameter tuning of KARL algorithms, as well as 4 environments rooted in the control literature.
+KoopmanRL is a reinforcement learning (RL) package designed around the two Koopman-Assisted RL (KARL) algorithms, Soft Koopman Value Iteration (SKVI), and Soft Actor Koopman-Critic (SAKC). It provides the utilities to build upon parts of its algorithms by either using only the Koopman tensor itself, or only components of the two KARL algorithms. In addition it provides utilities for automatic hyperparameter tuning of KARL algorithms, as well as 4 environments rooted in the control literature.
+
+The documentation is hosted at [dynamicslab.github.io/KoopmanRL](https://dynamicslab.github.io/KoopmanRL/).
 
 ## Getting Started
 
-Having [uv](https://docs.astral.sh/uv/) installed, one can easily get the project's environment up-and-running by syncing their local project environment with the lock file. Beginning after the successful clone of the project:
+Having [uv](https://docs.astral.sh/uv/) installed, one can easily get the project's environment up-and-running by cloning the repository and syncing the local project environment with the lock file:
 
 ```bash
-cd koopman-rl && uv sync
+git clone https://github.com/dynamicslab/KoopmanRL.git
+cd KoopmanRL && uv sync
 ```
 
 At which point we have the local project environment we need to run the computations. Alternatively, one can create a dedicated [virtual environment](https://docs.astral.sh/uv/pip/environments/) with uv, i.e.:
 
 ```bash
-uv venv --python 3.10 && uv venv
+uv venv --python 3.10 && source .venv/bin/activate
 ```
 
 After which one can install the KoopmanRL package into the virtual environment
@@ -56,6 +59,9 @@ KoopmanRL provides a number of algorithm implementations, which can all be run a
 * `koopmanrl.skvi_optuna_opt`
 * `koopmanrl.sakc_optuna_opt`
 
+#### Koopman Tensor:
+* `koopmanrl.koopman_tensor.generate_tensor`, which identifies a Koopman tensor of one environment and stores it; `--regressor {ols,ridge,sindy,rrr}` selects the regression
+
 Each of the algorithms, be it a control algorithm, or one of the two hyperparameter optimization routines can be applied to one of the four environments. The implemented environments are:
 1. LinearSystem-v0
 2. FluidFlow-v0
@@ -72,14 +78,18 @@ uv run -m koopmanrl.linear_quadratic_regulator --env_id FluidFlow-v0
 >Note that the hyperparameter optimizations need to be started with the python executable of the environments. E.g. with a uv environment:
 >
 >```bash
->uv run python -m koopmanrl.sakc_optuna_opt --env_id FluidFlow-v0
+>uv run python -m koopmanrl.sakc_optuna_opt --env_id FluidFlow-v0 \
+>    --storage_dir . --output_file my_sakc_fluid_flow --cpu_cores_per_trial 4
 >```
 >
 >or when working with an activated virtual environment
 >
 >```bash
->python -m koopmanrl.sakc_optuna_opt --env_id FluidFlow-v0
+>python -m koopmanrl.sakc_optuna_opt --env_id FluidFlow-v0 \
+>    --storage_dir . --output_file my_sakc_fluid_flow --cpu_cores_per_trial 4
 >```
+>
+>The best configuration is written to `<storage_dir>/<output_file>.json`. Set `--storage_dir`, whose default is a path on the authors' machine, and keep `--cpu_cores_per_trial` (default 28) at or below the number of cores of your machine, since Ray cannot schedule a trial that asks for more.
 
 ### Using Optimized Hyperparameter Configurations
 
@@ -90,6 +100,8 @@ configurations/sakc_fluid_flow_hparams.json
 configurations/skvi_lorenz_hparams.json
 configurations/sakc_double_well_hparams.json
 ```
+
+Next to them, `episodic_returns.json`, `ablations.json` and `tsne.json` list the runs of the three reproduction pipelines described below, which both the launchers and the Snakemake workflows read.
 
 Both `koopmanrl.soft_actor_koopman_critic` and `koopmanrl.soft_koopman_value_iteration` accept a `--config_file` flag that loads hyperparameters directly from one of these JSON files:
 
@@ -129,3 +141,18 @@ uvx --python 3.12 snakemake --cores 8 episodic_returns   # or: ablations, tsne
 ```
 
 The episodic returns take 495 runs and the ablations 1,440 runs, which is several days of computing; [`workflow/README.md`](workflow/README.md) describes how to run a part of them and how to run them on a cluster.
+
+## Citation
+
+If you use KoopmanRL, please cite the paper:
+
+```bibtex
+@article{rozwood2024koopman,
+  title   = {Koopman-Assisted Reinforcement Learning},
+  author  = {Rozwood, Preston and Mehrez, Edward and Paehler, Ludger and Sun, Wen and Brunton, Steven L.},
+  journal = {arXiv preprint arXiv:2403.02290},
+  year    = {2024}
+}
+```
+
+The software itself can be cited with the metadata in [`CITATION.cff`](CITATION.cff), which GitHub also offers under "Cite this repository".
